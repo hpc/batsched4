@@ -5,13 +5,13 @@ build:clang:
   script:
     - export CC=/usr/bin/clang
     - export CXX=/usr/bin/clang++
-    - mkdir /builds/OAR/batsched/build
-    - cd /builds/OAR/batsched/build
+    - mkdir /builds/batsim/batsched/build
+    - cd /builds/batsim/batsched/build
     - cmake .. -Dtreat_warnings_as_errors=ON
     - make
   artifacts:
     paths:
-      - /builds/OAR/batsched/
+      - /builds/batsim/batsched/
 
 # test:
 #   stage: test
@@ -23,7 +23,7 @@ build:clang:
 #         sleep 1
 #       done
 
-#     - cd /builds/OAR/batsched/build
+#     - cd /builds/batsim/batsched/build
 #     - make install
 #     - ctest -E smpi
 #   dependencies:
