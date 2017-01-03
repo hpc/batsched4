@@ -1,0 +1,91 @@
+#include "conservative_bf.hpp"
+
+using namespace std;
+
+ConservativeBackfilling::ConservativeBackfilling(Workload *workload, SchedulingDecision *decision,
+                                                 Queue *queue, ResourceSelector * selector, double rjms_delay, rapidjson::Document *variant_options) :
+    ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay, variant_options)
+{
+}
+
+ConservativeBackfilling::~ConservativeBackfilling()
+{
+}
+
+void ConservativeBackfilling::on_simulation_start(double date)
+{
+    _schedule = Schedule(_nb_machines, date);
+}
+
+void ConservativeBackfilling::on_simulation_end(double date)
+{
+    (void) date;
+}
+
+void ConservativeBackfilling::make_decisions(double date,
+                                             SortableJobOrder::UpdateInformation *update_info,
+                                             SortableJobOrder::CompareInformation *compare_info)
+{
+    // Let's remove finished jobs from the schedule
+    for (const string & ended_job_id : _jobs_ended_recently)
+        _schedule.remove_job((*_workload)[ended_job_id]);
+
+    // Let's handle recently released jobs
+    for (const string & new_job_id : _jobs_released_recently)
+    {
+        const Job * new_job = (*_workload)[new_job_id];
+
+        if (new_job->nb_requested_resources > _nb_machines)
+            _decision->add_rejection(new_job_id, date);
+        else
+            _queue->append_job(new_job, update_info);
+    }
+
+    // Let's update the schedule's present
+    _schedule.update_first_slice(date);
+
+    // Queue sorting
+    _queue->sort_queue(update_info, compare_info);
+
+    // If no resources have been released, we can just insert the new jobs into the schedule
+    if (_jobs_ended_recently.empty())
+    {
+        for (const string & new_job_id : _jobs_released_recently)
+        {
+            const Job * new_job = (*_workload)[new_job_id];
+            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
+
+            // If the job should start now, let's say it to the resource manager
+            if (alloc.started_in_first_slice)
+            {
+                _decision->add_allocation(new_job->id, alloc.used_machines, date);
+                _queue->remove_job(new_job);
+            }
+        }
+    }
+    else
+    {
+        // Since some resources have been freed,
+        // Let's compress the schedule following conservative backfilling rules:
+        // For each non running job j
+        //   Remove j from the schedule
+        //   Add j into the schedule
+        //   If j should be executed now
+        //     Take the decision to run j now
+        for (auto job_it = _queue->begin(); job_it != _queue->end(); )
+        {
+            const Job * job = (*job_it)->job;
+
+            _schedule.remove_job_if_exists(job);
+            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
+
+            if (alloc.started_in_first_slice)
+            {
+                _decision->add_allocation(job->id, alloc.used_machines, date);
+                job_it = _queue->remove_job(job_it);
+            }
+            else
+                ++job_it;
+        }
+    }
+}
