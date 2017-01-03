@@ -1,0 +1,30 @@
+image: oarteam/batsim
+
+build:clang:
+  stage: build
+  script:
+    - export CC=/usr/bin/clang
+    - export CXX=/usr/bin/clang++
+    - mkdir /builds/OAR/batsched/build
+    - cd /builds/OAR/batsched/build
+    - cmake .. -Dtreat_warnings_as_errors=ON
+    - make
+  artifacts:
+    paths:
+      - /builds/OAR/batsched/
+
+# test:
+#   stage: test
+#   script:
+#     # Let's run the redis server
+#     - |
+#       redis-server>/dev/null &
+#       while ! nc -z localhost 6379; do
+#         sleep 1
+#       done
+
+#     - cd /builds/OAR/batsched/build
+#     - make install
+#     - ctest -E smpi
+#   dependencies:
+#     - build:clang
