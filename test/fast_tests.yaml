@@ -76,7 +76,7 @@ implicit_instances:
               cat > ${output_directory}/sched_input.json << EOF
               {
                 "output_dir":"${output_directory}",
-                "output_filename":"${output_directory}/sched_load_log.csv",
+                "trace_output_filename":"${output_directory}/sched_load_log.csv",
                 "pstate_compute":0,
                 "pstate_sleep":13
               }
@@ -119,7 +119,7 @@ implicit_instances:
             cat > ${output_directory}/sched_input.json << EOF
             {
               "output_dir":"${output_directory}",
-              "output_filename":"${output_directory}/sched_load_log.csv",
+              "trace_output_filename":"${output_directory}/sched_load_log.csv",
 
               "fraction_of_machines_to_let_awake":${awake_fraction},
               "monitoring_period":${monitoring_period},
@@ -179,7 +179,7 @@ implicit_instances:
             cat > ${output_directory}/sched_input.json << EOF
             {
               "output_dir":"${output_directory}",
-              "output_filename":"${output_directory}/sched_load_log.csv",
+              "trace_output_filename":"${output_directory}/sched_load_log.csv",
 
               "inertial_alteration":"${inertial_alteration}",
               "upper_llh_threshold":${up_llh_threshold},
@@ -238,7 +238,7 @@ implicit_instances:
             cat > ${output_directory}/sched_input.json << EOF
             {
               "output_dir":"${output_directory}",
-              "output_filename":"${output_directory}/sched_load_log.csv",
+              "trace_output_filename":"${output_directory}/sched_load_log.csv",
 
               "monitoring_period":${monitoring_period},
               "idle_time_to_sedate":${needed_time_to_sedate},
