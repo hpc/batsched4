@@ -15,14 +15,14 @@ EnergyBackfillingMonitoringInertialShutdown::EnergyBackfillingMonitoringInertial
     double rjms_delay, rapidjson::Document *variant_options) :
     EnergyBackfillingMonitoringPeriod(workload, decision, queue, selector, rjms_delay, variant_options)
 {
-    PPK_ASSERT_ERROR(variant_options->HasMember("output_filename"),
-                     "Invalid options JSON object: Member 'output_filename' cannot be found");
-    PPK_ASSERT_ERROR((*variant_options)["output_filename"].IsString(),
-            "Invalid options JSON object: Member 'output_filename' must be a string");
-    string output_filename = (*variant_options)["output_filename"].GetString();
+    PPK_ASSERT_ERROR(variant_options->HasMember("trace_output_filename"),
+                     "Invalid options JSON object: Member 'trace_output_filename' cannot be found");
+    PPK_ASSERT_ERROR((*variant_options)["trace_output_filename"].IsString(),
+            "Invalid options JSON object: Member 'trace_output_filename' must be a string");
+    string trace_output_filename = (*variant_options)["trace_output_filename"].GetString();
 
-    _output_file.open(output_filename);
-    PPK_ASSERT_ERROR(_output_file.is_open(), "Couldn't open file %s", output_filename.c_str());
+    _output_file.open(trace_output_filename);
+    PPK_ASSERT_ERROR(_output_file.is_open(), "Couldn't open file %s", trace_output_filename.c_str());
 
     string buf = "date,nb_jobs_in_queue,load_in_queue,liquid_load_horizon\n";
     _output_file.write(buf.c_str(), buf.size());
@@ -80,24 +80,25 @@ EnergyBackfillingMonitoringInertialShutdown::EnergyBackfillingMonitoringInertial
         _inertial_alteration_number = alteration_number;
     }
 
-    PPK_ASSERT_ERROR(variant_options->HasMember("idle_time_to_sedate"),
-                     "Invalid options JSON object: Member 'idle_time_to_sedate' cannot be found");
-    _needed_amount_of_idle_time_to_be_sedated = (*variant_options)["idle_time_to_sedate"].GetDouble();
+    if (variant_options->HasMember("idle_time_to_sedate"))
+    {
+        _needed_amount_of_idle_time_to_be_sedated = (*variant_options)["idle_time_to_sedate"].GetDouble();
 
-    PPK_ASSERT_ERROR(_needed_amount_of_idle_time_to_be_sedated >= 0,
-                     "Invalid options JSON object: Member 'idle_time_to_sedate' "
-                     "has an invalid value (%g)", _needed_amount_of_idle_time_to_be_sedated);
+        PPK_ASSERT_ERROR(_needed_amount_of_idle_time_to_be_sedated >= 0,
+                         "Invalid options JSON object: Member 'idle_time_to_sedate' "
+                         "has an invalid value (%g)", _needed_amount_of_idle_time_to_be_sedated);
+    }
 
     printf("needed amount of idle time to be sedated: %g\n",
            _needed_amount_of_idle_time_to_be_sedated);
 
-    if (variant_options->HasMember("sedate_on_classical_events"))
+    if (variant_options->HasMember("sedate_idle_on_classical_events"))
     {
-        _sedate_on_classical_events = (*variant_options)["sedate_on_classical_events"].GetBool();
+        _sedate_idle_on_classical_events = (*variant_options)["sedate_idle_on_classical_events"].GetBool();
     }
 
     printf("Sedate on classical events: %s\n",
-           _sedate_on_classical_events ? "true" : "false");
+           _sedate_idle_on_classical_events ? "true" : "false");
 }
 
 void EnergyBackfillingMonitoringInertialShutdown::on_simulation_start(double date)
@@ -602,7 +603,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                          (int)machines_asleep_soon.size(), machines_asleep_soon.to_string_brackets().c_str(),
                          _nb_machines_sedated_by_inertia, _nb_machines_sedated_for_being_idle);
     }
-    else if (_sedate_on_classical_events)
+    else if (_sedate_idle_on_classical_events)
     {
         // If no machine has been sedated for being idle AND if we should sedate on classical events,
         // we can try to sedate idle machines now.

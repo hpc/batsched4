@@ -1,0 +1,277 @@
+base_output_directory: /tmp/batsched_ft
+
+base_variables:
+    test_dir: ${base_working_directory}/test
+
+implicit_instances:
+  # Algorithms without parameters
+  noparam:
+    sweep:
+      platform :
+        - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
+      workload :
+        - {"name":"hello", "filename":"${test_dir}/workloads/hello.json"}
+        - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
+      algo:
+        - {"name":"easy_bf", "sched_name":"easy_bf"}
+        - {"name":"filler", "sched_name":"filler"}
+        - {"name":"conservative_bf", "sched_name":"conservative_bf"}
+    generic_instance:
+      timeout: 3600
+      working_directory: ${base_working_directory}
+      output_directory: ${base_output_directory}/results/${instance_id}
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket
+
+
+
+  # Easy BF LLH algorithm
+  easy_bf_plot:
+    sweep:
+      platform :
+        - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
+      workload :
+        - {"name":"hello", "filename":"${test_dir}/workloads/hello.json"}
+        - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
+      algo:
+        - {"name":"easy_bf_plot", "sched_name":"easy_bf_plot_liquid_load_horizon"}
+    generic_instance:
+      timeout: 3600
+      working_directory: ${base_working_directory}
+      output_directory: ${base_output_directory}/results/${instance_id}
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      commands_before_execution:
+        # Generate sched options
+        - |
+              #!/bin/bash
+              cat > ${output_directory}/sched_input.json << EOF
+              {
+                "trace_output_filename":"${output_directory}/sched_load_log.csv"
+              }
+              EOF
+
+
+
+  # Sleeper algorithm
+  sleeper:
+    sweep:
+      platform :
+        - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
+      workload :
+        - {"name":"hello", "filename":"${test_dir}/workloads/hello.json"}
+        - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
+      algo:
+        - {"name":"sleeper", "sched_name":"sleeper"}
+    generic_instance:
+      timeout: 3600
+      working_directory: ${base_working_directory}
+      output_directory: ${base_output_directory}/results/${instance_id}
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      commands_before_execution:
+        # Generate sched options
+        - |
+              #!/bin/bash
+              cat > ${output_directory}/sched_input.json << EOF
+              {
+                "output_dir":"${output_directory}",
+                "output_filename":"${output_directory}/sched_load_log.csv",
+                "pstate_compute":0,
+                "pstate_sleep":13
+              }
+              EOF
+
+
+
+  # Subpart sleeper algorithm
+  subpart_sleeper:
+    sweep:
+      platform :
+        - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
+      workload :
+        - {"name":"hello", "filename":"${test_dir}/workloads/hello.json"}
+        - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
+      algo:
+        - {"name":"subpart_sleeper", "sched_name":"energy_bf_subpart_sleeper"}
+      awake_fraction: [1.00, 0.90, 0.50]
+      monitoring_period: [60, 300, 600, 3600]
+      needed_time_to_sedate: [0e1, 60e1, 600e1, 1e18]
+      sedate_idle_on_classical_events: ["true", "false"]
+      ensured_sleep_bounds:
+        - {"name":"zero", "lower": 0e1, "upper": 0e1}
+        - {"name":"T", "lower": 0e1, "upper": 1e18}
+    generic_instance:
+      timeout: 3600
+      working_directory: ${base_working_directory}
+      output_directory: ${base_output_directory}/results/${instance_id}
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      commands_before_execution:
+        # Generate sched options
+        - |
+            #!/bin/bash
+            # Since bash associative arrays are not exported, the variables.bash
+            # is sourced here.
+            source ${output_directory}/variables.bash
+
+            # Let's generate an input file for the scheduler
+            cat > ${output_directory}/sched_input.json << EOF
+            {
+              "output_dir":"${output_directory}",
+              "output_filename":"${output_directory}/sched_load_log.csv",
+
+              "fraction_of_machines_to_let_awake":${awake_fraction},
+              "monitoring_period":${monitoring_period},
+              "idle_time_to_sedate":${needed_time_to_sedate},
+              "sedate_idle_on_classical_events":${sedate_idle_on_classical_events},
+
+              "ensured_sleep_time_lower_bound":${ensured_sleep_bounds[lower]},
+              "ensured_sleep_time_upper_bound":${ensured_sleep_bounds[upper]},
+
+              "power_sleep":9.75,
+              "power_idle":95,
+              "energy_switch_on":19030,
+              "power_compute":190.738,
+              "energy_switch_off":620,
+              "time_switch_off":6.1,
+              "pstate_sleep":13,
+              "pstate_compute":0,
+              "time_switch_on":152
+            }
+            EOF
+
+
+
+# Inertial shutdown algorithm
+  subpart_sleeper:
+    sweep:
+      platform :
+        - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
+      workload :
+        - {"name":"hello", "filename":"${test_dir}/workloads/hello.json"}
+        - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
+      algo:
+        - {"name":"inertial_shutdown", "sched_name":"energy_bf_monitoring_inertial"}
+      monitoring_period: [60, 300, 600, 3600]
+      needed_time_to_sedate: [0e1, 60e1, 600e1, 1e18]
+      sedate_idle_on_classical_events: ["true", "false"]
+      inertial_alteration: ["x0", "p1", "p2", "x2", "x4"]
+      up_llh_threshold: [0e4, 5e3, 2e4, 4e4, 6e4, 8e4, 10e4]
+      ensured_sleep_bounds:
+        - {"name":"zero", "lower": 0e1, "upper": 0e1}
+        - {"name":"T", "lower": 0e1, "upper": 1e18}
+    generic_instance:
+      timeout: 3600
+      working_directory: ${base_working_directory}
+      output_directory: ${base_output_directory}/results/${instance_id}
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      commands_before_execution:
+        # Generate sched options
+        - |
+            #!/bin/bash
+            # Since bash associative arrays are not exported, the variables.bash
+            # is sourced here.
+            source ${output_directory}/variables.bash
+
+            # Let's generate an input file for the scheduler
+            cat > ${output_directory}/sched_input.json << EOF
+            {
+              "output_dir":"${output_directory}",
+              "output_filename":"${output_directory}/sched_load_log.csv",
+
+              "inertial_alteration":"${inertial_alteration}",
+              "upper_llh_threshold":${up_llh_threshold},
+              "monitoring_period":${monitoring_period},
+              "idle_time_to_sedate":${needed_time_to_sedate},
+              "sedate_idle_on_classical_events":${sedate_idle_on_classical_events},
+
+              "ensured_sleep_time_lower_bound":${ensured_sleep_bounds[lower]},
+              "ensured_sleep_time_upper_bound":${ensured_sleep_bounds[upper]},
+
+              "power_sleep":9.75,
+              "power_idle":95,
+              "energy_switch_on":19030,
+              "power_compute":190.738,
+              "energy_switch_off":620,
+              "time_switch_off":6.1,
+              "pstate_sleep":13,
+              "pstate_compute":0,
+              "time_switch_on":152
+            }
+            EOF
+
+
+
+  # Idle sleeper algorithm
+  subpart_sleeper:
+    sweep:
+      platform :
+        - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
+      workload :
+        - {"name":"hello", "filename":"${test_dir}/workloads/hello.json"}
+        - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
+      algo:
+        - {"name":"energy_bf_idle_sleeper", "sched_name":"energy_bf_idle_sleeper"}
+      monitoring_period: [60, 300, 600, 3600]
+      needed_time_to_sedate: [0e1, 60e1, 600e1, 1e18]
+      sedate_idle_on_classical_events: ["true", "false"]
+      ensured_sleep_bounds:
+        - {"name":"zero", "lower": 0e1, "upper": 0e1}
+        - {"name":"T", "lower": 0e1, "upper": 1e18}
+    generic_instance:
+      timeout: 3600
+      working_directory: ${base_working_directory}
+      output_directory: ${base_output_directory}/results/${instance_id}
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      commands_before_execution:
+        # Generate sched options
+        - |
+            #!/bin/bash
+            # Since bash associative arrays are not exported, the variables.bash
+            # is sourced here.
+            source ${output_directory}/variables.bash
+
+            # Let's generate an input file for the scheduler
+            cat > ${output_directory}/sched_input.json << EOF
+            {
+              "output_dir":"${output_directory}",
+              "output_filename":"${output_directory}/sched_load_log.csv",
+
+              "monitoring_period":${monitoring_period},
+              "idle_time_to_sedate":${needed_time_to_sedate},
+              "sedate_idle_on_classical_events":${sedate_idle_on_classical_events},
+
+              "ensured_sleep_time_lower_bound":${ensured_sleep_bounds[lower]},
+              "ensured_sleep_time_upper_bound":${ensured_sleep_bounds[upper]},
+
+              "power_sleep":9.75,
+              "power_idle":95,
+              "energy_switch_on":19030,
+              "power_compute":190.738,
+              "energy_switch_off":620,
+              "time_switch_off":6.1,
+              "pstate_sleep":13,
+              "pstate_compute":0,
+              "time_switch_on":152
+            }
+            EOF
+
+
+
+commands_before_instances:
+  # Crashes if there is no redis-server running
+  - |
+      #!/bin/bash -ex
+
+      # Let's make sure a Redis server is running
+      redis_running=$(ps faux | grep redis-server | grep -v grep | wc -l)
+      if test ${redis_running} -eq 0
+      then
+          echo "There is no Redis server currently running!"
+          exit 1
+      fi
+
+

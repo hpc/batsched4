@@ -13,14 +13,14 @@ EasyBackfillingPlotLiquidLoadHorizon::EasyBackfillingPlotLiquidLoadHorizon(Workl
     EasyBackfilling(workload, decision, queue, selector, rjms_delay, variant_options)
 {
 
-    PPK_ASSERT_ERROR(variant_options->HasMember("output_filename"),
-                     "Invalid options JSON object: Member 'output_filename' cannot be found");
-    PPK_ASSERT_ERROR((*variant_options)["output_filename"].IsString(),
-            "Invalid options JSON object: Member 'output_filename' must be a string");
-    string output_filename = (*variant_options)["output_filename"].GetString();
+    PPK_ASSERT_ERROR(variant_options->HasMember("trace_output_filename"),
+                     "Invalid options JSON object: Member 'trace_output_filename' cannot be found");
+    PPK_ASSERT_ERROR((*variant_options)["trace_output_filename"].IsString(),
+            "Invalid options JSON object: Member 'trace_output_filename' must be a string");
+    string trace_output_filename = (*variant_options)["trace_output_filename"].GetString();
 
-    _output_file.open(output_filename);
-    PPK_ASSERT_ERROR(_output_file.is_open(), "Couldn't open file %s", output_filename.c_str());
+    _output_file.open(trace_output_filename);
+    PPK_ASSERT_ERROR(_output_file.is_open(), "Couldn't open file %s", trace_output_filename.c_str());
 
     string buf = "date,nb_jobs_in_queue,load_in_queue,liquid_load_horizon\n";
     //string buf = "date,nb_jobs_in_queue,load_in_queue,liquid_load_horizon,qt_mean_wt\n";

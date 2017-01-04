@@ -121,8 +121,8 @@ protected:
     InertialAlterationType _alteration_type = PRODUCT;
     Rational _inertial_alteration_number = 2;
 
-    bool _sedate_on_classical_events = false;
-    double _needed_amount_of_idle_time_to_be_sedated;
+    bool _sedate_idle_on_classical_events = false;
+    double _needed_amount_of_idle_time_to_be_sedated = 1e18;
     int _nb_machines_sedated_for_being_idle = 0;
     int _nb_machines_sedated_by_inertia = 0;
     std::map<int, Rational> _machines_idle_start_date;
