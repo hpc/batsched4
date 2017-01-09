@@ -77,15 +77,12 @@ int main(int argc, char ** argv)
             ("queue_order,o", po::value<string>(&queue_order)->default_value("fcfs"), string("sets queue order. Available values are " + queue_orders_string).c_str())
         ;
 
-        po::positional_options_description p;
-        p.add("json_file", 1);
-
         po::variables_map vm;
-        po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
+        po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
 
         if (vm.count("help"))
         {
-            printf("Usage : %s [options] [json_file]\n", argv[0]);
+            printf("Usage : %s [options]\n", argv[0]);
             cout << desc << "\n";
             return 1;
         }
