@@ -13,20 +13,20 @@ build:clang:
     paths:
       - /builds/batsim/batsched/
 
-test:
-  stage: test
-  script:
-    # Let's run the redis server
-    - |
-      redis-server>/dev/null &
-      while ! nc -z localhost 6379; do
-        sleep 1
-      done
+# test:
+#   stage: test
+#   script:
+#     # Let's run the redis server
+#     - |
+#       redis-server>/dev/null &
+#       while ! nc -z localhost 6379; do
+#         sleep 1
+#       done
 
-    - cd /builds/batsim/batsched/build
-    - make install
+#     - cd /builds/batsim/batsched/build
+#     - make install
 
-    - cd /builds/batsim/batsched
-    - /root/batsim/tools/experiments/execute_instances.py test/fast_tests.yaml
-  dependencies:
-    - build:clang
+#     - cd /builds/batsim/batsched
+#     - /root/batsim/tools/experiments/execute_instances.py test/fast_tests.yaml
+#   dependencies:
+#     - build:clang
