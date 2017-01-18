@@ -141,10 +141,8 @@ implicit_instances:
             }
             EOF
 
-
-
 # Inertial shutdown algorithm
-  subpart_sleeper:
+  inertial_shutdown:
     sweep:
       platform :
         - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
@@ -153,11 +151,11 @@ implicit_instances:
         - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
       algo:
         - {"name":"inertial_shutdown", "sched_name":"energy_bf_monitoring_inertial"}
-      monitoring_period: [60, 300, 600, 3600]
-      needed_time_to_sedate: [0e1, 60e1, 600e1, 1e18]
+      monitoring_period: [60, 600]
+      needed_time_to_sedate: [0e1, 60e1, 1e18]
       sedate_idle_on_classical_events: ["true", "false"]
-      inertial_alteration: ["x0", "p1", "p2", "x2", "x4"]
-      up_llh_threshold: [0e4, 5e3, 2e4, 4e4, 6e4, 8e4, 10e4]
+      inertial_alteration: ["p2", "x2"]
+      up_llh_threshold: [0e4, 10e4]
       ensured_sleep_bounds:
         - {"name":"zero", "lower": 0e1, "upper": 0e1}
         - {"name":"T", "lower": 0e1, "upper": 1e18}
@@ -205,7 +203,7 @@ implicit_instances:
 
 
   # Idle sleeper algorithm
-  subpart_sleeper:
+  idle_sleeper:
     sweep:
       platform :
         - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}

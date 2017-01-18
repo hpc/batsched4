@@ -32,7 +32,8 @@ using namespace std;
 namespace po = boost::program_options;
 namespace n = network;
 
-void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d, RedisStorage & redis, Workload &workload);
+void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d, RedisStorage & redis,
+         Workload &workload, bool call_make_decisions_on_single_nop = true);
 
 int main(int argc, char ** argv)
 {
@@ -44,6 +45,7 @@ int main(int argc, char ** argv)
     string variant_options;
     string variant_options_filepath;
     double rjms_delay;
+    bool call_make_decisions_on_single_nop;
 
     const set<string> variants_set = {"conservative_bf", "easy_bf", "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
@@ -75,6 +77,7 @@ int main(int argc, char ** argv)
             ("variant_options", po::value<string>(&variant_options)->default_value("{}"), "sets scheduling variant options. Must be formatted as a JSON object.")
             ("variant_options_filepath", po::value<string>(&variant_options_filepath)->default_value(""), "sets scheduling variants options as the content of the given filepath. Overrides the variant_options option.")
             ("queue_order,o", po::value<string>(&queue_order)->default_value("fcfs"), string("sets queue order. Available values are " + queue_orders_string).c_str())
+            ("call_make_decisions_on_single_nop", po::value<bool>(&call_make_decisions_on_single_nop)->default_value(true), "If set to true, make_decisions will be called after single NOP messages")
         ;
 
         po::variables_map vm;
@@ -241,7 +244,8 @@ int main(int argc, char ** argv)
     return 0;
 }
 
-void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, RedisStorage & redis, Workload & workload)
+void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, RedisStorage & redis,
+         Workload & workload, bool call_make_decisions_on_single_nop)
 {
     while (true)
     {
@@ -261,9 +265,10 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
         double current_date = message_date;
 
         d.clear();
+        bool nop_received = false;
 
-        int nbParts = parts.size();
-        for (int i = 1; i < nbParts; ++i)
+        int nb_parts = parts.size();
+        for (int i = 1; i < nb_parts; ++i)
         {
             vector<string> subparts;
             boost::split(subparts, parts[i], boost::is_any_of(":"));
@@ -314,6 +319,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
                     algo->on_failure_end(current_date, machines);
                     break;}
                 case network::nop:{
+                    nop_received = true;
                     algo->on_nop(current_date);
                     break;}
                 default:{
@@ -323,9 +329,15 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
             }
         }
 
-        SortableJobOrder::UpdateInformation update_info(current_date);
-        algo->make_decisions(message_date, &update_info, nullptr);
-        algo->clear_recent_data_structures();
+        bool single_nop_received = nop_received && nb_parts == 1;
+
+        // make_decisions is not called if (!call_make_decisions_on_single_nop && single_nop_received)
+        if (!(!call_make_decisions_on_single_nop && single_nop_received))
+        {
+            SortableJobOrder::UpdateInformation update_info(current_date);
+            algo->make_decisions(message_date, &update_info, nullptr);
+            algo->clear_recent_data_structures();
+        }
 
         message_date = max(message_date, d.last_date());
         string message_to_send = "1:" + to_string(message_date);
