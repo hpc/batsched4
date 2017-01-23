@@ -281,9 +281,11 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                 {
                     int machine_id = *mit;
                     MachineInformation * minfo = _machine_informations[machine_id];
-                    _inertial_schedule.remove_job_last_occurence(minfo->potential_sleep_job);
-                    _inertial_schedule.remove_job_last_occurence(minfo->ensured_sleep_job);
+
                     _inertial_schedule.remove_job_last_occurence(minfo->switch_off_job);
+                    if (minfo->ensured_sleep_job->walltime > 0)
+                        _inertial_schedule.remove_job_last_occurence(minfo->ensured_sleep_job);
+                    _inertial_schedule.remove_job_last_occurence(minfo->potential_sleep_job);
                 }
 
                 alloc = _inertial_schedule.add_job_first_fit(priority_job, _selector, false);
