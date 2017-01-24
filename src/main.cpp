@@ -37,8 +37,10 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d, RedisS
 
 int main(int argc, char ** argv)
 {
-    string socket_filename;
+    string socket_endpoint;
+    string redis_hostname;
     int redis_port;
+    string redis_prefix;
     string scheduling_variant;
     string selection_policy;
     string queue_order;
@@ -71,8 +73,10 @@ int main(int argc, char ** argv)
             ("rjms_delay,d", po::value<double>(&rjms_delay)->default_value(5.0), "sets the expected time that the RJMS takes to do some things like killing a job")
             ("help,h", "produce help message")
             ("policy,p", po::value<string>(&selection_policy)->default_value("basic"), string("sets resource selection policy. Available values are " + policies_string).c_str())
-            ("socket,s", po::value<string>(&socket_filename)->default_value("/tmp/bat_socket"), "sets socket filename")
+            ("socket-endpoint,s", po::value<string>(&socket_endpoint)->default_value("tcp://*:5555"), "sets socket endpoint")
             ("redis-port,r", po::value<int>(&redis_port)->default_value(6379), "sets redis port")
+            ("redis-hostname", po::value<string>(&redis_hostname)->default_value("127.0.0.1"), "sets redis hostname")
+            ("redis-prefix", po::value<string>(&redis_prefix)->default_value("default"), "sets redis prefix")
             ("variant,v", po::value<string>(&scheduling_variant)->default_value("filler"), string("sets scheduling variant. Available values are " + variants_string).c_str())
             ("variant_options", po::value<string>(&variant_options)->default_value("{}"), "sets scheduling variant options. Must be formatted as a JSON object.")
             ("variant_options_filepath", po::value<string>(&variant_options_filepath)->default_value(""), "sets scheduling variants options as the content of the given filepath. Overrides the variant_options option.")
@@ -203,12 +207,12 @@ int main(int argc, char ** argv)
 
         // Redis creation
         RedisStorage storage;
-        storage.connect_to_server(redox::REDIS_DEFAULT_HOST, redis_port, nullptr);
-        storage.set_instance_key_prefix(absolute_filename(socket_filename));
+        storage.connect_to_server(redis_hostname, redis_port, nullptr);
+        storage.set_instance_key_prefix(redis_prefix);
 
         // Network
         Network n;
-        n.connect(socket_filename);
+        n.bind(socket_endpoint);
 
         // Run the simulation
         run(n, algo, decision, storage, w);
@@ -247,7 +251,8 @@ int main(int argc, char ** argv)
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, RedisStorage & redis,
          Workload & workload, bool call_make_decisions_on_single_nop)
 {
-    while (true)
+    bool simulation_finished = false;
+    while (!simulation_finished)
     {
         string received_message;
         n.read(received_message);
@@ -286,6 +291,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
                     break;}
                 case network::simulation_end:{
                     algo->on_simulation_end(current_date);
+                    simulation_finished = true;
                     break;}
                 case network::job_submission:{
                     string job_id = subparts[2];

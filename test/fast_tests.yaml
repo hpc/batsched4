@@ -20,8 +20,8 @@ implicit_instances:
       timeout: 3600
       working_directory: ${base_working_directory}
       output_directory: ${base_output_directory}/results/${instance_id}
-      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
-      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]}
 
 
 
@@ -39,8 +39,8 @@ implicit_instances:
       timeout: 3600
       working_directory: ${base_working_directory}
       output_directory: ${base_output_directory}/results/${instance_id}
-      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
-      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} --variant_options_filepath ${output_directory}/sched_input.json
       commands_before_execution:
         # Generate sched options
         - |
@@ -67,8 +67,8 @@ implicit_instances:
       timeout: 3600
       working_directory: ${base_working_directory}
       output_directory: ${base_output_directory}/results/${instance_id}
-      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
-      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} --variant_options_filepath ${output_directory}/sched_input.json
       commands_before_execution:
         # Generate sched options
         - |
@@ -105,8 +105,8 @@ implicit_instances:
       timeout: 3600
       working_directory: ${base_working_directory}
       output_directory: ${base_output_directory}/results/${instance_id}
-      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
-      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} --variant_options_filepath ${output_directory}/sched_input.json
       commands_before_execution:
         # Generate sched options
         - |
@@ -163,8 +163,8 @@ implicit_instances:
       timeout: 3600
       working_directory: ${base_working_directory}
       output_directory: ${base_output_directory}/results/${instance_id}
-      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
-      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} --variant_options_filepath ${output_directory}/sched_input.json
       commands_before_execution:
         # Generate sched options
         - |
@@ -222,8 +222,8 @@ implicit_instances:
       timeout: 3600
       working_directory: ${base_working_directory}
       output_directory: ${base_output_directory}/results/${instance_id}
-      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out -s ${output_directory}/socket --mmax-workload -vnetwork-only
-      sched_command: batsched -v ${algo[sched_name]} -s ${output_directory}/socket --variant_options_filepath ${output_directory}/sched_input.json
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]} --variant_options_filepath ${output_directory}/sched_input.json
       commands_before_execution:
         # Generate sched options
         - |
