@@ -533,8 +533,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
     // Let's make the first decision parts (executing new jobs / awakening some machines for the priority job)
     make_decisions_of_schedule(_inertial_schedule, false);
 
-    MachineRange machines_asleep_soon = _asleep_machines + _switching_off_machines + _machines_to_sedate
-                                        - _machines_to_awaken - _switching_on_machines;
+    MachineRange machines_asleep_soon = (_asleep_machines + _switching_off_machines - _switching_on_machines)
+                                        + _machines_to_sedate - _machines_to_awaken;
     PPK_ASSERT_ERROR((int)machines_asleep_soon.size() == _nb_machines_sedated_by_inertia +
                                                          _nb_machines_sedated_for_being_idle,
                      "Asleep machines inconsistency. nb_asleep_soon=%d (%s). nb_sedated_inertia=%d. "
@@ -596,8 +596,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
         // Let's make the new decisions (switches ON)!
         make_decisions_of_schedule(_inertial_schedule, false);
 
-        machines_asleep_soon = _asleep_machines + _switching_off_machines + _machines_to_sedate
-                                            - _machines_to_awaken - _switching_on_machines;
+        machines_asleep_soon = (_asleep_machines + _switching_off_machines - _switching_on_machines)
+                               + _machines_to_sedate - _machines_to_awaken;
         PPK_ASSERT_ERROR((int)machines_asleep_soon.size() == _nb_machines_sedated_by_inertia +
                                                              _nb_machines_sedated_for_being_idle,
                          "Asleep machines inconsistency. nb_asleep_soon=%d (%s). nb_sedated_inertia=%d. "
@@ -614,8 +614,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
         EnergyBackfillingIdleSleeper::update_idle_states(date, _inertial_schedule, _all_machines,
                                                          _idle_machines, _machines_idle_start_date);
 
-        MachineRange machines_awake_soon = _awake_machines + _switching_on_machines +
-                                           _machines_to_awaken - _machines_to_sedate;
+        MachineRange machines_awake_soon = (_awake_machines + _switching_on_machines - _switching_off_machines)
+                                           + _machines_to_awaken - _machines_to_sedate;
 
         MachineRange machines_to_sedate_for_being_idle;
         EnergyBackfillingIdleSleeper::select_idle_machines_to_sedate(date,
@@ -676,8 +676,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
     _last_llh_value = llh;
     _last_llh_date = date;
 
-    machines_asleep_soon = _asleep_machines + _switching_off_machines + _machines_to_sedate
-                                        - _machines_to_awaken - _switching_on_machines;
+    machines_asleep_soon = (_asleep_machines + _switching_off_machines - _switching_on_machines)
+                           + _machines_to_sedate - _machines_to_awaken;
     PPK_ASSERT_ERROR((int)machines_asleep_soon.size() == _nb_machines_sedated_by_inertia +
                                                          _nb_machines_sedated_for_being_idle,
                      "Asleep machines inconsistency. nb_asleep_soon=%d (%s). nb_sedated_inertia=%d. "
@@ -999,8 +999,8 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     // Let's make the inertial decisions
     make_decisions_of_schedule(_inertial_schedule, false);
 
-    MachineRange machines_asleep_soon = _asleep_machines + _switching_off_machines + _machines_to_sedate
-                                        - _machines_to_awaken - _switching_on_machines;
+    MachineRange machines_asleep_soon = (_asleep_machines + _switching_off_machines - _switching_on_machines)
+                                        + _machines_to_sedate - _machines_to_awaken;
     PPK_ASSERT_ERROR((int)machines_asleep_soon.size() == _nb_machines_sedated_by_inertia +
                                                          _nb_machines_sedated_for_being_idle,
                      "Asleep machines inconsistency. nb_asleep_soon=%d (%s). nb_sedated_inertia=%d. "
@@ -1019,8 +1019,8 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     // Let's now try to sedate the machines which have been idle for too long
     EnergyBackfillingIdleSleeper::update_idle_states(date, _inertial_schedule, _all_machines,
                                                      _idle_machines, _machines_idle_start_date);
-    MachineRange machines_awake_soon = _awake_machines + _switching_on_machines +
-                                       _machines_to_awaken - _machines_to_sedate;
+    MachineRange machines_awake_soon = (_awake_machines + _switching_on_machines - _switching_off_machines)
+                                       + _machines_to_awaken - _machines_to_sedate;
     MachineRange machines_to_sedate_for_being_idle;
     EnergyBackfillingIdleSleeper::select_idle_machines_to_sedate(date,
                                     _idle_machines, machines_awake_soon,
@@ -1082,8 +1082,8 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                           (double) _queue->compute_load_estimation(),
                           (double) llh);
 
-    machines_asleep_soon = _asleep_machines + _switching_off_machines + _machines_to_sedate
-                                        - _machines_to_awaken - _switching_on_machines;
+    machines_asleep_soon = (_asleep_machines + _switching_off_machines - _switching_on_machines)
+                           + _machines_to_sedate - _machines_to_awaken;
     PPK_ASSERT_ERROR((int)machines_asleep_soon.size() == _nb_machines_sedated_by_inertia +
                                                          _nb_machines_sedated_for_being_idle,
                      "Asleep machines inconsistency. nb_asleep_soon=%d (%s). nb_sedated_inertia=%d. "

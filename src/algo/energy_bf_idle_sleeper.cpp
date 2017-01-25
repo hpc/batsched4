@@ -198,8 +198,8 @@ void EnergyBackfillingIdleSleeper::update_idle_states(Rational current_date,
 void EnergyBackfillingIdleSleeper::make_idle_sleep_decisions(double date)
 {
     const Job * priority_job = _queue->first_job_or_nullptr();
-    MachineRange machines_awake_soon = _awake_machines + _switching_on_machines + _machines_to_sedate;
-
+    MachineRange machines_awake_soon = (_awake_machines + _switching_on_machines - _switching_off_machines)
+                                       + _machines_to_awaken - _machines_to_sedate;
 
     MachineRange machines_to_sedate;
     select_idle_machines_to_sedate(date, _idle_machines, machines_awake_soon,
