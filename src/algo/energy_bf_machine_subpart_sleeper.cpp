@@ -33,7 +33,6 @@ EnergyBackfillingMachineSubpartSleeper::~EnergyBackfillingMachineSubpartSleeper(
 void EnergyBackfillingMachineSubpartSleeper::on_monitoring_stage(double date)
 {
     update_first_slice_taking_sleep_jobs_into_account(date);
-
     _inertial_schedule = _schedule;
 
     // Let's check whether the asleep machines are consistent
@@ -251,5 +250,19 @@ void EnergyBackfillingMachineSubpartSleeper::on_monitoring_stage(double date)
     }
 
     PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia <= _nb_machines - nb_machines_to_let_awakened);
+
+    // Let's update the reason why machines are sedated if needed
+    if (_nb_machines_sedated_for_being_idle > nb_machines_to_let_awakened)
+    {
+        int nb_machines_to_transfer = _nb_machines_sedated_for_being_idle - nb_machines_to_let_awakened;
+        PPK_ASSERT_ERROR(nb_machines_to_transfer > 0);
+
+        _nb_machines_sedated_for_being_idle -= nb_machines_to_transfer;
+        _nb_machines_sedated_by_inertia += nb_machines_to_transfer;
+
+        PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
+        PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia <= _nb_machines);
+    }
+
     PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle <= nb_machines_to_let_awakened);
 }
