@@ -23,8 +23,6 @@ implicit_instances:
       batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload -vnetwork-only
       sched_command: batsched -v ${algo[sched_name]}
 
-
-
   # Easy BF LLH algorithm
   easy_bf_plot:
     sweep:
