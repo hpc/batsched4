@@ -26,6 +26,7 @@
 #include "algo/energy_bf_monitoring_inertial_shutdown.hpp"
 #include "algo/energy_bf_machine_subpart_sleeper.hpp"
 #include "algo/filler.hpp"
+#include "algo/killer.hpp"
 #include "algo/sleeper.hpp"
 
 using namespace std;
@@ -53,9 +54,10 @@ int main(int argc, char ** argv)
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
-                                      "filler", "sleeper"};
+                                      "filler", "sleeper", "killer"};
     const set<string> policies_set = {"basic", "contiguous"};
-    const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown", "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
+    const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown",
+                                          "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
 
     const string variants_string = "{" + boost::algorithm::join(variants_set, ", ") + "}";
     const string policies_string = "{" + boost::algorithm::join(policies_set, ", ") + "}";
@@ -199,6 +201,8 @@ int main(int argc, char ** argv)
             algo = new EnergyBackfillingMachineSubpartSleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "sleeper")
             algo = new Sleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "killer")
+            algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else
         {
             printf("Invalid scheduling variant '%s'. Available variants are %s\n", scheduling_variant.c_str(), variants_string.c_str());

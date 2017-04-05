@@ -10,6 +10,7 @@ class SchedulingDecision
 public:
     void add_allocation(const std::string &job_id, const MachineRange & machineIDs, double date);
     void add_rejection(const std::string &job_id, double date);
+    void add_kill(const std::string & job_id, double date);
 
     void add_change_machine_state(MachineRange machines, int newPState, double date);
 

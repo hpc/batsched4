@@ -32,6 +32,16 @@ void SchedulingDecision::add_rejection(const std::string & job_id, double date)
         printf("Made decision to reject job '%s'\n", job_id.c_str());
 }
 
+void SchedulingDecision::add_kill(const string &job_id, double date)
+{
+    _lastDate = date;
+    printf("UNIMPLEMENTED!! This function will then do nothing at the moment.\n");
+    // TODO
+
+    if (_display_decisions)
+        printf("Made decision to kill job '%s'\n", job_id.c_str());
+}
+
 void SchedulingDecision::add_change_machine_state(MachineRange machines, int newPState, double date)
 {
     PPK_ASSERT(date >= _lastDate);
