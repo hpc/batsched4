@@ -1,4 +1,4 @@
-base_output_directory: /tmp/batsched_ft
+base_output_directory: /tmp/batsched_kth
 
 base_variables:
     test_dir: ${base_working_directory}/test
