@@ -45,7 +45,7 @@ void EnergyBackfillingMonitoringPeriod::on_job_release(double date, const std::v
         printf("EnergyBackfillingMonitoringPeriod: First monitoring nop is expected to be at date=%g\n",
                (double) _next_monitoring_period_expected_date);
 
-        _decision->add_nop_me_later((double)(_next_monitoring_period_expected_date), date);
+        _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
         _nb_nop_me_later_running++;
         _monitoring_period_launched = true;
     }
@@ -88,7 +88,7 @@ void EnergyBackfillingMonitoringPeriod::on_nop(double date)
         if (!_simulation_finished)
         {
             _next_monitoring_period_expected_date = date + _period_between_monitoring_stages;
-            _decision->add_nop_me_later((double)(_next_monitoring_period_expected_date), date);
+            _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
             _nb_nop_me_later_running++;
 
             printf("EnergyBackfillingMonitoringPeriod: 'Chose to launch a nop_me_later at %g\n",

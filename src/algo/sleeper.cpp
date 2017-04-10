@@ -64,7 +64,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
         const Job * new_job = (*_workload)[new_job_id];
 
         if (new_job->nb_requested_resources > _nb_machines)
-            _decision->add_rejection(new_job_id, date);
+            _decision->add_reject_job(new_job_id, date);
         else
             _queue->append_job(new_job, update_info);
     }
@@ -116,7 +116,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
             {
                 // The job can be executed right now
                 MachineRange alloc = available_machines.left(job->nb_requested_resources);
-                _decision->add_allocation(job->id, alloc, date);
+                _decision->add_execute_job(job->id, alloc, date);
 
                 // Let's update machine states
                 available_machines.remove(alloc);
@@ -125,7 +125,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
                 // Let's put unused machines into sleep
                 if (available_machines.size() > 0)
                 {
-                    _decision->add_change_machine_state(available_machines, sleep_pstate, date);
+                    _decision->add_set_resource_state(available_machines, sleep_pstate, date);
                     machines_being_switched_off.insert(available_machines);
                     available_machines.clear();
                 }
@@ -148,7 +148,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
                     {
                         // Decision
                         MachineRange machines_to_order_to_wake_up = sleeping_machines.left(nb_machines_to_order_to_wake_up);
-                        _decision->add_change_machine_state(machines_to_order_to_wake_up, compute_pstate, date);
+                        _decision->add_set_resource_state(machines_to_order_to_wake_up, compute_pstate, date);
 
                         // Machines state update
                         sleeping_machines.remove(machines_to_order_to_wake_up);
@@ -168,7 +168,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
             // Let's put unused machines into sleep
             if (available_machines.size() > 0)
             {
-                _decision->add_change_machine_state(available_machines, sleep_pstate, date);
+                _decision->add_set_resource_state(available_machines, sleep_pstate, date);
                 machines_being_switched_off.insert(available_machines);
                 available_machines.clear();
             }
@@ -181,7 +181,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
         // Let's put unused machines into sleep
         if (available_machines.size() > 0)
         {
-            _decision->add_change_machine_state(available_machines, sleep_pstate, date);
+            _decision->add_set_resource_state(available_machines, sleep_pstate, date);
             machines_being_switched_off.insert(available_machines);
             available_machines.clear();
         }

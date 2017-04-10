@@ -32,6 +32,7 @@
 using namespace std;
 namespace po = boost::program_options;
 namespace n = network;
+namespace r = rapidjson;
 
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d, RedisStorage & redis,
          Workload &workload, bool call_make_decisions_on_single_nop = true);
@@ -264,82 +265,60 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
         if (boost::trim_copy(received_message).empty())
             throw runtime_error("Empty message received (connection lost ?)");
 
-        vector<string> parts;
-        boost::split(parts, received_message, boost::is_any_of("|"));
+        d.clear();
 
-        vector<string> subparts0;
-        boost::split(subparts0, parts[0], boost::is_any_of(":"));
+        r::Document doc;
+        doc.Parse(received_message.c_str());
 
-        double message_date = stod(subparts0[1]);
+        double message_date = doc["now"].GetDouble();
         double current_date = message_date;
 
-        d.clear();
-        bool nop_received = false;
+        // Let's handle all received events
+        const r::Value & events_array = doc["events"];
 
-        int nb_parts = parts.size();
-        for (int i = 1; i < nb_parts; ++i)
+        for (unsigned int event_i = 0; event_i < events_array.Size(); ++event_i)
         {
-            vector<string> subparts;
-            boost::split(subparts, parts[i], boost::is_any_of(":"));
-            char stamp = subparts[1][0];
+            const r::Value & event_object = events_array[event_i];
+            const std::string event_type = event_object["type"].GetString();
+            current_date = event_object["timestamp"].GetDouble();
+            const r::Value & event_data = event_object["data"];
 
-            SortableJobOrder::UpdateInformation update_info(current_date);
-
-            switch (stamp)
+            if (event_type == "SIMULATION_BEGINS")
             {
-                case network::simulation_begin:{
-                    // Let's read the number of machines from Redis
-                    int nb_res = redis.get_number_of_machines();
-                    algo->set_nb_machines(nb_res);
-                    algo->on_simulation_start(current_date);
-                    break;}
-                case network::simulation_end:{
-                    algo->on_simulation_end(current_date);
-                    simulation_finished = true;
-                    break;}
-                case network::job_submission:{
-                    string job_id = subparts[2];
-                    workload.add_job_from_redis(redis, job_id, current_date);
-                    algo->on_job_release(current_date, {job_id});
-                    break;}
-                case network::job_completion:{
-                    string job_id = subparts[2];
-                    workload[job_id]->completion_time = current_date;
-                    algo->on_job_end(current_date, {job_id});
-                    break;}
-                case network::machine_pstate_changed:{
-                    vector<string> subsubparts;
-                    boost::split(subsubparts, subparts[2], boost::is_any_of("="));
-
-                    string machines_string = subsubparts[0];
-                    int new_pstate = stoi(subsubparts[1]);
-
-                    MachineRange machines = MachineRange::from_string_hyphen(machines_string);
-
-                    algo->on_machine_state_changed(current_date, machines, new_pstate);
-                    break;}
-                case network::failure:{
-                    const std::string & machines_string = subparts[2];
-                    MachineRange machines = MachineRange::from_string_hyphen(machines_string);
-                    algo->on_failure(current_date, machines);
-                    break;}
-                case network::failure_finished:{
-                    const std::string & machines_string = subparts[2];
-                    MachineRange machines = MachineRange::from_string_hyphen(machines_string);
-                    algo->on_failure_end(current_date, machines);
-                    break;}
-                case network::nop:{
-                    nop_received = true;
-                    algo->on_nop(current_date);
-                    break;}
-                default:{
-                    throw runtime_error("Unknown message received from the simulator: '" +
-                                        parts[i] + "'");
-                    break;}
+                int nb_resources = event_data["nb_resources"].GetInt();
+                algo->set_nb_machines(nb_resources);
+                algo->on_simulation_start(current_date);
+            }
+            else if (event_type == "SIMULATION_ENDS")
+            {
+                algo->on_simulation_end(current_date);
+                simulation_finished = true;
+            }
+            else if (event_type == "JOB_SUBMITTED")
+            {
+                string job_id = event_data["job_id"].GetString();
+                workload.add_job_from_redis(redis, job_id, current_date);
+                algo->on_job_release(current_date, {job_id});
+            }
+            else if (event_type == "JOB_COMPLETED")
+            {
+                string job_id = event_data["job_id"].GetString();
+                workload[job_id]->completion_time = current_date;
+                algo->on_job_end(current_date, {job_id});
+            }
+            else if (event_type == "RESOURCE_STATE_CHANGED")
+            {
+                MachineRange resources = MachineRange::from_string_hyphen(event_data["resources"].GetString(), " ");
+                string new_state = event_data["state"].GetString();
+                algo->on_machine_state_changed(current_date, resources, std::stoi(new_state));
+            }
+            else
+            {
+                throw runtime_error("Unknown event received. Type = " + event_type);
             }
         }
 
-        bool single_nop_received = nop_received && nb_parts == 1;
+        bool single_nop_received = events_array.Empty();
 
         // make_decisions is not called if (!call_make_decisions_on_single_nop && single_nop_received)
         if (!(!call_make_decisions_on_single_nop && single_nop_received))
@@ -350,14 +329,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
         }
 
         message_date = max(message_date, d.last_date());
-        string message_to_send = "1:" + to_string(message_date);
 
-        const string & decisions = d.content();
-        if (decisions.empty())
-            message_to_send += "|" + to_string(message_date) + ":N";
-        else
-            message_to_send += decisions;
-
+        const string & message_to_send = d.content(message_date);
         n.write(message_to_send);
     }
 }

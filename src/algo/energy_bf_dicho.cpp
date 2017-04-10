@@ -82,7 +82,7 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
 
         if (new_job->nb_requested_resources > _nb_machines)
         {
-            _decision->add_rejection(new_job_id, date);
+            _decision->add_reject_job(new_job_id, date);
             ++_nb_jobs_completed;
         }
         else

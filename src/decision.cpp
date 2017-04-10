@@ -2,72 +2,58 @@
 
 #include "network.hpp"
 #include "pempek_assert.hpp"
+#include "protocol.hpp"
 
 namespace n = network;
 using namespace std;
 
-void SchedulingDecision::add_allocation(const std::string & job_id, const MachineRange &machineIDs, double date)
+SchedulingDecision::SchedulingDecision()
 {
-    int nbMachines = machineIDs.size();
-    PPK_ASSERT(nbMachines > 0);
-    PPK_ASSERT(date >= _lastDate);
-
-    _lastDate = date;
-
-    _content += n::separator0 + to_string(date) + n::separator1 + n::jobAllocation + n::separator1;
-    _content += job_id + n::separator3;
-
-    _content += machineIDs.to_string_hyphen();
-
-    if (_display_decisions)
-        printf("Date=%g. Made decision to run job '%s' on machines %s\n", date, job_id.c_str(), machineIDs.to_string_hyphen().c_str());
+    _proto_writer = new JsonProtocolWriter;
 }
 
-void SchedulingDecision::add_rejection(const std::string & job_id, double date)
+SchedulingDecision::~SchedulingDecision()
 {
-    _lastDate = date;
-    _content += n::separator0 + to_string(date) + n::separator1 + n::jobRejection + n::separator1 + job_id;
-
-    if (_display_decisions)
-        printf("Made decision to reject job '%s'\n", job_id.c_str());
+    delete _proto_writer;
+    _proto_writer = nullptr;
 }
 
-void SchedulingDecision::add_kill(const string &job_id, double date)
+void SchedulingDecision::add_execute_job(const std::string & job_id, const MachineRange &machine_ids, double date)
 {
-    _lastDate = date;
-    printf("UNIMPLEMENTED!! This function will then do nothing at the moment.\n");
-    // TODO
-
-    if (_display_decisions)
-        printf("Made decision to kill job '%s'\n", job_id.c_str());
+    _proto_writer->append_execute_job(job_id, machine_ids, date);
 }
 
-void SchedulingDecision::add_change_machine_state(MachineRange machines, int newPState, double date)
+void SchedulingDecision::add_reject_job(const std::string & job_id, double date)
 {
-    PPK_ASSERT(date >= _lastDate);
-    _lastDate = date;
-
-    _content += n::separator0 + to_string(date) + n::separator1 + n::machinePStateChangeRequest + n::separator1;
-    _content += machines.to_string_hyphen() + n::separator3 + to_string(newPState);
-
-    if (_display_decisions)
-        printf("Date=%g. Made decision to change the pstate of machines %s to %d\n", date, machines.to_string_hyphen().c_str(), newPState);
+    _proto_writer->append_reject_job(job_id, date);
 }
 
-void SchedulingDecision::add_nop_me_later(double future_date, double date)
+void SchedulingDecision::add_kill_job(const vector<string> &job_ids, double date)
 {
-    PPK_ASSERT(date >= _lastDate);
-    PPK_ASSERT(future_date >= date);
+    _proto_writer->append_kill_job(job_ids, date);
+}
 
-    _content += n::separator0 + to_string(date) + n::separator1 + n::nopMeLater + n::separator1;
-    _content += to_string(future_date);
+void SchedulingDecision::add_set_resource_state(MachineRange machines, int new_state, double date)
+{
+    _proto_writer->append_set_resource_state(machines, std::to_string(new_state), date);
+}
 
-    if (_display_decisions)
-        printf("Date=%g. Made decision to be nopped later at date=%g\n", date, future_date);
+void SchedulingDecision::add_call_me_later(double future_date, double date)
+{
+    _proto_writer->append_call_me_later(future_date, date);
 }
 
 void SchedulingDecision::clear()
 {
-    _content.clear();
-    _lastDate = -1;
+    _proto_writer->clear();
+}
+
+string SchedulingDecision::content(double date)
+{
+    return _proto_writer->generate_current_message(date);
+}
+
+double SchedulingDecision::last_date() const
+{
+    return _proto_writer->last_date();
 }

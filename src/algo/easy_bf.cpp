@@ -45,7 +45,7 @@ void EasyBackfilling::make_decisions(double date,
         const Job * new_job = (*_workload)[new_job_id];
 
         if (new_job->nb_requested_resources > _nb_machines)
-            _decision->add_rejection(new_job_id, date);
+            _decision->add_reject_job(new_job_id, date);
         else
             _queue->append_job(new_job, update_info);
     }
@@ -76,7 +76,7 @@ void EasyBackfilling::make_decisions(double date,
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
                 if ( alloc.started_in_first_slice)
                 {
-                    _decision->add_allocation(new_job_id, alloc.used_machines, date);
+                    _decision->add_execute_job(new_job_id, alloc.used_machines, date);
                     _queue->remove_job(new_job);
                     nb_available_machines -= new_job->nb_requested_resources;
                 }
@@ -105,7 +105,7 @@ void EasyBackfilling::make_decisions(double date,
 
                 if (alloc.started_in_first_slice)
                 {
-                    _decision->add_allocation(job->id, alloc.used_machines, date);
+                    _decision->add_execute_job(job->id, alloc.used_machines, date);
                     job_it = _queue->remove_job(job_it); // Updating job_it to remove on traversal
                     priority_job_after = _queue->first_job_or_nullptr();
                 }
@@ -118,7 +118,7 @@ void EasyBackfilling::make_decisions(double date,
 
                 if (alloc.started_in_first_slice)
                 {
-                    _decision->add_allocation(job->id, alloc.used_machines, date);
+                    _decision->add_execute_job(job->id, alloc.used_machines, date);
                     job_it = _queue->remove_job(job_it);
                 }
                 else
@@ -164,7 +164,7 @@ void EasyBackfilling::sort_queue_while_handling_priority_job(const Job * priorit
 
             if (alloc.started_in_first_slice)
             {
-                _decision->add_allocation(priority_job_after->id, alloc.used_machines, (double)update_info->current_date);
+                _decision->add_execute_job(priority_job_after->id, alloc.used_machines, (double)update_info->current_date);
                 _queue->remove_job(priority_job_after);
                 priority_job_after = _queue->first_job_or_nullptr();
                 could_run_priority_job = true;

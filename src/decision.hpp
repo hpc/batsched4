@@ -5,24 +5,28 @@
 
 #include "machine_range.hpp"
 
+class AbstractProtocolWriter;
+
+// TODO: remove class?
 class SchedulingDecision
 {
 public:
-    void add_allocation(const std::string &job_id, const MachineRange & machineIDs, double date);
-    void add_rejection(const std::string &job_id, double date);
-    void add_kill(const std::string & job_id, double date);
+    SchedulingDecision();
+    ~SchedulingDecision();
 
-    void add_change_machine_state(MachineRange machines, int newPState, double date);
+    void add_execute_job(const std::string &job_id, const MachineRange & machine_ids, double date);
+    void add_reject_job(const std::string &job_id, double date);
+    void add_kill_job(const std::vector<std::string> & job_ids, double date);
 
-    void add_nop_me_later(double future_date, double date);
+    void add_set_resource_state(MachineRange machines, int new_state, double date);
+
+    void add_call_me_later(double future_date, double date);
 
     void clear();
 
-    const std::string & content() const { return _content; }
-    double last_date() const { return _lastDate; }
+    std::string content(double date);
+    double last_date() const;
 
 private:
-    std::string _content;
-    double _lastDate = -1;
-    bool _display_decisions = true;
+    AbstractProtocolWriter * _proto_writer = nullptr;
 };

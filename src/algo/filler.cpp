@@ -49,7 +49,7 @@ void Filler::make_decisions(double date,
         const Job * new_job = (*_workload)[new_job_id];
 
         if (new_job->nb_requested_resources > _nb_machines)
-            _decision->add_rejection(new_job_id, date);
+            _decision->add_reject_job(new_job_id, date);
         else
             _queue->append_job(new_job, update_info);
     }
@@ -75,7 +75,7 @@ void Filler::fill(double date)
 
         if (_selector->fit(job, available_machines, used_machines))
         {
-            _decision->add_allocation(job->id, used_machines, date);
+            _decision->add_execute_job(job->id, used_machines, date);
             current_allocations[job->id] = used_machines;
 
             available_machines.remove(used_machines);

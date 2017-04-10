@@ -470,7 +470,7 @@ void EnergyBackfilling::make_decisions(double date,
 
         if (new_job->nb_requested_resources > _nb_machines)
         {
-            _decision->add_rejection(new_job_id, date);
+            _decision->add_reject_job(new_job_id, date);
             ++_nb_jobs_completed;
         }
         else
@@ -587,7 +587,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
                 PPK_ASSERT_ERROR(alloc.begin == slice.begin);
 
                 // Let's tell the RJMS this job should be executed now
-                _decision->add_allocation(job->id, job_machines, (double)alloc.begin);
+                _decision->add_execute_job(job->id, job_machines, (double)alloc.begin);
                 did_something = true;
 
                 // Let's remove it from the queue
@@ -602,7 +602,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
         int target_pstate = mit.first;
         const MachineRange & machines = mit.second;
 
-        _decision->add_change_machine_state(machines, target_pstate, (double) slice.begin);
+        _decision->add_set_resource_state(machines, target_pstate, (double) slice.begin);
         did_something = true;
     }
 
@@ -613,7 +613,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
             // To avoid Batsim's deadlock, we should tell it to wait that we are ready.
 
             PPK_ASSERT_ERROR(_schedule.nb_slices() >= 1);
-            _decision->add_nop_me_later((double) _schedule.begin()->end + 1, (double) _schedule.begin()->begin);
+            _decision->add_call_me_later((double) _schedule.begin()->end + 1, (double) _schedule.begin()->begin);
             _nb_nop_me_later_running++;
         }
     }
