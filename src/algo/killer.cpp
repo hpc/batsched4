@@ -75,7 +75,7 @@ void Killer::make_decisions(double date,
             if (_selector->fit(job, available_machines, used_machines))
             {
                 _decision->add_execute_job(job->id, used_machines, date);
-                _decision->add_kill_job(job->id, date + 10);
+                _decision->add_kill_job({job->id}, date + 10);
                 current_allocations[job->id] = used_machines;
 
                 available_machines.remove(used_machines);
