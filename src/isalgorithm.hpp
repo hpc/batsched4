@@ -58,6 +58,13 @@ public:
     virtual void on_job_end(double date, const std::vector<std::string> & job_ids);
 
     /**
+     * @brief This function is called when jobs have been killed (resulting from a decision, not a timeout)
+     * @param[in] date The date at which the jobs have been killed
+     * @param[in] job_ids The identifiers of the jobs which have been finished
+     */
+    virtual void on_job_killed(double date, const std::vector<std::string> & job_ids);
+
+    /**
      * @brief This function is called when the power state of some machines have been changed
      * @param[in] date The date at which the power state alteration has occured
      * @param[in] machines The machines involved in the power state alteration
@@ -128,6 +135,7 @@ protected:
 protected:
     std::vector<std::string> _jobs_released_recently;
     std::vector<std::string> _jobs_ended_recently;
+    std::vector<std::string> _jobs_killed_recently;
     std::map<int, MachineRange> _machines_whose_pstate_changed_recently;
     std::vector<Failure> _recent_failstate_changes;
     bool _nopped_recently;

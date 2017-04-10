@@ -16,6 +16,7 @@ implicit_instances:
         - {"name":"easy_bf", "sched_name":"easy_bf"}
         - {"name":"filler", "sched_name":"filler"}
         - {"name":"conservative_bf", "sched_name":"conservative_bf"}
+        - {"name":"killer", "sched_name":"killer"}
     generic_instance:
       timeout: 3600
       working_directory: ${base_working_directory}

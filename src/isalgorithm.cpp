@@ -14,6 +14,7 @@ void ISchedulingAlgorithm::clear_recent_data_structures()
 {
     _jobs_released_recently.clear();
     _jobs_ended_recently.clear();
+    _jobs_killed_recently.clear();
     _machines_whose_pstate_changed_recently.clear();
     _recent_failstate_changes.clear();
     _nopped_recently = false;
@@ -45,6 +46,14 @@ void ISchedulingAlgorithm::on_job_end(double date, const vector<string> &job_ids
     _jobs_ended_recently.insert(_jobs_ended_recently.end(),
                                 job_ids.begin(),
                                 job_ids.end());
+}
+
+void ISchedulingAlgorithm::on_job_killed(double date, const std::vector<string> &job_ids)
+{
+    (void) date;
+    _jobs_killed_recently.insert(_jobs_killed_recently.end(),
+                                 job_ids.begin(),
+                                 job_ids.end());
 }
 
 void ISchedulingAlgorithm::on_machine_state_changed(double date, MachineRange machines, int new_state)

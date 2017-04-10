@@ -312,6 +312,18 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
                 string new_state = event_data["state"].GetString();
                 algo->on_machine_state_changed(current_date, resources, std::stoi(new_state));
             }
+            else if (event_type == "JOB_KILLED")
+            {
+                const r::Value & job_ids_array = event_data["job_ids"];
+
+                vector<string> job_ids;
+                job_ids.reserve(job_ids_array.Size());
+
+                for (int i = 0; i < (int)job_ids_array.Size(); ++i)
+                    job_ids.push_back(job_ids_array[i].GetString());
+
+                algo->on_job_killed(current_date, job_ids);
+            }
             else
             {
                 throw runtime_error("Unknown event received. Type = " + event_type);
