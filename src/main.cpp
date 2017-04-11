@@ -34,7 +34,7 @@ namespace po = boost::program_options;
 namespace n = network;
 namespace r = rapidjson;
 
-void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d, RedisStorage & redis,
+void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
          Workload &workload, bool call_make_decisions_on_single_nop = true);
 
 int main(int argc, char ** argv)
@@ -210,17 +210,12 @@ int main(int argc, char ** argv)
             return 1;
         }
 
-        // Redis creation
-        RedisStorage storage;
-        storage.connect_to_server(redis_hostname, redis_port, nullptr);
-        storage.set_instance_key_prefix(redis_prefix);
-
         // Network
         Network n;
         n.bind(socket_endpoint);
 
         // Run the simulation
-        run(n, algo, decision, storage, w);
+        run(n, algo, decision, w);
     }
     catch(const std::exception & e)
     {
@@ -253,10 +248,15 @@ int main(int argc, char ** argv)
     return 0;
 }
 
-void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, RedisStorage & redis,
+void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
          Workload & workload, bool call_make_decisions_on_single_nop)
 {
     bool simulation_finished = false;
+
+    // Redis creation
+    RedisStorage redis;
+    bool redis_enabled = false;
+
     while (!simulation_finished)
     {
         string received_message;
@@ -286,6 +286,18 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
             if (event_type == "SIMULATION_BEGINS")
             {
                 int nb_resources = event_data["nb_resources"].GetInt();
+                redis_enabled = event_data["config"]["redis"]["enabled"].GetBool();
+
+                if (redis_enabled)
+                {
+                    string redis_hostname = event_data["config"]["redis"]["hostname"].GetString();
+                    int redis_port = event_data["config"]["redis"]["port"].GetInt();
+                    string redis_prefix = event_data["config"]["redis"]["prefix"].GetString();
+
+                    redis.connect_to_server(redis_hostname, redis_port, nullptr);
+                    redis.set_instance_key_prefix(redis_prefix);
+                }
+
                 algo->set_nb_machines(nb_resources);
                 algo->on_simulation_start(current_date);
             }
@@ -297,7 +309,12 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d, Redis
             else if (event_type == "JOB_SUBMITTED")
             {
                 string job_id = event_data["job_id"].GetString();
-                workload.add_job_from_redis(redis, job_id, current_date);
+
+                if (redis_enabled)
+                    workload.add_job_from_redis(redis, job_id, current_date);
+                else
+                    workload.add_job_from_json_object(event_data["job"], job_id, current_date);
+
                 algo->on_job_release(current_date, {job_id});
             }
             else if (event_type == "JOB_COMPLETED")
