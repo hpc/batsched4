@@ -33,6 +33,12 @@ void SchedulingDecision::add_kill_job(const vector<string> &job_ids, double date
     _proto_writer->append_kill_job(job_ids, date);
 }
 
+void SchedulingDecision::add_submit_job(const string &job_id, const string &job_json_description,
+                                        const string &profile_json_description, double date)
+{
+    _proto_writer->append_submit_job(job_id, date, job_json_description, profile_json_description);
+}
+
 void SchedulingDecision::add_set_resource_state(MachineRange machines, int new_state, double date)
 {
     _proto_writer->append_set_resource_state(machines, std::to_string(new_state), date);
@@ -41,6 +47,11 @@ void SchedulingDecision::add_set_resource_state(MachineRange machines, int new_s
 void SchedulingDecision::add_call_me_later(double future_date, double date)
 {
     _proto_writer->append_call_me_later(future_date, date);
+}
+
+void SchedulingDecision::add_scheduler_finished_submitting_jobs(double date)
+{
+    _proto_writer->append_scheduler_finished_submitting_jobs(date);
 }
 
 void SchedulingDecision::clear()

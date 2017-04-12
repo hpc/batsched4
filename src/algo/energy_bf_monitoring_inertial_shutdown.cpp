@@ -101,9 +101,9 @@ EnergyBackfillingMonitoringInertialShutdown::EnergyBackfillingMonitoringInertial
            _sedate_idle_on_classical_events ? "true" : "false");
 }
 
-void EnergyBackfillingMonitoringInertialShutdown::on_simulation_start(double date)
+void EnergyBackfillingMonitoringInertialShutdown::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
-    EnergyBackfillingMonitoringPeriod::on_simulation_start(date);
+    EnergyBackfillingMonitoringPeriod::on_simulation_start(date, batsim_config);
 
     _inertial_schedule = _schedule;
 

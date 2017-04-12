@@ -17,10 +17,13 @@ public:
     void add_execute_job(const std::string &job_id, const MachineRange & machine_ids, double date);
     void add_reject_job(const std::string &job_id, double date);
     void add_kill_job(const std::vector<std::string> & job_ids, double date);
+    void add_submit_job(const std::string & job_id, const std::string & job_json_description,
+                        const std::string & profile_json_description, double date);
 
     void add_set_resource_state(MachineRange machines, int new_state, double date);
 
     void add_call_me_later(double future_date, double date);
+    void add_scheduler_finished_submitting_jobs(double date);
 
     void clear();
 

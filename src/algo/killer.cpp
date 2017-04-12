@@ -20,9 +20,10 @@ Killer::~Killer()
 
 }
 
-void Killer::on_simulation_start(double date)
+void Killer::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     (void) date;
+    (void) batsim_config;
 
     available_machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
     PPK_ASSERT_ERROR(available_machines.size() == (unsigned int) _nb_machines);

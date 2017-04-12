@@ -28,6 +28,7 @@
 #include "algo/filler.hpp"
 #include "algo/killer.hpp"
 #include "algo/sleeper.hpp"
+#include "algo/submitter.hpp"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -55,7 +56,7 @@ int main(int argc, char ** argv)
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
-                                      "filler", "sleeper", "killer"};
+                                      "filler", "killer", "sleeper", "submitter"};
     const set<string> policies_set = {"basic", "contiguous"};
     const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown",
                                           "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
@@ -200,10 +201,12 @@ int main(int argc, char ** argv)
             algo = new EnergyBackfillingMonitoringInertialShutdown(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "energy_bf_subpart_sleeper")
             algo = new EnergyBackfillingMachineSubpartSleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
-        else if (scheduling_variant == "sleeper")
-            algo = new Sleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "sleeper")
+            algo = new Sleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "submitter")
+            algo = new Submitter(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else
         {
             printf("Invalid scheduling variant '%s'. Available variants are %s\n", scheduling_variant.c_str(), variants_string.c_str());
@@ -256,6 +259,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
     // Redis creation
     RedisStorage redis;
     bool redis_enabled = false;
+    algo->set_redis(&redis);
 
     while (!simulation_finished)
     {
@@ -299,7 +303,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 }
 
                 algo->set_nb_machines(nb_resources);
-                algo->on_simulation_start(current_date);
+                algo->on_simulation_start(current_date, event_data["config"]);
             }
             else if (event_type == "SIMULATION_ENDS")
             {

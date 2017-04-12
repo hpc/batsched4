@@ -28,9 +28,10 @@ Sleeper::~Sleeper()
 
 }
 
-void Sleeper::on_simulation_start(double date)
+void Sleeper::on_simulation_start(double date, const rapidjson::Value &batsim_config)
 {
     (void) date;
+    (void) batsim_config;
 
     all_machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
     available_machines = all_machines;

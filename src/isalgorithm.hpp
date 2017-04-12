@@ -37,7 +37,7 @@ public:
      * @brief This function is called when the simulation is about to begin
      * @param[in] date The date at which the simulation is about to begin
      */
-    virtual void on_simulation_start(double date) = 0;
+    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config) = 0;
     /**
      * @brief This function is called when the simulation is about to finish
      * @param[in] date The date at which the simulation is about to finish
@@ -109,6 +109,12 @@ public:
     void set_nb_machines(int nb_machines);
 
     /**
+     * @brief Allows to set the RedisStorage instance
+     * @param[in,out] redis The RedisStorage instance
+     */
+    void set_redis(RedisStorage * redis);
+
+    /**
      * @brief Clears data structures used to store what happened between two make_decisions calls
      * @details This function should be called between make_decisions calls!
      */
@@ -122,6 +128,7 @@ protected:
     double _rjms_delay;
     rapidjson::Document * _variant_options;
     int _nb_machines = -1;
+    RedisStorage * _redis = nullptr;
 
     struct Failure
     {

@@ -1,0 +1,43 @@
+base_output_directory: /tmp/batsched_submit
+
+base_variables:
+    test_dir: ${base_working_directory}/test
+
+implicit_instances:
+  # Algorithms without parameters
+  noparam:
+    sweep:
+      platform :
+        - {"name":"homo128", "filename":"${test_dir}/platforms/energy_platform_homogeneous_no_net_128.xml"}
+      workload :
+        - {"name":"hello", "filename":"${test_dir}/workloads/hello.json"}
+        - {"name":"medium_late", "filename":"${test_dir}/workloads/medium_late.json"}
+      algo:
+        - {"name":"submitter", "sched_name":"submitter"}
+      redis_enabled: ["false"]
+      dynamic_submit_ack: ["true"]
+    generic_instance:
+      timeout: 3600
+      working_directory: ${base_working_directory}
+      output_directory: ${base_output_directory}/results/${instance_id}
+      batsim_command: batsim -p ${platform[filename]} -w ${workload[filename]} -E -e ${output_directory}/out --mmax-workload --config-file ${output_directory}/batsim.conf -vnetwork-only
+      sched_command: batsched -v ${algo[sched_name]}
+      commands_before_execution:
+        # Generate Batsim config file
+        - |
+              #!/bin/bash
+              cat > ${output_directory}/batsim.conf << EOF
+              {
+                "redis": {
+                  "enabled": ${redis_enabled}
+                },
+                "job_submission": {
+                  "forward_profiles": true,
+                  "from_scheduler":{
+                    "enabled": true,
+                    "acknowledge": ${dynamic_submit_ack}
+                  }
+                }
+              }
+              EOF
+

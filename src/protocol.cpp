@@ -64,7 +64,26 @@ void JsonProtocolWriter::append_submit_job(const string &job_id,
     data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
     (void) job_description;
     (void) profile_description;
-    PPK_ASSERT(false, "Unimplemented!");
+
+    if (!job_description.empty())
+    {
+        Document job_doc;
+        job_doc.Parse(job_description.c_str());
+        PPK_ASSERT_ERROR(!job_doc.HasParseError(), "Invalid JSON job ###%s###",
+                         job_description.c_str());
+
+        data.AddMember("job", Value().CopyFrom(job_doc, _alloc), _alloc);
+    }
+
+    if (!profile_description.empty())
+    {
+        Document profile_doc;
+        profile_doc.Parse(profile_description.c_str());
+        PPK_ASSERT_ERROR(!profile_doc.HasParseError(), "Invalid JSON profile ###%s###",
+                         profile_description.c_str());
+
+        data.AddMember("profile", Value().CopyFrom(profile_doc, _alloc), _alloc);
+    }
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);

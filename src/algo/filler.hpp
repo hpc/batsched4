@@ -21,7 +21,7 @@ public:
 
     virtual ~Filler();
 
-    virtual void on_simulation_start(double date);
+    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
 

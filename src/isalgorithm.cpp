@@ -10,6 +10,12 @@ void ISchedulingAlgorithm::set_nb_machines(int nb_machines)
     _nb_machines = nb_machines;
 }
 
+void ISchedulingAlgorithm::set_redis(RedisStorage *redis)
+{
+    PPK_ASSERT_ERROR(_redis == nullptr);
+    _redis = redis;
+}
+
 void ISchedulingAlgorithm::clear_recent_data_structures()
 {
     _jobs_released_recently.clear();

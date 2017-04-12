@@ -14,7 +14,7 @@ public:
                             double rjms_delay, rapidjson::Document * variant_options);
     virtual ~ConservativeBackfilling();
 
-    virtual void on_simulation_start(double date);
+    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
 

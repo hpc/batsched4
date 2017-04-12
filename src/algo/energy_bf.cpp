@@ -160,9 +160,10 @@ EnergyBackfilling::~EnergyBackfilling()
     clear_machine_informations();
 }
 
-void EnergyBackfilling::on_simulation_start(double date)
+void EnergyBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     _schedule = Schedule(_nb_machines, date);
+    (void) batsim_config;
 
     generate_machine_informations(_nb_machines);
 

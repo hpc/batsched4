@@ -164,7 +164,7 @@ MachineRange::Set::const_iterator MachineRange::biggest_interval() const
 
 int MachineRange::first_element() const
 {
-    PPK_ASSERT(size() > 0);
+    PPK_ASSERT_ERROR(size() > 0);
     return *elements_begin();
 }
 

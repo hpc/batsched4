@@ -12,9 +12,10 @@ ConservativeBackfilling::~ConservativeBackfilling()
 {
 }
 
-void ConservativeBackfilling::on_simulation_start(double date)
+void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     _schedule = Schedule(_nb_machines, date);
+    (void) batsim_config;
 }
 
 void ConservativeBackfilling::on_simulation_end(double date)
