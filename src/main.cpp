@@ -41,9 +41,6 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 int main(int argc, char ** argv)
 {
     string socket_endpoint;
-    string redis_hostname;
-    int redis_port;
-    string redis_prefix;
     string scheduling_variant;
     string selection_policy;
     string queue_order;
@@ -78,9 +75,6 @@ int main(int argc, char ** argv)
             ("help,h", "produce help message")
             ("policy,p", po::value<string>(&selection_policy)->default_value("basic"), string("sets resource selection policy. Available values are " + policies_string).c_str())
             ("socket-endpoint,s", po::value<string>(&socket_endpoint)->default_value("tcp://*:28000"), "sets socket endpoint")
-            ("redis-port,r", po::value<int>(&redis_port)->default_value(6379), "sets redis port")
-            ("redis-hostname", po::value<string>(&redis_hostname)->default_value("127.0.0.1"), "sets redis hostname")
-            ("redis-prefix", po::value<string>(&redis_prefix)->default_value("default"), "sets redis prefix")
             ("variant,v", po::value<string>(&scheduling_variant)->default_value("filler"), string("sets scheduling variant. Available values are " + variants_string).c_str())
             ("variant_options", po::value<string>(&variant_options)->default_value("{}"), "sets scheduling variant options. Must be formatted as a JSON object.")
             ("variant_options_filepath", po::value<string>(&variant_options_filepath)->default_value(""), "sets scheduling variants options as the content of the given filepath. Overrides the variant_options option.")
@@ -218,7 +212,7 @@ int main(int argc, char ** argv)
         n.bind(socket_endpoint);
 
         // Run the simulation
-        run(n, algo, decision, w);
+        run(n, algo, decision, w, call_make_decisions_on_single_nop);
     }
     catch(const std::exception & e)
     {
