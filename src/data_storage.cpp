@@ -111,6 +111,20 @@ std::string RedisStorage::key_subparts_separator() const
     return _key_subparts_separator;
 }
 
+string RedisStorage::job_key(const string & workload_name,
+                             const string & job_id)
+{
+    string key = "job_" + workload_name + '!' + job_id;
+    return key;
+}
+
+string RedisStorage::profile_key(const string & workload_name,
+                                 const string & profile_name)
+{
+    string key = "profile_" + workload_name + '!' + profile_name;
+    return key;
+}
+
 
 std::string RedisStorage::build_key(const std::string & user_given_key) const
 {

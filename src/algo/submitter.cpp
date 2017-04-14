@@ -29,8 +29,6 @@ void Submitter::on_simulation_start(double date, const rapidjson::Value & batsim
     PPK_ASSERT_ERROR(batsim_config["job_submission"]["from_scheduler"]["acknowledge"].GetBool(),
             "This algorithm only works if dynamic job submissions acknowledgements are enabled!");
     redis_enabled = batsim_config["redis"]["enabled"].GetBool();
-
-    PPK_ASSERT_ERROR(!redis_enabled, "This algorithm only works if redis is disabled at the moment");
 }
 
 void Submitter::on_simulation_end(double date)
@@ -96,6 +94,8 @@ void Submitter::make_decisions(double date,
 
 void Submitter::submit_delay_job(double delay, double date)
 {
+    string workload_name = "dynamic";
+
     double submit_time = date;
     double walltime = delay + 5;
     int res = 1;
@@ -114,9 +114,10 @@ void Submitter::submit_delay_job(double delay, double date)
             R"foo({"type": "delay", "delay": %g})foo", delay);
     PPK_ASSERT_ERROR(nb_chars < buf_size - 1);
 
-    string job_id = "dynamic!" + to_string(nb_submitted_jobs);
+    string job_id = to_string(nb_submitted_jobs);
 
-    _decision->add_submit_job(job_id, buf_job, buf_profile, date);
+    _decision->add_submit_job(workload_name, job_id, profile,
+                              buf_job, buf_profile, date);
 
     delete[] buf_job;
     delete[] buf_profile;

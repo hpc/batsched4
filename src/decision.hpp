@@ -6,8 +6,8 @@
 #include "machine_range.hpp"
 
 class AbstractProtocolWriter;
+class RedisStorage;
 
-// TODO: remove class?
 class SchedulingDecision
 {
 public:
@@ -17,8 +17,22 @@ public:
     void add_execute_job(const std::string &job_id, const MachineRange & machine_ids, double date);
     void add_reject_job(const std::string &job_id, double date);
     void add_kill_job(const std::vector<std::string> & job_ids, double date);
-    void add_submit_job(const std::string & job_id, const std::string & job_json_description,
-                        const std::string & profile_json_description, double date);
+
+    /**
+     * @brief add_submit_jobs
+     * @param workload_name
+     * @param job_id Job identifier (WITHOUT WORKLOAD! PREFIX)
+     * @param profile_name Profile name (WITHOUT WORKLOAD! PREFIX)
+     * @param job_json_description
+     * @param profile_json_description
+     * @param date
+     */
+    void add_submit_job(const std::string & workload_name,
+                        const std::string & job_id,
+                        const std::string & profile_name,
+                        const std::string & job_json_description,
+                        const std::string & profile_json_description,
+                        double date);
 
     void add_set_resource_state(MachineRange machines, int new_state, double date);
 
@@ -30,6 +44,10 @@ public:
     std::string content(double date);
     double last_date() const;
 
+    void set_redis(bool enabled, RedisStorage * redis);
+
 private:
     AbstractProtocolWriter * _proto_writer = nullptr;
+    bool _redis_enabled = false;
+    RedisStorage * _redis = nullptr;
 };

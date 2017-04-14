@@ -75,6 +75,25 @@ public:
      */
     std::string key_subparts_separator() const;
 
+public:
+    /**
+     * @brief Returns the key in the data storage corresponding to a JobIdentifier
+     * @param[in] workload_name The workload name
+     * @param[in] job_id The job id (without workload! prefix)
+     * @return The key in the data storage corresponding to a JobIdentifier
+     */
+    static std::string job_key(const std::string & workload_name,
+                               const std::string & job_id);
+
+    /**
+     * @brief Returns the key in the data storage corresponding to a profile
+     * @param[in] workload_name The workload name
+     * @param[in] profile_name The profile name
+     * @return The key in the data storage corresponding to a profile
+     */
+    static std::string profile_key(const std::string & workload_name,
+                                   const std::string & profile_name);
+
 private:
     /**
      * @brief Build a final key from a user-given key.

@@ -296,6 +296,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     redis.set_instance_key_prefix(redis_prefix);
                 }
 
+                d.set_redis(redis_enabled, &redis);
+
                 algo->set_nb_machines(nb_resources);
                 algo->on_simulation_start(current_date, event_data["config"]);
             }
