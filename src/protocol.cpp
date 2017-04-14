@@ -472,7 +472,7 @@ string JsonProtocolWriter::generate_current_message(double date)
     _doc.Accept(writer);
 
     // Returning the buffer as a string
-    return string(buffer.GetString());
+    return string(buffer.GetString(), buffer.GetSize());
 }
 
 bool test_json_writer()
