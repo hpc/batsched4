@@ -349,6 +349,9 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 
         bool single_nop_received = events_array.Empty();
 
+        if (single_nop_received)
+            algo->on_nop(message_date);
+
         // make_decisions is not called if (!call_make_decisions_on_single_nop && single_nop_received)
         if (!(!call_make_decisions_on_single_nop && single_nop_received))
         {
