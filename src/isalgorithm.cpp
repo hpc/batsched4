@@ -84,7 +84,7 @@ void ISchedulingAlgorithm::on_failure_end(double date, MachineRange machines)
     _recent_failstate_changes.push_back(Failure(date, machines, false));
 }
 
-void ISchedulingAlgorithm::on_nop(double date)
+void ISchedulingAlgorithm::on_requested_call(double date)
 {
     (void) date;
     _nopped_recently = true;

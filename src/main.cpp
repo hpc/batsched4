@@ -270,6 +270,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 
         double message_date = doc["now"].GetDouble();
         double current_date = message_date;
+        bool requested_callback_received = false;
 
         // Let's handle all received events
         const r::Value & events_array = doc["events"];
@@ -341,19 +342,21 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 
                 algo->on_job_killed(current_date, job_ids);
             }
+            else if (event_type == "REQUESTED_CALL")
+            {
+                requested_callback_received = true;
+                algo->on_requested_call(current_date);
+            }
             else
             {
                 throw runtime_error("Unknown event received. Type = " + event_type);
             }
         }
 
-        bool single_nop_received = events_array.Empty();
-
-        if (single_nop_received)
-            algo->on_nop(message_date);
+        bool requested_callback_only = requested_callback_received && (events_array.Size() == 1);
 
         // make_decisions is not called if (!call_make_decisions_on_single_nop && single_nop_received)
-        if (!(!call_make_decisions_on_single_nop && single_nop_received))
+        if (!(!call_make_decisions_on_single_nop && requested_callback_only))
         {
             SortableJobOrder::UpdateInformation update_info(current_date);
             algo->make_decisions(message_date, &update_info, nullptr);

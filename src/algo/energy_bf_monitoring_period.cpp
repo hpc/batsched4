@@ -53,47 +53,23 @@ void EnergyBackfillingMonitoringPeriod::on_job_release(double date, const std::v
     EnergyBackfilling::on_job_release(date, job_ids);
 }
 
-void EnergyBackfillingMonitoringPeriod::on_nop(double date)
+void EnergyBackfillingMonitoringPeriod::on_requested_call(double date)
 {
-    EnergyBackfilling::on_nop(date);
+    EnergyBackfilling::on_requested_call(date);
+    printf("on_requested_call, date = %g\n", date);
 
-    printf("on_nop, date = %g\n", date);
-
-    // Let's detect whether this NOP corresponds to a monitoring stage
-    bool is_monitoring_nop = false;
-
-    if (date >= _next_monitoring_period_expected_date)
+    if (!_simulation_finished)
     {
-        is_monitoring_nop = true;
-    }
-    else
-    {
-        Rational diff = abs(_next_monitoring_period_expected_date - date);
-        if (diff < 1)
-            is_monitoring_nop = true;
-        else if (_nb_nop_me_later_running == 0)
-            is_monitoring_nop = true;
-        else
-        {
-            printf("EnergyBackfillingMonitoringPeriod: Not a monitoring nop... diff = %g\n",
-                   (double) diff);
-        }
-    }
-
-    if (is_monitoring_nop)
-    {
+        // Let's execute on_monitoring_stage
         on_monitoring_stage(date);
 
-        // Let's call the next monitoring stage if the simulation is not finished
-        if (!_simulation_finished)
-        {
-            _next_monitoring_period_expected_date = date + _period_between_monitoring_stages;
-            _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
-            _nb_nop_me_later_running++;
+        // Let's request a call for the next monitoring stage
+        _next_monitoring_period_expected_date = date + _period_between_monitoring_stages;
+        _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
+        _nb_nop_me_later_running++;
 
-            printf("EnergyBackfillingMonitoringPeriod: 'Chose to launch a nop_me_later at %g\n",
-                   (double)_next_monitoring_period_expected_date);
-        }
+        printf("EnergyBackfillingMonitoringPeriod: 'Chose to launch a nop_me_later at %g\n",
+               (double)_next_monitoring_period_expected_date);
     }
 }
 

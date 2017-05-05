@@ -304,7 +304,7 @@ void EnergyBackfilling::on_machine_state_changed(double date, MachineRange machi
     }
 }
 
-void EnergyBackfilling::on_nop(double date)
+void EnergyBackfilling::on_requested_call(double date)
 {
     (void) date;
     PPK_ASSERT_ERROR(_nb_nop_me_later_running > 0,

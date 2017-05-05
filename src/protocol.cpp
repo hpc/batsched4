@@ -481,10 +481,6 @@ bool test_json_writer()
     printf("EMPTY content:\n%s\n", proto_writer->generate_current_message(0).c_str());
     proto_writer->clear();
 
-    proto_writer->append_nop(0);
-    printf("NOP content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
     proto_writer->append_simulation_begins(4, 10);
     printf("SIM_BEGINS content:\n%s\n", proto_writer->generate_current_message(42).c_str());
     proto_writer->clear();

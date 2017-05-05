@@ -89,7 +89,7 @@ public:
      * @brief This function is called when a NOP message is received
      * @param[in] date The date at which the NOP message have been received
      */
-    virtual void on_nop(double date);
+    virtual void on_requested_call(double date);
 
     /**
      * @brief This function is called when some decisions need to be made

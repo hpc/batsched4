@@ -90,7 +90,7 @@ public:
 
     virtual void on_machine_state_changed(double date, MachineRange machines, int newState);
 
-    virtual void on_nop(double date);
+    virtual void on_requested_call(double date);
 
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,

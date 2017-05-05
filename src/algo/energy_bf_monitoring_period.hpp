@@ -18,7 +18,7 @@ public:
 
     virtual void on_job_release(double date, const std::vector<std::string> & job_ids);
 
-    virtual void on_nop(double date);
+    virtual void on_requested_call(double date);
 
     virtual void on_monitoring_stage(double date);
 
