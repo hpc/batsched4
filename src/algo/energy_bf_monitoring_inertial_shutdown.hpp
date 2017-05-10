@@ -100,6 +100,7 @@ protected:
 
     void write_output_file(double date,
                            int nb_jobs_in_queue,
+                           int first_job_size,
                            double load_in_queue,
                            double liquid_load_horizon);
 

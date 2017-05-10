@@ -24,7 +24,7 @@ EnergyBackfillingMonitoringInertialShutdown::EnergyBackfillingMonitoringInertial
     _output_file.open(trace_output_filename);
     PPK_ASSERT_ERROR(_output_file.is_open(), "Couldn't open file %s", trace_output_filename.c_str());
 
-    string buf = "date,nb_jobs_in_queue,load_in_queue,liquid_load_horizon\n";
+    string buf = "date,nb_jobs_in_queue,first_job_size,load_in_queue,liquid_load_horizon\n";
     _output_file.write(buf.c_str(), buf.size());
 
     if (variant_options->HasMember("allow_future_switches"))
@@ -163,9 +163,17 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
     {
         Rational epsilon = min(Rational(1e-6), time_diff_from_last_llh_computation / 2);
         if (_write_output_file)
+        {
+            int first_job_size = -1;
+            const Job * first_job = _queue->first_job_or_nullptr();
+            if (first_job != nullptr)
+                first_job_size = first_job->nb_requested_resources;
+
             write_output_file((double)(Rational(date) - epsilon), _queue->nb_jobs(),
+                              first_job_size,
                               (double) _queue->compute_load_estimation(),
                               (double) llh);
+        }
     }
 
     _llh_integral_since_last_monitoring_stage += trapezoid_area;
@@ -662,9 +670,17 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
     llh = EasyBackfillingPlotLiquidLoadHorizon::compute_liquid_load_horizon(_inertial_schedule,
                                                                             _queue, date);
     if (_write_output_file)
+    {
+        int first_job_size = -1;
+        const Job * first_job = _queue->first_job_or_nullptr();
+        if (first_job != nullptr)
+            first_job_size = first_job->nb_requested_resources;
+
         write_output_file(date, _queue->nb_jobs(),
+                          first_job_size,
                           (double) _queue->compute_load_estimation(),
                           (double) llh);
+    }
 
     _last_llh_value = llh;
     _last_llh_date = date;
@@ -712,9 +728,17 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     {
         Rational epsilon = min(Rational(1e-6), time_diff_from_last_llh_computation / 2);
         if (_write_output_file)
+        {
+            int first_job_size = -1;
+            const Job * first_job = _queue->first_job_or_nullptr();
+            if (first_job != nullptr)
+                first_job_size = first_job->nb_requested_resources;
+
             write_output_file((double)(Rational(date) - epsilon), _queue->nb_jobs(),
+                              first_job_size,
                               (double) _queue->compute_load_estimation(),
                               (double) llh);
+        }
     }
 
     _llh_integral_since_last_monitoring_stage += trapezoid_area;
@@ -1076,9 +1100,17 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     llh = EasyBackfillingPlotLiquidLoadHorizon::compute_liquid_load_horizon(_inertial_schedule,
                                                                             _queue, date);
     if (_write_output_file)
+    {
+        int first_job_size = -1;
+        const Job * first_job = _queue->first_job_or_nullptr();
+        if (first_job != nullptr)
+            first_job_size = first_job->nb_requested_resources;
+
         write_output_file(date, _queue->nb_jobs(),
+                          first_job_size,
                           (double) _queue->compute_load_estimation(),
                           (double) llh);
+    }
 
     machines_asleep_soon = (_asleep_machines + _switching_off_machines - _switching_on_machines)
                            + _machines_to_sedate - _machines_to_awaken;
@@ -1304,6 +1336,7 @@ void EnergyBackfillingMonitoringInertialShutdown::handle_queued_switches(Schedul
 
 void EnergyBackfillingMonitoringInertialShutdown::write_output_file(double date,
                                                                     int nb_jobs_in_queue,
+                                                                    int first_job_size,
                                                                     double load_in_queue,
                                                                     double liquid_load_horizon)
 {
@@ -1313,9 +1346,14 @@ void EnergyBackfillingMonitoringInertialShutdown::write_output_file(double date,
     int nb_printed;
     char * buf = (char*) malloc(sizeof(char) * buf_size);
 
-    nb_printed = snprintf(buf, buf_size, "%g,%d,%g,%g\n",
-                          date, nb_jobs_in_queue,
-                          load_in_queue, liquid_load_horizon);
+    if (first_job_size != -1)
+        nb_printed = snprintf(buf, buf_size, "%g,%d,%d,%g,%g\n",
+                              date, nb_jobs_in_queue, first_job_size,
+                              load_in_queue, liquid_load_horizon);
+    else
+        nb_printed = snprintf(buf, buf_size, "%g,%d,NA,%g,%g\n",
+                              date, nb_jobs_in_queue,
+                              load_in_queue, liquid_load_horizon);
     PPK_ASSERT_ERROR(nb_printed < buf_size - 1,
                      "Buffer too small, some information might have been lost");
 
