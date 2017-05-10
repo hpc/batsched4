@@ -77,6 +77,10 @@ public:
                                                        MachineRange & priority_job_reserved_machines,
                                                        MachineRange & machines_that_can_be_used_by_the_priority_job);
 
+    Rational compute_priority_job_starting_time_expectancy(const Schedule & schedule,
+                                                           const Job * priority_job);
+
+
 protected:
     /**
 
@@ -130,6 +134,8 @@ protected:
     MachineRange _idle_machines;
 
     bool _first_monitoring_stage = true;
+
+    Rational _priority_job_starting_time_expectancy = 0;
 
     DecisionType _last_decision;
     int _inertial_number;

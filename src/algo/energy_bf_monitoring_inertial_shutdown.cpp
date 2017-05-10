@@ -24,7 +24,7 @@ EnergyBackfillingMonitoringInertialShutdown::EnergyBackfillingMonitoringInertial
     _output_file.open(trace_output_filename);
     PPK_ASSERT_ERROR(_output_file.is_open(), "Couldn't open file %s", trace_output_filename.c_str());
 
-    string buf = "date,nb_jobs_in_queue,first_job_size,load_in_queue,liquid_load_horizon\n";
+    string buf = "date,nb_jobs_in_queue,first_job_size,priority_job_expected_waiting_time,load_in_queue,liquid_load_horizon\n";
     _output_file.write(buf.c_str(), buf.size());
 
     if (variant_options->HasMember("allow_future_switches"))
@@ -227,6 +227,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
     {
         _machines_to_sedate -= machines_sedated_this_turn;
         _machines_to_awaken -= machines_awakened_this_turn;
+
+        _priority_job_starting_time_expectancy = date;
     }
     else
     {
@@ -252,6 +254,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                 {
                     priority_job = nullptr;
                     priority_job_reserved_machines.clear();
+                    _priority_job_starting_time_expectancy = alloc.begin;
 
                     priority_job_launched_now = true;
                     allocated_jobs.insert(job);
@@ -259,6 +262,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                 else
                 {
                     priority_job_launched_now = false;
+
+                    _priority_job_starting_time_expectancy = compute_priority_job_starting_time_expectancy(_inertial_schedule, priority_job);
                 }
             }
             else
@@ -1347,11 +1352,12 @@ void EnergyBackfillingMonitoringInertialShutdown::write_output_file(double date,
     char * buf = (char*) malloc(sizeof(char) * buf_size);
 
     if (first_job_size != -1)
-        nb_printed = snprintf(buf, buf_size, "%g,%d,%d,%g,%g\n",
+        nb_printed = snprintf(buf, buf_size, "%g,%d,%d,%g,%g,%g\n",
                               date, nb_jobs_in_queue, first_job_size,
+                              (double)_priority_job_starting_time_expectancy - date,
                               load_in_queue, liquid_load_horizon);
     else
-        nb_printed = snprintf(buf, buf_size, "%g,%d,NA,%g,%g\n",
+        nb_printed = snprintf(buf, buf_size, "%g,%d,NA,NA,%g,%g\n",
                               date, nb_jobs_in_queue,
                               load_in_queue, liquid_load_horizon);
     PPK_ASSERT_ERROR(nb_printed < buf_size - 1,
@@ -1437,4 +1443,31 @@ void EnergyBackfillingMonitoringInertialShutdown::compute_priority_job_and_relat
                              schedule.to_string().c_str());
         }
     }
+}
+
+Rational EnergyBackfillingMonitoringInertialShutdown::compute_priority_job_starting_time_expectancy(const Schedule &schedule,
+                                                                                                    const Job *priority_job)
+{
+    if (priority_job == nullptr)
+        return -1;
+
+    Schedule copy = schedule;
+
+    // Let's remove the job from the schedule if it exists
+    copy.remove_job_if_exists(priority_job);
+
+    // Let's remove every sleeping machine from it
+    MachineRange machines_asleep_soon = (_asleep_machines + _switching_off_machines - _switching_on_machines)
+                                        + _machines_to_sedate - _machines_to_awaken;
+
+    for (auto mit = machines_asleep_soon.elements_begin(); mit != machines_asleep_soon.elements_end(); ++mit)
+    {
+        int machine_id = *mit;
+        EnergyBackfilling::awaken_machine_as_soon_as_possible(copy, machine_id);
+    }
+
+    Schedule::JobAlloc alloc = copy.add_job_first_fit(priority_job, _selector, true);
+
+    PPK_ASSERT_ERROR(alloc.has_been_inserted);
+    return alloc.begin;
 }
