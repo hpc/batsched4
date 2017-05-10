@@ -209,6 +209,10 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
     _inertial_schedule = _schedule;
     const Job * priority_job = nullptr;
     MachineRange priority_job_reserved_machines;
+    bool priority_job_can_be_started_soon = true;
+
+    Rational time_to_wake_up = (*_variant_options)["time_switch_on"].GetDouble();
+    Rational soon_horizon = time_to_wake_up * 2 + date;
 
     if (_inertial_shutdown_debug)
     {
@@ -264,6 +268,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                     priority_job_launched_now = false;
 
                     _priority_job_starting_time_expectancy = compute_priority_job_starting_time_expectancy(_inertial_schedule, priority_job);
+                    priority_job_can_be_started_soon = _priority_job_starting_time_expectancy <= soon_horizon;
+                    priority_job_can_be_started_soon = true; // REMOVEME. Forces the previous behaviour.
                 }
             }
             else
@@ -272,200 +278,209 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
 
                 // The priority job couldn't be inserted into the Schedule... It means some machines must be awakened first.
 
-                // Let's first check whether this was caused by a decision made this turn, so we can cancel the decision before applying it.
-                // To do so, we'll first remove the fake jobs of the machines which have been switched OFF this turn, hopefully to create empty room
-                // for the priority job
-                printf("In order to make priority job '%s' fit, canceling the switches OFF of machines %s\n",
-                       priority_job->id.c_str(),
-                       _machines_to_sedate.to_string_brackets().c_str());
+                // Before doing anything else, let's compute when the priority job would start if all machines were to be awakened.
+                _priority_job_starting_time_expectancy = compute_priority_job_starting_time_expectancy(_inertial_schedule, priority_job);
+                priority_job_can_be_started_soon = _priority_job_starting_time_expectancy <= soon_horizon;
+                priority_job_can_be_started_soon = true; // REMOVEME. Forces the previous behaviour.
 
-                for (auto mit = _machines_to_sedate.elements_begin(); mit != _machines_to_sedate.elements_end(); ++mit)
+                // If the job can be started "soon", we must make sure is is runnable.
+                if (priority_job_can_be_started_soon)
                 {
-                    int machine_id = *mit;
-                    MachineInformation * minfo = _machine_informations[machine_id];
-
-                    _inertial_schedule.remove_job_last_occurence(minfo->switch_off_job);
-                    if (minfo->ensured_sleep_job->walltime > 0)
-                        _inertial_schedule.remove_job_last_occurence(minfo->ensured_sleep_job);
-                    _inertial_schedule.remove_job_last_occurence(minfo->potential_sleep_job);
-                }
-
-                alloc = _inertial_schedule.add_job_first_fit(priority_job, _selector, false);
-                if (alloc.has_been_inserted)
-                {
-                    // The job could fit by only cancelling some switches OFF \o/
-                    // Let's perserve the switches OFF that do not disturb the priority job.
-                    MachineRange non_disturbing_machines_switches_off = _machines_to_sedate - alloc.used_machines;
-                    MachineRange disturbing_machines_switches_off = (_machines_to_sedate & alloc.used_machines);
-
-                    // The machines sedated for being idle should never be done in the future, so
-                    // cancelled switches OFF are inertial ones. However, for coherency's sake,
-                    // the number of idle-sedated machines might also be decreased if there is no
-                    // inertially-sedated machines left.
-                    int nb_cancelled_switches_off = (int) disturbing_machines_switches_off.size();
-                    int nb_cancelled_inertially_sedated_machines = min(nb_cancelled_switches_off,
-                                                                       _nb_machines_sedated_by_inertia);
-
-                    int nb_cancelled_idle_sedated_machines = 0;
-                    if (nb_cancelled_inertially_sedated_machines < nb_cancelled_switches_off)
-                        nb_cancelled_idle_sedated_machines = nb_cancelled_switches_off -
-                                                             nb_cancelled_inertially_sedated_machines;
-
-                    PPK_ASSERT_ERROR(nb_cancelled_inertially_sedated_machines +
-                                     nb_cancelled_idle_sedated_machines == nb_cancelled_switches_off);
-
-                    _nb_machines_sedated_by_inertia -= nb_cancelled_inertially_sedated_machines;
-                    _nb_machines_sedated_for_being_idle -= nb_cancelled_idle_sedated_machines;
-
-                    PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia >= 0);
-                    PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
-
-                    printf("The priority job '%s' could be inserted by cancelling some switches OFF (%s). "
-                           "Let's reinsert a subpart of these switches off : %s\n",
+                    // Let's first check whether this was caused by a decision made this turn, so we can cancel the decision before applying it.
+                    // To do so, we'll first remove the fake jobs of the machines which have been switched OFF this turn, hopefully to create empty room
+                    // for the priority job
+                    printf("In order to make priority job '%s' fit, canceling the switches OFF of machines %s\n",
                            priority_job->id.c_str(),
-                           disturbing_machines_switches_off.to_string_brackets().c_str(),
-                           non_disturbing_machines_switches_off.to_string_brackets().c_str());
+                           _machines_to_sedate.to_string_brackets().c_str());
 
-                    // Let's put these machines to sleep.
-                    MachineRange thrash, machines_sedated_this_turn_tmp, empty_range;
-                    handle_queued_switches(_inertial_schedule, non_disturbing_machines_switches_off,
-                                           empty_range, machines_sedated_this_turn_tmp, thrash);
-
-                    PPK_ASSERT_ERROR((machines_sedated_this_turn_tmp &
-                                      non_disturbing_machines_switches_off) == machines_sedated_this_turn_tmp,
-                                     "The machines that have been sedated are not the expected ones.\n"
-                                     "sedated=%s\nexpected=subset of %s",
-                                     machines_sedated_this_turn_tmp.to_string_brackets().c_str(),
-                                     non_disturbing_machines_switches_off.to_string_brackets().c_str());
-
-                    PPK_ASSERT_ERROR(thrash == MachineRange::empty_range(),
-                                     "The machines that have been awakeend by this call are not the "
-                                     "expected ones.\nawakened=%s\nexpected=%s",
-                                     thrash.to_string_elements().c_str(),
-                                     MachineRange::empty_range().to_string_brackets().c_str());
-
-                    machines_sedated_this_turn -= disturbing_machines_switches_off;
-                    _machines_to_sedate -= disturbing_machines_switches_off;
-                }
-                else
-                {
-                    printf("Cancelling some switches OFF was not enough... Some machines must be awakened.\n");
-
-                    // Cancelling some switches OFF was not enough... Some machines must be awakened.
-                    // Let's determine how many of them should be awakened.
-                    MachineRange machines_awake_in_the_prediction_schedule = _awake_machines +
-                            _switching_on_machines + _machines_to_awaken; // no machines to sedate, because they were already canceled
-
-                    if (_inertial_shutdown_debug)
+                    for (auto mit = _machines_to_sedate.elements_begin(); mit != _machines_to_sedate.elements_end(); ++mit)
                     {
-                        printf("_awake_machines: %s\n", _awake_machines.to_string_brackets().c_str());
-                        printf("_switching_on_machines: %s\n", _switching_on_machines.to_string_brackets().c_str());
-                        printf("_switching_off_machines: %s\n", _switching_off_machines.to_string_brackets().c_str());
-                        printf("_machines_to_awaken: %s\n", _machines_to_awaken.to_string_brackets().c_str());
-                        printf("_machines_to_sedate: %s\n", _machines_to_sedate.to_string_brackets().c_str());
+                        int machine_id = *mit;
+                        MachineInformation * minfo = _machine_informations[machine_id];
 
-                        printf("Awake machines in prediction schedule: %s (size=%d)\n",
-                               machines_awake_in_the_prediction_schedule.to_string_brackets().c_str(),
-                               (int)machines_awake_in_the_prediction_schedule.size());
+                        _inertial_schedule.remove_job_last_occurence(minfo->switch_off_job);
+                        if (minfo->ensured_sleep_job->walltime > 0)
+                            _inertial_schedule.remove_job_last_occurence(minfo->ensured_sleep_job);
+                        _inertial_schedule.remove_job_last_occurence(minfo->potential_sleep_job);
                     }
 
-                    int minimum_nb_machines_to_awaken = job->nb_requested_resources - (int)machines_awake_in_the_prediction_schedule.size();
-                    PPK_ASSERT_ERROR(minimum_nb_machines_to_awaken > 0,
-                                     "Schedule seems to be inconsistent.\n"
-                                     "job->nb_requested_resources=%d. machines_awake_in_the_prediction_schedule=%d\n"
-                                     "awake machines: %s. machines being switched ON: %s. Machines to awaken:%s\n%s",
-                                     job->nb_requested_resources,
-                                     (int)machines_awake_in_the_prediction_schedule.size(),
-                                     _awake_machines.to_string_brackets().c_str(),
-                                     _switching_on_machines.to_string_brackets().c_str(),
-                                     _machines_to_awaken.to_string_brackets().c_str(),
-                                     _inertial_schedule.to_string().c_str());
-
-                    printf("Date=%g. make_decisions. Would like to awaken %d machines to execute job '%s', "
-                           "which requests %d resources.\n",
-                           date, minimum_nb_machines_to_awaken, priority_job->id.c_str(),
-                           priority_job->nb_requested_resources);
-
-                    // Let's select which machines should be awakened
-                    //printf("make_decisions, select_machines_to_awaken call\n");
-                    MachineRange machines_to_awaken_to_make_priority_job_fit;
-                    select_machines_to_awaken(minimum_nb_machines_to_awaken, _asleep_machines + _switching_off_machines,
-                                              machines_to_awaken_to_make_priority_job_fit);
-
-                    // Let's awaken the machines in the schedule
-                    MachineRange thrash, machines_really_awakened_to_make_priority_job_fit;
-                    handle_queued_switches(_inertial_schedule, MachineRange(),
-                                           machines_to_awaken_to_make_priority_job_fit,
-                                           thrash, machines_really_awakened_to_make_priority_job_fit);
-                    PPK_ASSERT_ERROR(thrash == MachineRange::empty_range(),
-                                     "The machines that have been sedated by this call are not the "
-                                     "expected ones.\nsedated=%s\nexpected=%s",
-                                     thrash.to_string_elements().c_str(),
-                                     MachineRange::empty_range().to_string_brackets().c_str());
-                    PPK_ASSERT_ERROR((machines_really_awakened_to_make_priority_job_fit &
-                                      machines_to_awaken_to_make_priority_job_fit) ==
-                                     machines_really_awakened_to_make_priority_job_fit,
-                                     "The machines that have been awakened by this call are not the"
-                                     "expected ones.\nawakened=%s\nexpected=subset of %s",
-                                     machines_really_awakened_to_make_priority_job_fit.to_string_brackets().c_str(),
-                                     machines_to_awaken_to_make_priority_job_fit.to_string_brackets().c_str());
-
-                    // Now the priority job should fit the platform. Let's insert it into it
                     alloc = _inertial_schedule.add_job_first_fit(priority_job, _selector, false);
-                    PPK_ASSERT_ERROR(alloc.has_been_inserted,
-                                     "Cannot insert the priority job, which should not happen now! "
-                                     "priority_job='%s', nb_res=%d\n%s",
-                                     priority_job->id.c_str(), priority_job->nb_requested_resources,
-                                     _inertial_schedule.to_string().c_str());
-                    PPK_ASSERT_ERROR(alloc.begin > _inertial_schedule.first_slice_begin());
+                    if (alloc.has_been_inserted)
+                    {
+                        // The job could fit by only cancelling some switches OFF \o/
+                        // Let's perserve the switches OFF that do not disturb the priority job.
+                        MachineRange non_disturbing_machines_switches_off = _machines_to_sedate - alloc.used_machines;
+                        MachineRange disturbing_machines_switches_off = (_machines_to_sedate & alloc.used_machines);
 
-                    // Let's update which machines are sedated now.
-                    // The machines sedated for being idle should never be done in the future, so
-                    // cancelled switches OFF and newly awakened machines are inertial ones.
-                    // However, for coherency's sake,
-                    // the number of idle-sedated machines might also be decreased if there is no
-                    // inertially-sedated machines left.
-                    int nb_cancelled_switches_off = (int)_machines_to_sedate.size();
-                    int nb_cancelled_inertially_sedated_machines = min(nb_cancelled_switches_off,
-                                                                       _nb_machines_sedated_by_inertia);
+                        // The machines sedated for being idle should never be done in the future, so
+                        // cancelled switches OFF are inertial ones. However, for coherency's sake,
+                        // the number of idle-sedated machines might also be decreased if there is no
+                        // inertially-sedated machines left.
+                        int nb_cancelled_switches_off = (int) disturbing_machines_switches_off.size();
+                        int nb_cancelled_inertially_sedated_machines = min(nb_cancelled_switches_off,
+                                                                           _nb_machines_sedated_by_inertia);
 
-                    int nb_cancelled_idle_sedated_machines = 0;
-                    if (nb_cancelled_inertially_sedated_machines < nb_cancelled_switches_off)
-                        nb_cancelled_idle_sedated_machines = nb_cancelled_switches_off -
-                                                             nb_cancelled_inertially_sedated_machines;
+                        int nb_cancelled_idle_sedated_machines = 0;
+                        if (nb_cancelled_inertially_sedated_machines < nb_cancelled_switches_off)
+                            nb_cancelled_idle_sedated_machines = nb_cancelled_switches_off -
+                                                                 nb_cancelled_inertially_sedated_machines;
 
-                    PPK_ASSERT_ERROR(nb_cancelled_inertially_sedated_machines +
-                                     nb_cancelled_idle_sedated_machines == nb_cancelled_switches_off);
+                        PPK_ASSERT_ERROR(nb_cancelled_inertially_sedated_machines +
+                                         nb_cancelled_idle_sedated_machines == nb_cancelled_switches_off);
 
-                    _nb_machines_sedated_by_inertia -= nb_cancelled_inertially_sedated_machines;
-                    _nb_machines_sedated_for_being_idle -= nb_cancelled_idle_sedated_machines;
+                        _nb_machines_sedated_by_inertia -= nb_cancelled_inertially_sedated_machines;
+                        _nb_machines_sedated_for_being_idle -= nb_cancelled_idle_sedated_machines;
 
-                    PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia >= 0);
-                    PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
+                        PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia >= 0);
+                        PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
 
-                    // Update after awakenings
-                    int nb_awakened_machines = (int) machines_to_awaken_to_make_priority_job_fit.size();
-                    int nb_awakened_inertially_sedated_machines = min(nb_awakened_machines,
-                                                                      _nb_machines_sedated_by_inertia);
+                        printf("The priority job '%s' could be inserted by cancelling some switches OFF (%s). "
+                               "Let's reinsert a subpart of these switches off : %s\n",
+                               priority_job->id.c_str(),
+                               disturbing_machines_switches_off.to_string_brackets().c_str(),
+                               non_disturbing_machines_switches_off.to_string_brackets().c_str());
 
-                    int nb_awakened_idle_sedated_machines = 0;
-                    if (nb_awakened_inertially_sedated_machines < nb_awakened_machines)
-                        nb_awakened_idle_sedated_machines = nb_awakened_machines -
-                                                            nb_awakened_inertially_sedated_machines;
+                        // Let's put these machines to sleep.
+                        MachineRange thrash, machines_sedated_this_turn_tmp, empty_range;
+                        handle_queued_switches(_inertial_schedule, non_disturbing_machines_switches_off,
+                                               empty_range, machines_sedated_this_turn_tmp, thrash);
 
-                    PPK_ASSERT_ERROR(nb_awakened_idle_sedated_machines +
-                                     nb_awakened_inertially_sedated_machines == nb_awakened_machines);
+                        PPK_ASSERT_ERROR((machines_sedated_this_turn_tmp &
+                                          non_disturbing_machines_switches_off) == machines_sedated_this_turn_tmp,
+                                         "The machines that have been sedated are not the expected ones.\n"
+                                         "sedated=%s\nexpected=subset of %s",
+                                         machines_sedated_this_turn_tmp.to_string_brackets().c_str(),
+                                         non_disturbing_machines_switches_off.to_string_brackets().c_str());
 
-                    _nb_machines_sedated_by_inertia -= nb_awakened_inertially_sedated_machines;
-                    _nb_machines_sedated_for_being_idle -= nb_awakened_idle_sedated_machines;
+                        PPK_ASSERT_ERROR(thrash == MachineRange::empty_range(),
+                                         "The machines that have been awakeend by this call are not the "
+                                         "expected ones.\nawakened=%s\nexpected=%s",
+                                         thrash.to_string_elements().c_str(),
+                                         MachineRange::empty_range().to_string_brackets().c_str());
 
-                    PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia >= 0);
-                    PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
+                        machines_sedated_this_turn -= disturbing_machines_switches_off;
+                        _machines_to_sedate -= disturbing_machines_switches_off;
+                    }
+                    else
+                    {
+                        printf("Cancelling some switches OFF was not enough... Some machines must be awakened.\n");
 
-                    machines_sedated_this_turn -= _machines_to_sedate;
-                    _machines_to_sedate.clear();
-                    machines_awakened_this_turn += machines_really_awakened_to_make_priority_job_fit;
-                    _machines_to_awaken += (machines_to_awaken_to_make_priority_job_fit - machines_really_awakened_to_make_priority_job_fit);
+                        // Cancelling some switches OFF was not enough... Some machines must be awakened.
+                        // Let's determine how many of them should be awakened.
+                        MachineRange machines_awake_in_the_prediction_schedule = _awake_machines +
+                                _switching_on_machines + _machines_to_awaken; // no machines to sedate, because they were already canceled
+
+                        if (_inertial_shutdown_debug)
+                        {
+                            printf("_awake_machines: %s\n", _awake_machines.to_string_brackets().c_str());
+                            printf("_switching_on_machines: %s\n", _switching_on_machines.to_string_brackets().c_str());
+                            printf("_switching_off_machines: %s\n", _switching_off_machines.to_string_brackets().c_str());
+                            printf("_machines_to_awaken: %s\n", _machines_to_awaken.to_string_brackets().c_str());
+                            printf("_machines_to_sedate: %s\n", _machines_to_sedate.to_string_brackets().c_str());
+
+                            printf("Awake machines in prediction schedule: %s (size=%d)\n",
+                                   machines_awake_in_the_prediction_schedule.to_string_brackets().c_str(),
+                                   (int)machines_awake_in_the_prediction_schedule.size());
+                        }
+
+                        int minimum_nb_machines_to_awaken = job->nb_requested_resources - (int)machines_awake_in_the_prediction_schedule.size();
+                        PPK_ASSERT_ERROR(minimum_nb_machines_to_awaken > 0,
+                                         "Schedule seems to be inconsistent.\n"
+                                         "job->nb_requested_resources=%d. machines_awake_in_the_prediction_schedule=%d\n"
+                                         "awake machines: %s. machines being switched ON: %s. Machines to awaken:%s\n%s",
+                                         job->nb_requested_resources,
+                                         (int)machines_awake_in_the_prediction_schedule.size(),
+                                         _awake_machines.to_string_brackets().c_str(),
+                                         _switching_on_machines.to_string_brackets().c_str(),
+                                         _machines_to_awaken.to_string_brackets().c_str(),
+                                         _inertial_schedule.to_string().c_str());
+
+                        printf("Date=%g. make_decisions. Would like to awaken %d machines to execute job '%s', "
+                               "which requests %d resources.\n",
+                               date, minimum_nb_machines_to_awaken, priority_job->id.c_str(),
+                               priority_job->nb_requested_resources);
+
+                        // Let's select which machines should be awakened
+                        //printf("make_decisions, select_machines_to_awaken call\n");
+                        MachineRange machines_to_awaken_to_make_priority_job_fit;
+                        select_machines_to_awaken(minimum_nb_machines_to_awaken, _asleep_machines + _switching_off_machines,
+                                                  machines_to_awaken_to_make_priority_job_fit);
+
+                        // Let's awaken the machines in the schedule
+                        MachineRange thrash, machines_really_awakened_to_make_priority_job_fit;
+                        handle_queued_switches(_inertial_schedule, MachineRange(),
+                                               machines_to_awaken_to_make_priority_job_fit,
+                                               thrash, machines_really_awakened_to_make_priority_job_fit);
+                        PPK_ASSERT_ERROR(thrash == MachineRange::empty_range(),
+                                         "The machines that have been sedated by this call are not the "
+                                         "expected ones.\nsedated=%s\nexpected=%s",
+                                         thrash.to_string_elements().c_str(),
+                                         MachineRange::empty_range().to_string_brackets().c_str());
+                        PPK_ASSERT_ERROR((machines_really_awakened_to_make_priority_job_fit &
+                                          machines_to_awaken_to_make_priority_job_fit) ==
+                                         machines_really_awakened_to_make_priority_job_fit,
+                                         "The machines that have been awakened by this call are not the"
+                                         "expected ones.\nawakened=%s\nexpected=subset of %s",
+                                         machines_really_awakened_to_make_priority_job_fit.to_string_brackets().c_str(),
+                                         machines_to_awaken_to_make_priority_job_fit.to_string_brackets().c_str());
+
+                        // Now the priority job should fit the platform. Let's insert it into it
+                        alloc = _inertial_schedule.add_job_first_fit(priority_job, _selector, false);
+                        PPK_ASSERT_ERROR(alloc.has_been_inserted,
+                                         "Cannot insert the priority job, which should not happen now! "
+                                         "priority_job='%s', nb_res=%d\n%s",
+                                         priority_job->id.c_str(), priority_job->nb_requested_resources,
+                                         _inertial_schedule.to_string().c_str());
+                        PPK_ASSERT_ERROR(alloc.begin > _inertial_schedule.first_slice_begin());
+
+                        // Let's update which machines are sedated now.
+                        // The machines sedated for being idle should never be done in the future, so
+                        // cancelled switches OFF and newly awakened machines are inertial ones.
+                        // However, for coherency's sake,
+                        // the number of idle-sedated machines might also be decreased if there is no
+                        // inertially-sedated machines left.
+                        int nb_cancelled_switches_off = (int)_machines_to_sedate.size();
+                        int nb_cancelled_inertially_sedated_machines = min(nb_cancelled_switches_off,
+                                                                           _nb_machines_sedated_by_inertia);
+
+                        int nb_cancelled_idle_sedated_machines = 0;
+                        if (nb_cancelled_inertially_sedated_machines < nb_cancelled_switches_off)
+                            nb_cancelled_idle_sedated_machines = nb_cancelled_switches_off -
+                                                                 nb_cancelled_inertially_sedated_machines;
+
+                        PPK_ASSERT_ERROR(nb_cancelled_inertially_sedated_machines +
+                                         nb_cancelled_idle_sedated_machines == nb_cancelled_switches_off);
+
+                        _nb_machines_sedated_by_inertia -= nb_cancelled_inertially_sedated_machines;
+                        _nb_machines_sedated_for_being_idle -= nb_cancelled_idle_sedated_machines;
+
+                        PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia >= 0);
+                        PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
+
+                        // Update after awakenings
+                        int nb_awakened_machines = (int) machines_to_awaken_to_make_priority_job_fit.size();
+                        int nb_awakened_inertially_sedated_machines = min(nb_awakened_machines,
+                                                                          _nb_machines_sedated_by_inertia);
+
+                        int nb_awakened_idle_sedated_machines = 0;
+                        if (nb_awakened_inertially_sedated_machines < nb_awakened_machines)
+                            nb_awakened_idle_sedated_machines = nb_awakened_machines -
+                                                                nb_awakened_inertially_sedated_machines;
+
+                        PPK_ASSERT_ERROR(nb_awakened_idle_sedated_machines +
+                                         nb_awakened_inertially_sedated_machines == nb_awakened_machines);
+
+                        _nb_machines_sedated_by_inertia -= nb_awakened_inertially_sedated_machines;
+                        _nb_machines_sedated_for_being_idle -= nb_awakened_idle_sedated_machines;
+
+                        PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia >= 0);
+                        PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
+
+                        machines_sedated_this_turn -= _machines_to_sedate;
+                        _machines_to_sedate.clear();
+                        machines_awakened_this_turn += machines_really_awakened_to_make_priority_job_fit;
+                        _machines_to_awaken += (machines_to_awaken_to_make_priority_job_fit - machines_really_awakened_to_make_priority_job_fit);
+                    }
                 }
             }
 
@@ -560,7 +575,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
         _idle_machines,
         EnergyBackfillingIdleSleeper::AwakeningPolicy::AWAKEN_FOR_ALL_JOBS_RESPECTING_PRIORITY_JOB,
         _nb_machines_sedated_for_being_idle,
-        machines_to_awaken_for_being_idle);
+        machines_to_awaken_for_being_idle,
+        true); // <--------------------------------------------------------------------------------- Choice to make.
 
     if (machines_to_awaken_for_being_idle.size() > 0)
     {
@@ -628,7 +644,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                                         _idle_machines, machines_awake_soon,
                                         priority_job, _machines_idle_start_date,
                                         _needed_amount_of_idle_time_to_be_sedated,
-                                        machines_to_sedate_for_being_idle);
+                                        machines_to_sedate_for_being_idle,
+                                        true); // <------------------------------------------------- Choice to make.
 
         if (machines_to_sedate_for_being_idle.size() > 0)
         {
@@ -753,6 +770,10 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     _inertial_schedule = _schedule;
     const Job * priority_job = nullptr;
     MachineRange priority_job_reserved_machines;
+    bool priority_job_can_be_started_soon = true;
+
+    Rational time_to_wake_up = (*_variant_options)["time_switch_on"].GetDouble();
+    Rational soon_horizon = time_to_wake_up * 2 + date;
 
     if (_inertial_shutdown_debug)
         printf("Date=%g. Begin of on_monitoring_stage.\n", date);
@@ -805,6 +826,17 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                                            priority_job_alloc,
                                            priority_job_reserved_machines,
                                            machines_that_can_be_used_by_the_priority_job);
+
+    if (priority_job != nullptr)
+    {
+        Rational priority_job_starting_time_expectancy = _priority_job_starting_time_expectancy;
+        priority_job_can_be_started_soon = priority_job_starting_time_expectancy <= soon_horizon;
+        priority_job_can_be_started_soon = true; // REMOVEME. Forces the previous behaviour.
+    }
+    else
+    {
+        _priority_job_starting_time_expectancy = date;
+    }
 
     if (_first_monitoring_stage)
     {
@@ -1052,7 +1084,8 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                                         _idle_machines, machines_awake_soon,
                                         priority_job, _machines_idle_start_date,
                                         _needed_amount_of_idle_time_to_be_sedated,
-                                        machines_to_sedate_for_being_idle);
+                                        machines_to_sedate_for_being_idle,
+                                        true); // <------------------------------------------------- Choice to make.
 
         if (machines_to_sedate_for_being_idle.size() > 0)
         {
