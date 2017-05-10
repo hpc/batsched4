@@ -22,7 +22,11 @@ void SortableJob::update_bounded_slowdown(Rational current_date, Rational execut
 bool FCFSOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->release_date < j2->release_date;
+
+    if (j1->release_date == j2->release_date)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->release_date < j2->release_date;
 }
 
 void FCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
@@ -35,7 +39,11 @@ void FCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInform
 bool LCFSOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->release_date > j2->release_date;
+
+    if (j1->release_date == j2->release_date)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->release_date > j2->release_date;
 }
 
 void LCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
@@ -48,7 +56,11 @@ void LCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInform
 bool DescendingBoundedSlowdownOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->bounded_slowdown > j2->bounded_slowdown;
+
+    if (j1->bounded_slowdown == j2->bounded_slowdown)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->bounded_slowdown > j2->bounded_slowdown;
 }
 
 void DescendingBoundedSlowdownOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
@@ -60,7 +72,11 @@ void DescendingBoundedSlowdownOrder::updateJob(SortableJob *job, const SortableJ
 bool DescendingSlowdownOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->slowdown > j2->slowdown;
+
+    if (j1->slowdown == j2->slowdown)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->slowdown > j2->slowdown;
 }
 
 void DescendingSlowdownOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
@@ -72,7 +88,11 @@ void DescendingSlowdownOrder::updateJob(SortableJob *job, const SortableJobOrder
 bool AscendingSizeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->job->nb_requested_resources < j2->job->nb_requested_resources;
+
+    if (j1->job->nb_requested_resources == j2->job->nb_requested_resources)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->job->nb_requested_resources < j2->job->nb_requested_resources;
 }
 
 void AscendingSizeOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
@@ -85,7 +105,11 @@ void AscendingSizeOrder::updateJob(SortableJob *job, const SortableJobOrder::Upd
 bool DescendingSizeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->job->nb_requested_resources > j2->job->nb_requested_resources;
+
+    if (j1->job->nb_requested_resources == j2->job->nb_requested_resources)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->job->nb_requested_resources > j2->job->nb_requested_resources;
 }
 
 void DescendingSizeOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
@@ -98,7 +122,11 @@ void DescendingSizeOrder::updateJob(SortableJob *job, const SortableJobOrder::Up
 bool AscendingWalltimeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->job->walltime < j2->job->walltime;
+
+    if (j1->job->walltime == j2->job->walltime)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->job->walltime < j2->job->walltime;
 }
 
 void AscendingWalltimeOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
@@ -111,7 +139,11 @@ void AscendingWalltimeOrder::updateJob(SortableJob *job, const SortableJobOrder:
 bool DescendingWalltimeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
-    return j1->job->walltime > j2->job->walltime;
+
+    if (j1->job->walltime == j2->job->walltime)
+        return j1->job->id < j2->job->id;
+    else
+        return j1->job->walltime > j2->job->walltime;
 }
 
 void DescendingWalltimeOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
