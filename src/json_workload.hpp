@@ -17,6 +17,14 @@ struct Job
     double completion_time = -1;
 };
 
+struct JobComparator
+{
+    bool operator()(const Job * j1, const Job * j2) const
+    {
+        return j1->id < j2->id;
+    }
+};
+
 class Workload
 {
 public:
