@@ -35,12 +35,13 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_sedate(Rational curre
                                                                   const Job *priority_job,
                                                                   const std::map<int, Rational> idle_machines_start_date,
                                                                   Rational minimum_idle_time_to_sedate,
-                                                                  MachineRange &machines_to_sedate)
+                                                                  MachineRange &machines_to_sedate,
+                                                                  bool take_priority_job_into_account)
 {
     int nb_awake_soon = machines_awake_soon.size();
 
     int nb_needed_for_priority_job = 0;
-    if (priority_job != nullptr)
+    if (priority_job != nullptr && take_priority_job_into_account)
         nb_needed_for_priority_job = priority_job->nb_requested_resources;
 
     Rational sedate_thresh = current_date - minimum_idle_time_to_sedate;
@@ -71,7 +72,8 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *q
                                                                   const MachineRange &idle_machines,
                                                                   AwakeningPolicy policy,
                                                                   int maximum_nb_machines_to_awaken,
-                                                                  MachineRange &machines_to_awaken)
+                                                                  MachineRange &machines_to_awaken,
+                                                                  bool take_priority_job_into_account)
 {
     PPK_ASSERT_ERROR(maximum_nb_machines_to_awaken >= 0);
     machines_to_awaken.clear();
@@ -109,7 +111,7 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *q
                                            priority_job_reserved_machines,
                                            machines_that_can_be_used_by_the_priority_job);
 
-    if (policy == AWAKEN_FOR_ALL_JOBS_RESPECTING_PRIORITY_JOB)
+    if (policy == AWAKEN_FOR_ALL_JOBS_RESPECTING_PRIORITY_JOB && take_priority_job_into_account)
     {
         // Let's remove the priority_job_reserved_machines from the usable_machines
         usable_idle_machines -= priority_job_reserved_machines;

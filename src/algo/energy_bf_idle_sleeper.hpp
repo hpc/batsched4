@@ -40,7 +40,8 @@ public:
                                                const Job * priority_job,
                                                const std::map<int, Rational> idle_machines_start_date,
                                                Rational minimum_idle_time_to_sedate,
-                                               MachineRange & machines_to_sedate);
+                                               MachineRange & machines_to_sedate,
+                                               bool take_priority_job_into_account = true);
 
     /**
      * @brief Selects which machines should be awakened to compute some jobs
@@ -58,7 +59,8 @@ public:
                                                const MachineRange &idle_machines,
                                                AwakeningPolicy policy,
                                                int maximum_nb_machines_to_awaken,
-                                               MachineRange &machines_to_awaken);
+                                               MachineRange &machines_to_awaken,
+                                               bool take_priority_job_into_account = true);
 
     /**
      * @brief Updates whichever machines are idle and their idle starting time if needed,
