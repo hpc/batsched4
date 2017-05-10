@@ -133,7 +133,7 @@ protected:
      * @return The moment at which the machine should be awakened
      */
     Rational awaken_machine_as_soon_as_possible(Schedule & schedule,
-                                            int machine_id) const;
+                                                int machine_id) const;
 
     ScheduleMetrics compute_metrics_of_schedule(const Schedule & schedule, Rational min_job_length = 30) const;
 
