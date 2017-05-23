@@ -10,6 +10,16 @@ Submitter::Submitter(Workload *workload, SchedulingDecision *decision, Queue *qu
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay, variant_options)
 {
 
+    if (variant_options->HasMember("nb_jobs_to_submit"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["nb_jobs_to_submit"].IsInt(),
+                         "Bad algo options: nb_jobs_to_submit is not integral");
+        nb_jobs_to_submit = (*variant_options)["nb_jobs_to_submit"].GetInt();
+        PPK_ASSERT_ERROR(nb_jobs_to_submit >= 0,
+                         "Bad algo options: nb_jobs_to_submit is negative (%d)", nb_jobs_to_submit);
+    }
+
+    printf("nb_jobs_to_submit: %d\n", nb_jobs_to_submit);
 }
 
 Submitter::~Submitter()
