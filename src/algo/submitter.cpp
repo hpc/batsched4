@@ -92,13 +92,14 @@ void Submitter::make_decisions(double date,
 
                 if (nb_submitted_jobs < nb_jobs_to_submit)
                     submit_delay_job(1 + nb_submitted_jobs*30, date);
-                else if (!finished_submitting_sent)
-                {
-                    _decision->add_scheduler_finished_submitting_jobs(date);
-                    finished_submitting_sent = true;
-                }
             }
         }
+    }
+
+    if ((nb_submitted_jobs >= nb_jobs_to_submit) && !finished_submitting_sent)
+    {
+        _decision->add_scheduler_finished_submitting_jobs(date);
+        finished_submitting_sent = true;
     }
 }
 
