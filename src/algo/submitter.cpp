@@ -36,8 +36,7 @@ void Submitter::on_simulation_start(double date, const rapidjson::Value & batsim
 
     PPK_ASSERT_ERROR(batsim_config["job_submission"]["from_scheduler"]["enabled"].GetBool(),
             "This algorithm only works if dynamic job submissions are enabled!");
-    PPK_ASSERT_ERROR(batsim_config["job_submission"]["from_scheduler"]["acknowledge"].GetBool(),
-            "This algorithm only works if dynamic job submissions acknowledgements are enabled!");
+    dyn_submit_ack = batsim_config["job_submission"]["from_scheduler"]["acknowledge"].GetBool();
     redis_enabled = batsim_config["redis"]["enabled"].GetBool();
 }
 
@@ -51,12 +50,15 @@ void Submitter::make_decisions(double date,
                                SortableJobOrder::CompareInformation *compare_info)
 {
     // Let's update available machines
-    for (const string & ended_job_id : _jobs_ended_recently)
+    if (_jobs_ended_recently.size() > 0)
     {
-        int nb_available_before = available_machines.size();
-        available_machines.insert(current_allocations[ended_job_id]);
-        PPK_ASSERT_ERROR(nb_available_before + (*_workload)[ended_job_id]->nb_requested_resources == (int)available_machines.size());
-        current_allocations.erase(ended_job_id);
+        for (const string & ended_job_id : _jobs_ended_recently)
+        {
+            int nb_available_before = available_machines.size();
+            available_machines.insert(current_allocations[ended_job_id]);
+            PPK_ASSERT_ERROR(nb_available_before + (*_workload)[ended_job_id]->nb_requested_resources == (int)available_machines.size());
+            current_allocations.erase(ended_job_id);
+        }
     }
 
     // Let's handle recently released jobs
@@ -73,8 +75,7 @@ void Submitter::make_decisions(double date,
     // Queue sorting
     _queue->sort_queue(update_info, compare_info);
 
-    // Whenever this algorithm execute a job, it submits
-    // another one until he submitted enough jobs.
+    // Trying to execute the priority job if possible
     if (!_queue->is_empty())
     {
         const Job * job = _queue->first_job();
@@ -89,13 +90,37 @@ void Submitter::make_decisions(double date,
 
                 available_machines.remove(used_machines);
                 _queue->remove_job(job);
-
-                if (nb_submitted_jobs < nb_jobs_to_submit)
-                    submit_delay_job(1 + nb_submitted_jobs*30, date);
             }
         }
     }
 
+    // If the queue is empty, dynamic jobs are submitted if possible
+    if (_queue->is_empty() && available_machines.size() >= 1)
+    {
+        if (nb_submitted_jobs < nb_jobs_to_submit)
+        {
+            submit_delay_job(1 + nb_submitted_jobs*10, date);
+
+            // If dynamic submissions acknowledgements are disabled, the job is directly executed
+            if (!dyn_submit_ack)
+            {
+                // The execution is done 5 seconds after submitting the job
+                date = date + 10;
+
+                MachineRange used_machines = available_machines.left(1);
+
+                string job_id = "dynamic!" + to_string(nb_submitted_jobs);
+                _decision->add_execute_job(job_id, used_machines, date);
+                current_allocations[job_id] = used_machines;
+
+                available_machines.remove(used_machines);
+            }
+
+            ++nb_submitted_jobs;
+        }
+    }
+
+    // Sending the "end of dynamic submissions" to Batsim if needed
     if ((nb_submitted_jobs >= nb_jobs_to_submit) && !finished_submitting_sent)
     {
         _decision->add_scheduler_finished_submitting_jobs(date);
@@ -116,7 +141,7 @@ void Submitter::submit_delay_job(double delay, double date)
 
     char * buf_job = new char[buf_size];
     int nb_chars = snprintf(buf_job, buf_size,
-             R"foo({"id":%d, "subtime":%g, "walltime":%g, "res":%d, "profile":"%s"})foo",
+             R"foo({"id":"%d", "subtime":%g, "walltime":%g, "res":%d, "profile":"%s"})foo",
              nb_submitted_jobs, submit_time, walltime, res, profile.c_str());
     PPK_ASSERT_ERROR(nb_chars < buf_size - 1);
 
@@ -130,8 +155,13 @@ void Submitter::submit_delay_job(double delay, double date)
     _decision->add_submit_job(workload_name, job_id, profile,
                               buf_job, buf_profile, date);
 
+    // If dynamic submisions ack is disabled, we must add the job in the workload now
+    if (!dyn_submit_ack)
+    {
+        string unique_job_id = workload_name + "!" + job_id;
+        _workload->add_job_from_json_description_string(buf_job, unique_job_id, date);
+    }
+
     delete[] buf_job;
     delete[] buf_profile;
-
-    ++nb_submitted_jobs;
 }

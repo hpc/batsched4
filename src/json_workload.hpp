@@ -38,6 +38,7 @@ public:
 
     void add_job_from_redis(RedisStorage &storage, const std::string & job_id, double submission_time);
     void add_job_from_json_object(const rapidjson::Value & object, const std::string & job_id, double submission_time);
+    void add_job_from_json_description_string(const std::string & json_string, const std::string & job_id, double submission_time);
 
     Job * job_from_json_description_string(const std::string & json_string);
     Job * job_from_json_object(const rapidjson::Value & object);

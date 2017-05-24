@@ -38,6 +38,7 @@ private:
     std::map<std::string, MachineRange> current_allocations;
     int nb_submitted_jobs = 0; //!< The number of jobs submitted from this algorithm
     int nb_jobs_to_submit = 10; //!< The number of jobs to submit
+    bool dyn_submit_ack;
     bool redis_enabled;
     bool finished_submitting_sent = false;
 };
