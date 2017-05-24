@@ -139,10 +139,13 @@ void Submitter::submit_delay_job(double delay, double date)
 
     int buf_size = 128;
 
+    string job_id = to_string(nb_submitted_jobs);
+    string unique_job_id = workload_name + "!" + job_id;
+
     char * buf_job = new char[buf_size];
     int nb_chars = snprintf(buf_job, buf_size,
-             R"foo({"id":"%d", "subtime":%g, "walltime":%g, "res":%d, "profile":"%s"})foo",
-             nb_submitted_jobs, submit_time, walltime, res, profile.c_str());
+             R"foo({"id":"%s", "subtime":%g, "walltime":%g, "res":%d, "profile":"%s"})foo",
+             unique_job_id.c_str(), submit_time, walltime, res, profile.c_str());
     PPK_ASSERT_ERROR(nb_chars < buf_size - 1);
 
     char * buf_profile = new char[buf_size];
@@ -150,15 +153,12 @@ void Submitter::submit_delay_job(double delay, double date)
             R"foo({"type": "delay", "delay": %g})foo", delay);
     PPK_ASSERT_ERROR(nb_chars < buf_size - 1);
 
-    string job_id = to_string(nb_submitted_jobs);
-
     _decision->add_submit_job(workload_name, job_id, profile,
                               buf_job, buf_profile, date);
 
     // If dynamic submisions ack is disabled, we must add the job in the workload now
     if (!dyn_submit_ack)
     {
-        string unique_job_id = workload_name + "!" + job_id;
         _workload->add_job_from_json_description_string(buf_job, unique_job_id, date);
     }
 
