@@ -104,7 +104,7 @@ void Submitter::make_decisions(double date,
             // If dynamic submissions acknowledgements are disabled, the job is directly executed
             if (!dyn_submit_ack)
             {
-                // The execution is done 5 seconds after submitting the job
+                // The execution is done 10 seconds after submitting the job
                 date = date + 10;
 
                 MachineRange used_machines = available_machines.left(1);
