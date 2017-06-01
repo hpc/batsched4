@@ -29,7 +29,8 @@ void JsonProtocolWriter::append_nop(double date)
 void JsonProtocolWriter::append_submit_job(const string &job_id,
                                            double date,
                                            const string &job_description,
-                                           const string &profile_description)
+                                           const string &profile_description,
+                                           bool send_profile)
 {
     /* Without redis: {
       "timestamp": 10.0,
@@ -75,7 +76,7 @@ void JsonProtocolWriter::append_submit_job(const string &job_id,
         data.AddMember("job", Value().CopyFrom(job_doc, _alloc), _alloc);
     }
 
-    if (!profile_description.empty())
+    if (!profile_description.empty() && send_profile)
     {
         Document profile_doc;
         profile_doc.Parse(profile_description.c_str());

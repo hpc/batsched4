@@ -32,7 +32,8 @@ public:
                         const std::string & profile_name,
                         const std::string & job_json_description,
                         const std::string & profile_json_description,
-                        double date);
+                        double date,
+                        bool send_profile = true);
 
     void add_set_resource_state(MachineRange machines, int new_state, double date);
 

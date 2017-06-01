@@ -39,7 +39,8 @@ void SchedulingDecision::add_submit_job(const string & workload_name,
                                         const string & profile_name,
                                         const string & job_json_description,
                                         const string & profile_json_description,
-                                        double date)
+                                        double date,
+                                        bool send_profile)
 {
     string complete_job_id = workload_name + '!' + job_id;
 
@@ -52,12 +53,13 @@ void SchedulingDecision::add_submit_job(const string & workload_name,
         _redis->set(job_key, job_json_description);
         _redis->set(profile_key, profile_json_description);
 
-        _proto_writer->append_submit_job(complete_job_id, date);
+        _proto_writer->append_submit_job(complete_job_id, date, "", "", send_profile);
     }
     else
         _proto_writer->append_submit_job(complete_job_id, date,
                                          job_json_description,
-                                         profile_json_description);
+                                         profile_json_description,
+                                         send_profile);
 }
 
 void SchedulingDecision::add_set_resource_state(MachineRange machines, int new_state, double date)

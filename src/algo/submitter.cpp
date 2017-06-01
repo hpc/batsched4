@@ -19,7 +19,23 @@ Submitter::Submitter(Workload *workload, SchedulingDecision *decision, Queue *qu
                          "Bad algo options: nb_jobs_to_submit is negative (%d)", nb_jobs_to_submit);
     }
 
+    if (variant_options->HasMember("increase_jobs_duration"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["increase_jobs_duration"].IsBool(),
+                         "Bad algo options: increase_jobs_duration is not a boolean");
+        increase_jobs_duration = (*variant_options)["increase_jobs_duration"].GetBool();
+    }
+
+    if (variant_options->HasMember("send_profile_if_already_sent"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["send_profile_if_already_sent"].IsBool(),
+                         "Bad algo options: send_profile_if_already_sent is not a boolean");
+        send_profile_if_already_sent = (*variant_options)["send_profile_if_already_sent"].GetBool();
+    }
+
     printf("nb_jobs_to_submit: %d\n", nb_jobs_to_submit);
+    printf("increase_jobs_duration: %d\n", increase_jobs_duration);
+    printf("send_profile_if_already_sent: %d\n", send_profile_if_already_sent);
 }
 
 Submitter::~Submitter()
@@ -99,7 +115,11 @@ void Submitter::make_decisions(double date,
     {
         if (nb_submitted_jobs < nb_jobs_to_submit)
         {
-            submit_delay_job(1 + nb_submitted_jobs*10, date);
+            double new_job_duration = 1;
+            if (increase_jobs_duration)
+                new_job_duration += nb_submitted_jobs*10;
+
+            submit_delay_job(new_job_duration, date);
 
             // If dynamic submissions acknowledgements are disabled, the job is directly executed
             if (!dyn_submit_ack)
@@ -135,7 +155,7 @@ void Submitter::submit_delay_job(double delay, double date)
     double submit_time = date;
     double walltime = delay + 5;
     int res = 1;
-    string profile = "delay_" + std::to_string(nb_submitted_jobs);
+    string profile = "delay_" + std::to_string(delay);
 
     int buf_size = 128;
 
@@ -153,8 +173,13 @@ void Submitter::submit_delay_job(double delay, double date)
             R"foo({"type": "delay", "delay": %g})foo", delay);
     PPK_ASSERT_ERROR(nb_chars < buf_size - 1);
 
+    bool already_sent_profile = profiles_already_sent.count(profile) == 1;
+
     _decision->add_submit_job(workload_name, job_id, profile,
-                              buf_job, buf_profile, date);
+                              buf_job, buf_profile, date,
+                              !already_sent_profile || send_profile_if_already_sent);
+
+    profiles_already_sent.insert(profile);
 
     // If dynamic submisions ack is disabled, we must add the job in the workload now
     if (!dyn_submit_ack)

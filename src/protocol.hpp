@@ -44,7 +44,8 @@ public:
     virtual void append_submit_job(const std::string & job_id,
                                    double date,
                                    const std::string & job_description = "",
-                                   const std::string & profile_description = "") = 0;
+                                   const std::string & profile_description = "",
+                                   bool send_profile = true) = 0;
 
     /**
      * @brief Appends an EXECUTE_JOB event.
@@ -240,7 +241,8 @@ public:
     void append_submit_job(const std::string & job_id,
                            double date,
                            const std::string & job_description = "",
-                           const std::string & profile_description = "");
+                           const std::string & profile_description = "",
+                           bool send_profile = true);
 
     /**
      * @brief Appends an EXECUTE_JOB event.
