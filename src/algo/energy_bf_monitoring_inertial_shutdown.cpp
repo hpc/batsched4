@@ -771,6 +771,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     const Job * priority_job = nullptr;
     MachineRange priority_job_reserved_machines;
     bool priority_job_can_be_started_soon = true;
+    (void) priority_job_can_be_started_soon;
 
     Rational time_to_wake_up = (*_variant_options)["time_switch_on"].GetDouble();
     Rational soon_horizon = time_to_wake_up * 2 + date;
