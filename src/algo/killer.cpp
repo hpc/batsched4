@@ -12,7 +12,28 @@ Killer::Killer(Workload *workload,
                rapidjson::Document *variant_options) :
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay, variant_options)
 {
+    if (variant_options->HasMember("nb_kills_per_job"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["nb_kills_per_job"].IsInt(),
+                "Bad algo options: nb_kills_per_job should be an integer");
+        nb_kills_per_job = (*variant_options)["nb_kills_per_job"].GetInt();
+        PPK_ASSERT_ERROR(nb_kills_per_job >= 0,
+                         "Bad algo options: nb_kills_per_job should be positive (got %d)",
+                         nb_kills_per_job);
+    }
 
+    if (variant_options->HasMember("delay_before_kill"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["delay_before_kill"].IsNumber(),
+                "Bad algo options: delay_before_kill should be an integer");
+        delay_before_kill = (*variant_options)["delay_before_kill"].GetDouble();
+        PPK_ASSERT_ERROR(delay_before_kill >= 0,
+                         "Bad algo options: delay_before_kill should be positive (got %g)",
+                         delay_before_kill);
+    }
+
+    printf("nb_kills_per_job: %d\n", nb_kills_per_job);
+    printf("delay_before_kill: %g\n", delay_before_kill);
 }
 
 Killer::~Killer()
@@ -92,11 +113,15 @@ void Killer::make_decisions(double date,
             if (_selector->fit(job, available_machines, used_machines))
             {
                 _decision->add_execute_job(job->id, used_machines, date);
-                _decision->add_kill_job({job->id}, date + 10);
                 current_allocations[job->id] = used_machines;
-
                 available_machines.remove(used_machines);
                 _queue->remove_job(job);
+
+                for (int i = 0; i < nb_kills_per_job; ++i)
+                {
+                    date += delay_before_kill;
+                    _decision->add_kill_job({job->id}, date);
+                }
             }
         }
     }
