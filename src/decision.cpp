@@ -19,9 +19,12 @@ SchedulingDecision::~SchedulingDecision()
     _proto_writer = nullptr;
 }
 
-void SchedulingDecision::add_execute_job(const std::string & job_id, const MachineRange &machine_ids, double date)
+void SchedulingDecision::add_execute_job(const std::string & job_id, const MachineRange &machine_ids, double date, vector<int> executor_to_allocated_resource_mapping)
 {
-    _proto_writer->append_execute_job(job_id, machine_ids, date);
+    if (executor_to_allocated_resource_mapping.size() == 0)
+        _proto_writer->append_execute_job(job_id, machine_ids, date);
+    else
+        _proto_writer->append_execute_job(job_id, machine_ids, date, executor_to_allocated_resource_mapping);
 }
 
 void SchedulingDecision::add_reject_job(const std::string & job_id, double date)

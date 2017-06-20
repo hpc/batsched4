@@ -69,6 +69,8 @@ public:
     MachineRange operator+(const MachineRange & other) const; // a + b <==> union(a,b)
     MachineRange operator&(const MachineRange & other) const; // a & b <==> intersection(a,b)
 
+    int operator[](int index) const;
+
 public:
     static MachineRange from_string_hyphen(const std::string & str,
                                            const std::string & sep = ",",

@@ -32,6 +32,7 @@ private:
     void fill(double date);
 
 private:
+    double fraction_of_machines_to_use = 1; //! In ]0,1]. If job requests 42 machines, the scheduler will allocate ceil(42*rho) machines.
     MachineRange available_machines;
     std::map<std::string, MachineRange> current_allocations;
     bool _debug = true;

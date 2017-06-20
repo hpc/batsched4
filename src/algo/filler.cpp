@@ -10,6 +10,17 @@ Filler::Filler(Workload *workload, SchedulingDecision * decision, Queue * queue,
                ResourceSelector *selector, double rjms_delay, rapidjson::Document *variant_options) :
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay, variant_options)
 {
+    if (variant_options->HasMember("fraction_of_machines_to_use"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["fraction_of_machines_to_use"].IsNumber(),
+                "Invalid options: 'fraction_of_machines_to_use' should be a number");
+        fraction_of_machines_to_use = (*variant_options)["fraction_of_machines_to_use"].GetDouble();
+        PPK_ASSERT_ERROR(fraction_of_machines_to_use > 0 && fraction_of_machines_to_use <= 1,
+                         "Invalid options: 'fraction_of_machines_to_use' should be in ]0,1] "
+                         "but got value=%g", fraction_of_machines_to_use);
+    }
+
+    printf("fraction_of_machines_to_use: %g\n", fraction_of_machines_to_use);
 }
 
 Filler::~Filler()
@@ -40,7 +51,8 @@ void Filler::make_decisions(double date,
     {
         int nb_available_before = available_machines.size();
         available_machines.insert(current_allocations[ended_job_id]);
-        PPK_ASSERT_ERROR(nb_available_before + (*_workload)[ended_job_id]->nb_requested_resources == (int)available_machines.size());
+        int nb_job_resources = ceil((*_workload)[ended_job_id]->nb_requested_resources * fraction_of_machines_to_use);
+        PPK_ASSERT_ERROR(nb_available_before + nb_job_resources == (int)available_machines.size());
         current_allocations.erase(ended_job_id);
     }
 
@@ -76,7 +88,17 @@ void Filler::fill(double date)
 
         if (_selector->fit(job, available_machines, used_machines))
         {
-            _decision->add_execute_job(job->id, used_machines, date);
+            // Fewer machines might be used that those selected by the fitting algorithm
+            int nb_machines_to_allocate = ceil(fraction_of_machines_to_use * job->nb_requested_resources);
+            PPK_ASSERT_ERROR(nb_machines_to_allocate > 0 && nb_machines_to_allocate <= job->nb_requested_resources);
+            used_machines = used_machines.left(nb_machines_to_allocate);
+
+            vector<int> executor_to_allocated_resource_mapping;
+            executor_to_allocated_resource_mapping.resize(job->nb_requested_resources);
+            for (int i = 0; i < job->nb_requested_resources; ++i)
+                executor_to_allocated_resource_mapping[i] = used_machines[i % nb_machines_to_allocate];
+
+            _decision->add_execute_job(job->id, used_machines, date, executor_to_allocated_resource_mapping);
             current_allocations[job->id] = used_machines;
 
             available_machines.remove(used_machines);
