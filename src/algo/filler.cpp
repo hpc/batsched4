@@ -96,7 +96,7 @@ void Filler::fill(double date)
             vector<int> executor_to_allocated_resource_mapping;
             executor_to_allocated_resource_mapping.resize(job->nb_requested_resources);
             for (int i = 0; i < job->nb_requested_resources; ++i)
-                executor_to_allocated_resource_mapping[i] = used_machines[i % nb_machines_to_allocate];
+                executor_to_allocated_resource_mapping[i] = i % nb_machines_to_allocate;
 
             _decision->add_execute_job(job->id, used_machines, date, executor_to_allocated_resource_mapping);
             current_allocations[job->id] = used_machines;
