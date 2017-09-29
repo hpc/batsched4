@@ -184,6 +184,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
     for (const string & new_job_id : _jobs_released_recently)
     {
         const Job * new_job = (*_workload)[new_job_id];
+        PPK_ASSERT_ERROR(new_job->has_walltime,
+                         "This scheduler only supports jobs with walltimes.");
         ++_nb_jobs_submitted;
 
         PPK_ASSERT_ERROR(!_schedule.contains_job(new_job),

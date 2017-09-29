@@ -142,6 +142,13 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
             // Let's continue to scan the profile to ascertain that
             // the machines remain available until the job's expected termination
 
+            // If the job has no walltime, its size will be "infinite"
+            if (!job->has_walltime)
+            {
+                // TODO: remove this ugly const_cast?
+                const_cast<Job*>(job)->walltime = infinite_horizon() - pit->begin;
+            }
+
             int availableMachinesCount = pit->available_machines.size();
             Rational totalTime = pit->length;
 

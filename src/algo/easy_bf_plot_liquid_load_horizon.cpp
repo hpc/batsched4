@@ -36,6 +36,13 @@ void EasyBackfillingPlotLiquidLoadHorizon::make_decisions(double date,
                                                           SortableJobOrder::UpdateInformation *update_info,
                                                           SortableJobOrder::CompareInformation *compare_info)
 {
+    for (const string & new_job_id : _jobs_released_recently)
+    {
+        const Job * new_job = (*_workload)[new_job_id];
+        PPK_ASSERT_ERROR(new_job->has_walltime,
+                         "This scheduler only supports jobs with walltimes.");
+    }
+
     EasyBackfilling::make_decisions(date, update_info, compare_info);
     write_current_metrics_in_file(date);
 }

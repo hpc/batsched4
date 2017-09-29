@@ -125,16 +125,28 @@ Job *Workload::job_from_json_object(const Value &object)
 
     PPK_ASSERT_ERROR(object.HasMember("id"), "Invalid json object: no 'id' member");
     PPK_ASSERT_ERROR(object["id"].IsString(), "Invalid json object: 'id' member is not a string");
-    PPK_ASSERT_ERROR(object.HasMember("walltime"), "Invalid json object: no 'walltime' member");
-    PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");
     PPK_ASSERT_ERROR(object.HasMember("res"), "Invalid json object: no 'res' member");
     PPK_ASSERT_ERROR(object["res"].IsInt(), "Invalid json object: 'res' member is not an integer");
 
     Job * j = new Job;
     j->id = object["id"].GetString();
-    j->walltime = object["walltime"].GetDouble();
+    j->walltime = -1;
+    j->has_walltime = true;
     j->nb_requested_resources = object["res"].GetInt();
     j->unique_number = _job_number++;
+
+    if (object.HasMember("walltime"))
+    {
+        PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");
+        j->walltime = object["walltime"].GetDouble();
+    }
+
+    PPK_ASSERT_ERROR(j->walltime == -1 || j->walltime > 0,
+                     "Invalid json object: 'walltime' should either be -1 (no walltime) "
+                     "or strictly positive.");
+
+    if (j->walltime == -1)
+        j->has_walltime = false;
 
     return j;
 }

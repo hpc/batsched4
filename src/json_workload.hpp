@@ -13,6 +13,7 @@ struct Job
     int unique_number;
     int nb_requested_resources;
     Rational walltime;
+    bool has_walltime = true;
     double submission_time = 0;
     double completion_time = -1;
 };
