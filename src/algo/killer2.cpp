@@ -45,8 +45,16 @@ void Killer2::make_decisions(double date,
     {
         int nb_available_before = available_machines.size();
         available_machines.insert(current_allocations[ended_job_id]);
-        PPK_ASSERT_ERROR(nb_available_before + (*_workload)[ended_job_id]->nb_requested_resources == (int)available_machines.size());
+        PPK_ASSERT_ERROR(nb_available_before + (int)current_allocations[ended_job_id].size() == (int)available_machines.size());
         current_allocations.erase(ended_job_id);
+    }
+
+    for (const std::string & killed_job_id : _jobs_killed_recently)
+    {
+        int nb_available_before = available_machines.size();
+        available_machines.insert(current_allocations[killed_job_id]);
+        PPK_ASSERT_ERROR(nb_available_before + (int)current_allocations[killed_job_id].size() == (int)available_machines.size());
+        current_allocations.erase(killed_job_id);
     }
 
     printf("Date: %g. Available machines: %s\n", date, available_machines.to_string_brackets().c_str());
