@@ -339,13 +339,16 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "JOB_KILLED")
             {
-                const r::Value & job_ids_array = event_data["job_ids"];
+                const r::Value & job_ids_map = event_data["job_progress"];
+                PPK_ASSERT_ERROR(job_ids_map.GetType() == r::kObjectType);
 
                 vector<string> job_ids;
-                job_ids.reserve(job_ids_array.Size());
 
-                for (int i = 0; i < (int)job_ids_array.Size(); ++i)
-                    job_ids.push_back(job_ids_array[i].GetString());
+                for (auto itr = job_ids_map.MemberBegin(); itr != job_ids_map.MemberEnd(); ++itr)
+                {
+                    string job_id = itr->name.GetString();
+                    job_ids.push_back(job_id);
+                }
 
                 algo->on_job_killed(current_date, job_ids);
             }
