@@ -40,6 +40,8 @@ private:
     int nb_jobs_to_submit = 10; //!< The number of jobs to submit
     bool increase_jobs_duration = true; //!< Whether the duration of the submitted jobs increases or not. If false, the same profile will be used by all the submitted jobs.
     bool send_profile_if_already_sent = true; //!< Whether already transmitted profiles should be sent again to Batsim or not.
+    bool send_profiles_in_separate_event = false; //!< Whether profiles should be sent in a separate message or not
+
     bool dyn_submit_ack;
     bool redis_enabled;
     bool finished_submitting_sent = false;

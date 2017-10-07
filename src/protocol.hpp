@@ -47,6 +47,11 @@ public:
                                    const std::string & profile_description = "",
                                    bool send_profile = true) = 0;
 
+    virtual void append_submit_profile(const std::string & workload_name,
+                                      const std::string & profile_name,
+                                      const std::string & profile_description,
+                                      double date) = 0;
+
     /**
      * @brief Appends an EXECUTE_JOB event.
      * @param[in] job_id The job identifier. It must be known by Batsim.
@@ -243,6 +248,11 @@ public:
                            const std::string & job_description = "",
                            const std::string & profile_description = "",
                            bool send_profile = true);
+
+    void append_submit_profile(const std::string & workload_name,
+                                          const std::string & profile_name,
+                                          const std::string & profile_description,
+                                          double date);
 
     /**
      * @brief Appends an EXECUTE_JOB event.

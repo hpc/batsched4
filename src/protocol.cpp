@@ -94,6 +94,50 @@ void JsonProtocolWriter::append_submit_job(const string &job_id,
     _events.PushBack(event, _alloc);
 }
 
+void JsonProtocolWriter::append_submit_profile(const string &workload_name,
+                                               const string &profile_name,
+                                               const string &profile_description,
+                                               double date)
+{
+    /* {
+      "timestamp": 10.0,
+      "type": "SUBMIT_PROFILE",
+      "data": {
+        "workload_name": "dyn_wl1",
+        "profile_name":  "delay_10s",
+        "profile": {
+          "type": "delay",
+          "delay": 10
+        }
+      }
+    } */
+
+    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    _last_date = date;
+    _is_empty = false;
+
+    Value data(rapidjson::kObjectType);
+    data.AddMember("workload_name", Value().SetString(workload_name.c_str(), _alloc), _alloc);
+    data.AddMember("profile_name", Value().SetString(profile_name.c_str(), _alloc), _alloc);
+
+    PPK_ASSERT_ERROR(!profile_description.empty());
+    {
+        Document profile_doc;
+        profile_doc.Parse(profile_description.c_str());
+        PPK_ASSERT_ERROR(!profile_doc.HasParseError(), "Invalid JSON profile ###%s###",
+                         profile_description.c_str());
+
+        data.AddMember("profile", Value().CopyFrom(profile_doc, _alloc), _alloc);
+    }
+
+    Value event(rapidjson::kObjectType);
+    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
+    event.AddMember("type", Value().SetString("SUBMIT_PROFILE"), _alloc);
+    event.AddMember("data", data, _alloc);
+
+    _events.PushBack(event, _alloc);
+}
+
 void JsonProtocolWriter::append_execute_job(const string &job_id,
                                             const MachineRange &allocated_resources,
                                             double date,

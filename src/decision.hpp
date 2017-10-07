@@ -36,6 +36,11 @@ public:
                         double date,
                         bool send_profile = true);
 
+    void add_submit_profile(const std::string & workload_name,
+                            const std::string & profile_name,
+                            const std::string & profile_json_description,
+                            double date);
+
     void add_set_resource_state(MachineRange machines, int new_state, double date);
 
     void add_call_me_later(double future_date, double date);

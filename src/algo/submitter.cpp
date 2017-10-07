@@ -33,9 +33,17 @@ Submitter::Submitter(Workload *workload, SchedulingDecision *decision, Queue *qu
         send_profile_if_already_sent = (*variant_options)["send_profile_if_already_sent"].GetBool();
     }
 
+    if (variant_options->HasMember("send_profiles_in_separate_event"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["send_profiles_in_separate_event"].IsBool(),
+                         "Bad algo options: send_profiles_in_separate_event is not a boolean");
+        send_profiles_in_separate_event = (*variant_options)["send_profiles_in_separate_event"].GetBool();
+    }
+
     printf("nb_jobs_to_submit: %d\n", nb_jobs_to_submit);
     printf("increase_jobs_duration: %d\n", increase_jobs_duration);
     printf("send_profile_if_already_sent: %d\n", send_profile_if_already_sent);
+    printf("send_profiles_in_separate_event: %d\n", send_profiles_in_separate_event);
 }
 
 Submitter::~Submitter()
@@ -175,9 +183,14 @@ void Submitter::submit_delay_job(double delay, double date)
 
     bool already_sent_profile = profiles_already_sent.count(profile) == 1;
 
+    bool send_profile = !already_sent_profile || send_profile_if_already_sent;
+
+    if (send_profile && send_profiles_in_separate_event)
+        _decision->add_submit_profile(workload_name, profile, buf_profile, date);
+
     _decision->add_submit_job(workload_name, job_id, profile,
                               buf_job, buf_profile, date,
-                              !already_sent_profile || send_profile_if_already_sent);
+                              send_profile && !send_profiles_in_separate_event);
 
     profiles_already_sent.insert(profile);
 
