@@ -20,7 +20,15 @@ Filler::Filler(Workload *workload, SchedulingDecision * decision, Queue * queue,
                          "but got value=%g", fraction_of_machines_to_use);
     }
 
+    if (variant_options->HasMember("set_job_metadata"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["set_job_metadata"].IsBool(),
+                "Invalid options: 'set_job_metadata' should be a boolean");
+        set_job_metadata = (*variant_options)["set_job_metadata"].GetBool();
+    }
+
     printf("fraction_of_machines_to_use: %g\n", fraction_of_machines_to_use);
+    printf("set_job_metadata: %d\n", set_job_metadata);
 }
 
 Filler::~Filler()
@@ -104,6 +112,11 @@ void Filler::fill(double date)
             available_machines.remove(used_machines);
             PPK_ASSERT_ERROR(nb_available - used_machines.size() == available_machines.size());
             nb_available -= used_machines.size();
+
+            if (set_job_metadata)
+                _decision->add_set_job_metadata(job->id,
+                                                "just some metadata for job " + job->id,
+                                                date);
 
             job_it = _queue->remove_job(job);
         }

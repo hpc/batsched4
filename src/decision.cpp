@@ -81,6 +81,13 @@ void SchedulingDecision::add_set_resource_state(MachineRange machines, int new_s
     _proto_writer->append_set_resource_state(machines, std::to_string(new_state), date);
 }
 
+void SchedulingDecision::add_set_job_metadata(const string &job_id,
+                                              const string &metadata,
+                                              double date)
+{
+    _proto_writer->append_set_job_metadata(job_id, metadata, date);
+}
+
 void SchedulingDecision::add_call_me_later(double future_date, double date)
 {
     _proto_writer->append_call_me_later(future_date, date);

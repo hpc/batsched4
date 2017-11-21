@@ -96,6 +96,16 @@ public:
                                            double date)  = 0;
 
     /**
+     * @brief Appends a SET_JOB_METADATA event.
+     * @param[in] job_id The job identifier
+     * @param[in] metadata The metadata to set to the job
+     * @param[in] date The event date. Must be greater than or equal to the previous event.
+     */
+    virtual void append_set_job_metadata(const std::string & job_id,
+                                         const std::string & metadata,
+                                         double date) = 0;
+
+    /**
      * @brief Appends a CALL_ME_LATER event.
      * @param[in] future_date The date at which the decision process shall be called.
      *            Must be greater than date.
@@ -295,7 +305,17 @@ public:
      */
     void append_set_resource_state(MachineRange resources,
                                    const std::string & new_state,
-                                   double date) ;
+                                   double date);
+
+    /**
+     * @brief Appends a SET_JOB_METADATA event.
+     * @param[in] job_id The job identifier
+     * @param[in] metadata The metadata to set to the job
+     * @param[in] date The event date. Must be greater than or equal to the previous event.
+     */
+    void append_set_job_metadata(const std::string & job_id,
+                                 const std::string & metadata,
+                                 double date);
 
     /**
      * @brief Appends a CALL_ME_LATER event.

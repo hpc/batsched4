@@ -263,6 +263,35 @@ void JsonProtocolWriter::append_set_resource_state(MachineRange resources,
     _events.PushBack(event, _alloc);
 }
 
+void JsonProtocolWriter::append_set_job_metadata(const string & job_id,
+                                                 const string & metadata,
+                                                 double date)
+{
+    /* {
+      "timestamp": 13.0,
+      "type": "SET_JOB_METADATA",
+      "data": {
+        "job_id": "wload!42",
+        "metadata": "scheduler-defined string"
+      }
+    } */
+
+    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    _last_date = date;
+    _is_empty = false;
+
+    Value data(rapidjson::kObjectType);
+    data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
+    data.AddMember("metadata", Value().SetString(metadata.c_str(), _alloc), _alloc);
+
+    Value event(rapidjson::kObjectType);
+    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
+    event.AddMember("type", Value().SetString("SET_JOB_METADATA"), _alloc);
+    event.AddMember("data", data, _alloc);
+
+    _events.PushBack(event, _alloc);
+}
+
 void JsonProtocolWriter::append_call_me_later(double future_date,
                                               double date)
 {
