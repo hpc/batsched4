@@ -41,6 +41,7 @@ public:
     void remove(int machine_id);
 
     MachineRange left(int nb_machines) const;
+    MachineRange random_pick(int nb_machines) const;
 
     Set::const_iterator biggest_interval() const;
 

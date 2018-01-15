@@ -28,6 +28,7 @@
 #include "algo/filler.hpp"
 #include "algo/killer.hpp"
 #include "algo/killer2.hpp"
+#include "algo/random.hpp"
 #include "algo/rejecter.hpp"
 #include "algo/sleeper.hpp"
 #include "algo/submitter.hpp"
@@ -55,7 +56,7 @@ int main(int argc, char ** argv)
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
-                                      "filler", "killer", "killer2", "rejecter", "sleeper",
+                                      "filler", "killer", "killer2", "random", "rejecter", "sleeper",
                                       "submitter"};
     const set<string> policies_set = {"basic", "contiguous"};
     const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown",
@@ -202,6 +203,8 @@ int main(int argc, char ** argv)
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "killer2")
             algo = new Killer2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "random")
+            algo = new Random(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "rejecter")
             algo = new Rejecter(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "sleeper")
