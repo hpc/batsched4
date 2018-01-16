@@ -92,6 +92,13 @@ public:
     virtual void on_requested_call(double date);
 
     /**
+     * @brief This function is called when an ANSWER message about energy consumption is received
+     * @param[in] date The date at which the ANSWER message has been received
+     * @param[in] consumed_joules The number of joules consumed since time 0
+     */
+    virtual void on_answer_energy_consumption(double date, double consumed_joules);
+
+    /**
      * @brief This function is called when some decisions need to be made
      * @param[in] date The current date
      * @param[in,out] update_info Some information to sort the jobs
@@ -146,4 +153,6 @@ protected:
     std::map<int, MachineRange> _machines_whose_pstate_changed_recently;
     std::vector<Failure> _recent_failstate_changes;
     bool _nopped_recently;
+    bool _consumed_joules_updated_recently;
+    double _consumed_joules;
 };

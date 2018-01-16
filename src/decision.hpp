@@ -50,6 +50,8 @@ public:
     void add_call_me_later(double future_date, double date);
     void add_scheduler_finished_submitting_jobs(double date);
 
+    void add_query_energy_consumption(double date);
+
     void clear();
 
     std::string content(double date);

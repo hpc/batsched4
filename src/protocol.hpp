@@ -22,12 +22,11 @@ public:
      */
     virtual ~AbstractProtocolWriter() {}
 
-    // Bidirectional messages
     /**
-     * @brief Appends a NOP message.
+     * @brief Appends a QUERY message to ask Batsim about the current platform energy consumption (since time 0).
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_nop(double date) = 0;
+    virtual void append_query_consumed_energy(double date) = 0;
 
     // Messages from the Scheduler to Batsim
     /**
@@ -120,75 +119,6 @@ public:
      */
     virtual void append_scheduler_finished_submitting_jobs(double date) = 0;
 
-    /**
-     * @brief Appends a QUERY_REQUEST event.
-     * @param[in] anything ...
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_query_request(void * anything,
-                                      double date) = 0;
-
-
-
-
-
-    // Messages from Batsim to the Scheduler
-    /**
-     * @brief Appends a SIMULATION_BEGINS event.
-     * @param[in] nb_resources The number of simulated resources
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_simulation_begins(int nb_resources, double date) = 0;
-
-    /**
-     * @brief Appends a SIMULATION_ENDS event.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_simulation_ends(double date) = 0;
-
-    /**
-     * @brief Appends a JOB_SUBMITTED event.
-     * @param[in] job_id The identifier of the submitted job.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_job_submitted(const std::string & job_id,
-                                      double date) = 0;
-
-    /**
-     * @brief Appends a JOB_COMPLETED event.
-     * @param[in] job_id The identifier of the job that has completed.
-     * @param[in] job_status The job status
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_job_completed(const std::string & job_id,
-                                      const std::string & job_status,
-                                      double date) = 0;
-
-    /**
-     * @brief Appends a JOB_KILLED event.
-     * @param[in] job_ids The identifiers of the jobs that have been killed.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_job_killed(const std::vector<std::string> & job_ids,
-                                   double date) = 0;
-
-    /**
-     * @brief Appends a RESOURCE_STATE_CHANGED event.
-     * @param[in] resources The resources whose state has changed.
-     * @param[in] new_state The state the machines are now in.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_resource_state_changed(const MachineRange & resources,
-                                               const std::string & new_state,
-                                               double date) = 0;
-
-    /**
-     * @brief Appends a QUERY_REPLY (energy) event.
-     * @param[in] consumed_energy The total consumed energy in joules
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    virtual void append_query_reply_energy(double consumed_energy,
-                                           double date) = 0;
 
     // Management functions
     /**
@@ -236,10 +166,10 @@ public:
 
     // Bidirectional messages
     /**
-     * @brief Appends a NOP message.
+     * @brief Appends a QUERY message to ask Batsim about the current platform energy consumption (since time 0).
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_nop(double date);
+    void append_query_consumed_energy(double date);
 
     // Messages from the Scheduler to Batsim
     /**
@@ -331,76 +261,6 @@ public:
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
     void append_scheduler_finished_submitting_jobs(double date);
-
-    /**
-     * @brief Appends a QUERY_REQUEST event.
-     * @param[in] anything ...
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_query_request(void * anything,
-                              double date);
-
-
-
-
-
-    // Messages from Batsim to the Scheduler
-    /**
-     * @brief Appends a SIMULATION_STARTS event.
-     * @param[in] nb_resources The number of simulated resources
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_simulation_begins(int nb_resources, double date);
-
-    /**
-     * @brief Appends a SIMULATION_ENDS event.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_simulation_ends(double date);
-
-    /**
-     * @brief Appends a JOB_SUBMITTED event.
-     * @param[in] job_id The identifier of the submitted job.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_job_submitted(const std::string & job_id,
-                              double date);
-
-    /**
-     * @brief Appends a JOB_COMPLETED event.
-     * @param[in] job_id The identifier of the job that has completed.
-     * @param[in] job_status The job status
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_job_completed(const std::string & job_id,
-                              const std::string & job_status,
-                              double date);
-
-    /**
-     * @brief Appends a JOB_KILLED event.
-     * @param[in] job_ids The identifiers of the jobs that have been killed.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_job_killed(const std::vector<std::string> & job_ids,
-                           double date);
-
-    /**
-     * @brief Appends a RESOURCE_STATE_CHANGED event.
-     * @param[in] resources The resources whose state has changed.
-     * @param[in] new_state The state the machines are now in.
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_resource_state_changed(const MachineRange & resources,
-                                       const std::string & new_state,
-                                       double date);
-
-    /**
-     * @brief Appends a QUERY_REPLY (energy) event.
-     * @param[in] consumed_energy The total consumed energy in joules
-     * @param[in] date The event date. Must be greater than or equal to the previous event.
-     */
-    void append_query_reply_energy(double consumed_energy,
-                                   double date);
 
     // Management functions
     /**

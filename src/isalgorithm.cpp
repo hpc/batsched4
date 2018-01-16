@@ -24,6 +24,8 @@ void ISchedulingAlgorithm::clear_recent_data_structures()
     _machines_whose_pstate_changed_recently.clear();
     _recent_failstate_changes.clear();
     _nopped_recently = false;
+    _consumed_joules_updated_recently = false;
+    _consumed_joules = -1;
 }
 
 ISchedulingAlgorithm::ISchedulingAlgorithm(Workload *workload,
@@ -88,6 +90,13 @@ void ISchedulingAlgorithm::on_requested_call(double date)
 {
     (void) date;
     _nopped_recently = true;
+}
+
+void ISchedulingAlgorithm::on_answer_energy_consumption(double date, double consumed_joules)
+{
+    (void) date;
+    _consumed_joules = consumed_joules;
+    _consumed_joules_updated_recently = true;
 }
 
 ISchedulingAlgorithm::Failure::Failure(double date, MachineRange machines, bool failed) :

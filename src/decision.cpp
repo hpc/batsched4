@@ -98,6 +98,11 @@ void SchedulingDecision::add_scheduler_finished_submitting_jobs(double date)
     _proto_writer->append_scheduler_finished_submitting_jobs(date);
 }
 
+void SchedulingDecision::add_query_energy_consumption(double date)
+{
+    _proto_writer->append_query_consumed_energy(date);
+}
+
 void SchedulingDecision::clear()
 {
     _proto_writer->clear();

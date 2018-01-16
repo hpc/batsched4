@@ -25,6 +25,7 @@
 #include "algo/energy_bf_monitoring_period.hpp"
 #include "algo/energy_bf_monitoring_inertial_shutdown.hpp"
 #include "algo/energy_bf_machine_subpart_sleeper.hpp"
+#include "algo/energy_watcher.hpp"
 #include "algo/filler.hpp"
 #include "algo/killer.hpp"
 #include "algo/killer2.hpp"
@@ -56,6 +57,7 @@ int main(int argc, char ** argv)
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
+                                      "energy_watcher",
                                       "filler", "killer", "killer2", "random", "rejecter", "sleeper",
                                       "submitter"};
     const set<string> policies_set = {"basic", "contiguous"};
@@ -199,6 +201,8 @@ int main(int argc, char ** argv)
             algo = new EnergyBackfillingMonitoringInertialShutdown(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "energy_bf_subpart_sleeper")
             algo = new EnergyBackfillingMachineSubpartSleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "energy_watcher")
+            algo = new EnergyWatcher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "killer2")
@@ -359,6 +363,23 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             {
                 requested_callback_received = true;
                 algo->on_requested_call(current_date);
+            }
+            else if (event_type == "ANSWER")
+            {
+                for (auto itr = event_data.MemberBegin(); itr != event_data.MemberEnd(); ++itr)
+                {
+                    string key_value = itr->name.GetString();
+
+                    if (key_value == "consumed_energy")
+                    {
+                        double consumed_joules = itr->value.GetDouble();
+                        algo->on_answer_energy_consumption(current_date, consumed_joules);
+                    }
+                    else
+                    {
+                        PPK_ASSERT_ERROR(false, "Unknown ANSWER type received '%s'", key_value.c_str());
+                    }
+                }
             }
             else
             {
