@@ -28,6 +28,16 @@ public:
      */
     virtual void append_query_consumed_energy(double date) = 0;
 
+    /**
+     * @brief Appends an ANSWER (estimate_waiting_time) event.
+     * @param[in] job_id The identifier of the potential job. Must match the one received in the corresponding QUERY.
+     * @param[in] estimated_waiting_time The estimation of the waiting time of such a job.
+     * @param[in] date The event date. Must be greater than or equal to the previous event.
+     */
+    virtual void append_answer_estimate_waiting_time(const std::string & job_id,
+                                                     double estimated_waiting_time,
+                                                     double date) = 0;
+
     // Messages from the Scheduler to Batsim
     /**
      * @brief Appends a SUBMIT_JOB event.
@@ -170,6 +180,16 @@ public:
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
     void append_query_consumed_energy(double date);
+
+    /**
+     * @brief Appends an ANSWER (estimate_waiting_time) event.
+     * @param[in] job_id The identifier of the potential job. Must match the one received in the corresponding QUERY.
+     * @param[in] estimated_waiting_time The estimation of the waiting time of such a job.
+     * @param[in] date The event date. Must be greater than or equal to the previous event.
+     */
+    void append_answer_estimate_waiting_time(const std::string & job_id,
+                                             double estimated_waiting_time,
+                                             double date);
 
     // Messages from the Scheduler to Batsim
     /**

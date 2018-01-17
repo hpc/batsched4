@@ -103,6 +103,13 @@ void SchedulingDecision::add_query_energy_consumption(double date)
     _proto_writer->append_query_consumed_energy(date);
 }
 
+void SchedulingDecision::add_answer_estimate_waiting_time(const string &job_id,
+                                                          double estimated_waiting_time,
+                                                          double date)
+{
+    _proto_writer->append_answer_estimate_waiting_time(job_id, estimated_waiting_time, date);
+}
+
 void SchedulingDecision::clear()
 {
     _proto_writer->clear();

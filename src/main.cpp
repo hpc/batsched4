@@ -33,6 +33,7 @@
 #include "algo/rejecter.hpp"
 #include "algo/sleeper.hpp"
 #include "algo/submitter.hpp"
+#include "algo/wt_estimator.hpp"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -59,7 +60,7 @@ int main(int argc, char ** argv)
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
                                       "energy_watcher",
                                       "filler", "killer", "killer2", "random", "rejecter", "sleeper",
-                                      "submitter"};
+                                      "submitter", "waiting_time_estimator"};
     const set<string> policies_set = {"basic", "contiguous"};
     const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown",
                                           "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
@@ -215,6 +216,8 @@ int main(int argc, char ** argv)
             algo = new Sleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "submitter")
             algo = new Submitter(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "waiting_time_estimator")
+            algo = new WaitingTimeEstimator(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else
         {
             printf("Invalid scheduling variant '%s'. Available variants are %s\n", scheduling_variant.c_str(), variants_string.c_str());
@@ -378,6 +381,28 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     else
                     {
                         PPK_ASSERT_ERROR(false, "Unknown ANSWER type received '%s'", key_value.c_str());
+                    }
+                }
+            }
+            else if (event_type == "QUERY")
+            {
+                const r::Value & requests = event_data["requests"];
+
+                for (auto itr = requests.MemberBegin(); itr != requests.MemberEnd(); ++itr)
+                {
+                    string key_value = itr->name.GetString();
+
+                    if (key_value == "estimate_waiting_time")
+                    {
+                        const r::Value & request_object = itr->value;
+                        string job_id = request_object["job_id"].GetString();
+                        workload.add_job_from_json_object(request_object["job"], job_id, current_date);
+
+                        algo->on_query_estimate_waiting_time(current_date, job_id);
+                    }
+                    else
+                    {
+                        PPK_ASSERT_ERROR(false, "Unknown QUERY type received '%s'", key_value.c_str());
                     }
                 }
             }

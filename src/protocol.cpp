@@ -48,6 +48,37 @@ void JsonProtocolWriter::append_query_consumed_energy(double date)
     _events.PushBack(event, _alloc);
 }
 
+void JsonProtocolWriter::append_answer_estimate_waiting_time(const string &job_id,
+                                                             double estimated_waiting_time,
+                                                             double date)
+{
+    /* {
+      "timestamp": 10.0,
+      "type": "ANSWER",
+      "data": {
+        "estimate_waiting_time": {
+          "job_id": "workflow_submitter0!potential_job17",
+          "estimated_waiting_time": 56
+        }
+      }
+    } */
+
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
+    _last_date = date;
+    _is_empty = false;
+
+    Value estimation(rapidjson::kObjectType);
+    estimation.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
+    estimation.AddMember("estimated_waiting_time", Value().SetDouble(estimated_waiting_time), _alloc);
+
+    Value event(rapidjson::kObjectType);
+    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
+    event.AddMember("type", Value().SetString("ANSWER"), _alloc);
+    event.AddMember("data", Value().SetObject().AddMember("estimate_waiting_time", estimation, _alloc), _alloc);
+
+    _events.PushBack(event, _alloc);
+}
+
 void JsonProtocolWriter::append_submit_job(const string &job_id,
                                            double date,
                                            const string &job_description,

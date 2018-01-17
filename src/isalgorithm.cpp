@@ -21,6 +21,7 @@ void ISchedulingAlgorithm::clear_recent_data_structures()
     _jobs_released_recently.clear();
     _jobs_ended_recently.clear();
     _jobs_killed_recently.clear();
+    _jobs_whose_waiting_time_estimation_has_been_requested_recently.clear();
     _machines_whose_pstate_changed_recently.clear();
     _recent_failstate_changes.clear();
     _nopped_recently = false;
@@ -97,6 +98,12 @@ void ISchedulingAlgorithm::on_answer_energy_consumption(double date, double cons
     (void) date;
     _consumed_joules = consumed_joules;
     _consumed_joules_updated_recently = true;
+}
+
+void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const string &job_id)
+{
+    (void) date;
+    _jobs_whose_waiting_time_estimation_has_been_requested_recently.push_back(job_id);
 }
 
 ISchedulingAlgorithm::Failure::Failure(double date, MachineRange machines, bool failed) :

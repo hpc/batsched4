@@ -99,6 +99,13 @@ public:
     virtual void on_answer_energy_consumption(double date, double consumed_joules);
 
     /**
+     * @brief This function is called when a QUERY message about estimating waiting time of potential jobs is received.
+     * @param[in] date The date at which the QUERY message has been received
+     * @param[in] job_id The identifier of the potential job
+     */
+    virtual void on_query_estimate_waiting_time(double date, const std::string & job_id);
+
+    /**
      * @brief This function is called when some decisions need to be made
      * @param[in] date The current date
      * @param[in,out] update_info Some information to sort the jobs
@@ -150,6 +157,7 @@ protected:
     std::vector<std::string> _jobs_released_recently;
     std::vector<std::string> _jobs_ended_recently;
     std::vector<std::string> _jobs_killed_recently;
+    std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently;
     std::map<int, MachineRange> _machines_whose_pstate_changed_recently;
     std::vector<Failure> _recent_failstate_changes;
     bool _nopped_recently;
