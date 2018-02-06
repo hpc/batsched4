@@ -32,6 +32,7 @@
 #include "algo/random.hpp"
 #include "algo/rejecter.hpp"
 #include "algo/sleeper.hpp"
+#include "algo/sequencer.hpp"
 #include "algo/submitter.hpp"
 #include "algo/wt_estimator.hpp"
 
@@ -59,8 +60,8 @@ int main(int argc, char ** argv)
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
                                       "energy_watcher",
-                                      "filler", "killer", "killer2", "random", "rejecter", "sleeper",
-                                      "submitter", "waiting_time_estimator"};
+                                      "filler", "killer", "killer2", "random", "rejecter",
+                                      "sequencer", "sleeper", "submitter", "waiting_time_estimator"};
     const set<string> policies_set = {"basic", "contiguous"};
     const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown",
                                           "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
@@ -212,6 +213,8 @@ int main(int argc, char ** argv)
             algo = new Random(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "rejecter")
             algo = new Rejecter(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "sequencer")
+            algo = new Sequencer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "sleeper")
             algo = new Sleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "submitter")
