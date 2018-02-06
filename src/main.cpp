@@ -17,6 +17,7 @@
 #include "data_storage.hpp"
 
 #include "algo/conservative_bf.hpp"
+#include "algo/crasher.hpp"
 #include "algo/easy_bf.hpp"
 #include "algo/easy_bf_plot_liquid_load_horizon.hpp"
 #include "algo/energy_bf.hpp"
@@ -55,7 +56,7 @@ int main(int argc, char ** argv)
     double rjms_delay;
     bool call_make_decisions_on_single_nop;
 
-    const set<string> variants_set = {"conservative_bf", "easy_bf", "easy_bf_plot_liquid_load_horizon",
+    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
@@ -187,6 +188,8 @@ int main(int argc, char ** argv)
             algo = new Filler(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "conservative_bf")
             algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "crasher")
+            algo = new Crasher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf")
             algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf_plot_liquid_load_horizon")

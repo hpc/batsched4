@@ -16,9 +16,9 @@ public:
 
     virtual ~Sequencer();
 
-    void on_simulation_start(double date, const rapidjson::Value & batsim_config);
+    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
 
-    void on_simulation_end(double date);
+    virtual void on_simulation_end(double date);
 
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
