@@ -181,7 +181,7 @@ void Submitter::submit_delay_job(double delay, double date)
     char * buf_job = new char[buf_size];
     int nb_chars = snprintf(buf_job, buf_size,
              R"foo({"id":"%s", "subtime":%g, "walltime":%g, "res":%d, "profile":"%s"})foo",
-             unique_job_id.c_str(), submit_time, walltime, res, profile.c_str());
+             job_id.c_str(), submit_time, walltime, res, profile.c_str());
     PPK_ASSERT_ERROR(nb_chars < buf_size - 1);
 
     char * buf_profile = new char[buf_size];
