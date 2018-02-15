@@ -20,6 +20,13 @@ Filler::Filler(Workload *workload, SchedulingDecision * decision, Queue * queue,
                          "but got value=%g", fraction_of_machines_to_use);
     }
 
+    if (variant_options->HasMember("custom_mapping"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["custom_mapping"].IsBool(),
+                "Invalid options: 'custom_mapping' should be a boolean");
+        custom_mapping = (*variant_options)["custom_mapping"].GetBool();
+    }
+
     if (variant_options->HasMember("set_job_metadata"))
     {
         PPK_ASSERT_ERROR((*variant_options)["set_job_metadata"].IsBool(),
@@ -27,6 +34,7 @@ Filler::Filler(Workload *workload, SchedulingDecision * decision, Queue * queue,
         set_job_metadata = (*variant_options)["set_job_metadata"].GetBool();
     }
 
+    printf("custom_mapping: %s\n", custom_mapping?"true":"false");
     printf("fraction_of_machines_to_use: %g\n", fraction_of_machines_to_use);
     printf("set_job_metadata: %d\n", set_job_metadata);
 }
@@ -101,12 +109,19 @@ void Filler::fill(double date)
             PPK_ASSERT_ERROR(nb_machines_to_allocate > 0 && nb_machines_to_allocate <= job->nb_requested_resources);
             used_machines = used_machines.left(nb_machines_to_allocate);
 
-            vector<int> executor_to_allocated_resource_mapping;
-            executor_to_allocated_resource_mapping.resize(job->nb_requested_resources);
-            for (int i = 0; i < job->nb_requested_resources; ++i)
-                executor_to_allocated_resource_mapping[i] = i % nb_machines_to_allocate;
+            if (custom_mapping)
+            {
+                vector<int> executor_to_allocated_resource_mapping;
+                executor_to_allocated_resource_mapping.resize(job->nb_requested_resources);
+                for (int i = 0; i < job->nb_requested_resources; ++i)
+                    executor_to_allocated_resource_mapping[i] = i % nb_machines_to_allocate;
+                _decision->add_execute_job(job->id, used_machines, date, executor_to_allocated_resource_mapping);
+            }
+            else
+            {
+                _decision->add_execute_job(job->id, used_machines, date);
+            }
 
-            _decision->add_execute_job(job->id, used_machines, date, executor_to_allocated_resource_mapping);
             current_allocations[job->id] = used_machines;
 
             available_machines.remove(used_machines);
