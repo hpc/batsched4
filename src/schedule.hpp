@@ -68,6 +68,11 @@ public:
                                           ResourceSelector * selector,
                                           bool assert_insertion_successful = true);
 
+  // The coveted query_wait method, bringing an answer (as a double, defined as
+  // time away from now) to the question "when will I be able to schedule a job
+  // using +size+ processors for +time+ units of time?".
+    double query_wait(int size, Rational time, ResourceSelector * selector);
+  
     Rational first_slice_begin() const;
     Rational finite_horizon() const;
     Rational infinite_horizon() const;

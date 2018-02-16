@@ -302,6 +302,77 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time(const Job *job, Ration
     return add_job_first_fit_after_time_slice(job, second_slice_after_split, selector, assert_insertion_successful);
 }
 
+
+double Schedule::query_wait(int size, Rational time, ResourceSelector * selector)
+{
+  // very similar to job insertions...
+  
+  Job fake_job;
+  fake_job.id="fake";
+  fake_job.unique_number=-1;
+  fake_job.nb_requested_resources=size;
+  fake_job.walltime= time;
+  
+    // Let's scan the profile for an anchor point.
+    // An anchor point is a point where enough processors are available to run this job
+  for (auto pit = _profile.begin(); pit != _profile.end(); ++pit)
+    {
+      // If the current time slice is an anchor point
+      if ((int)pit->nb_available_machines >= size)
+        {
+	  // Let's continue to scan the profile to ascertain that
+	  // the machines remain available until the job's expected termination
+	  
+	  int availableMachinesCount = pit->nb_available_machines;
+	  Rational totalTime = pit->length;
+	  
+	  // If the job fits in the current time slice (temporarily speaking)
+	  if (totalTime >= time)
+	    {
+	      MachineRange used_machines;
+	      
+	      // If the job fits in the current time slice (according to the fitting function)
+	      if (selector->fit(&fake_job, pit->available_machines, used_machines))
+                {
+		  return static_cast<double>(pit->begin);
+                }
+            }
+            else
+            {
+                // TODO : merge this big else with its if, as the "else" is a more general case of the "if"
+                // The job does not fit in the current time slice (temporarily speaking)
+                auto availableMachines = pit->available_machines;
+
+                auto pit2 = pit;
+                ++pit2;
+
+                for (; (pit2 != _profile.end()) && ((int)pit2->nb_available_machines >= size); ++pit2)
+                {
+                    availableMachines &= pit2->available_machines;
+                    availableMachinesCount = (int) availableMachines.size();
+                    totalTime += pit2->length;
+
+                    if (availableMachinesCount < size) // We don't have enough machines to run the job
+                        break;
+                    else if (totalTime >= time) // The job fits in the slices [pit, pit2[ (temporarily speaking)
+                    {
+
+		        MachineRange used_machines;
+			
+		        // If the job fits in the current time slice (according to the fitting function)
+                        if (selector->fit(&fake_job, availableMachines, used_machines))
+                        {
+                          return static_cast<double>(pit->begin);
+                        }
+                    }
+                }
+            }
+        }
+    }
+  
+  return -1;
+}
+
 Rational Schedule::first_slice_begin() const
 {
     PPK_ASSERT_ERROR(_profile.size() > 0);
