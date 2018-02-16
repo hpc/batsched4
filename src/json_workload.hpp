@@ -6,6 +6,9 @@
 
 #include "exact_numbers.hpp"
 #include "data_storage.hpp"
+#include "machine_range.hpp"
+
+struct JobAlloc;
 
 struct Job
 {
@@ -16,7 +19,19 @@ struct Job
     bool has_walltime = true;
     double submission_time = 0;
     double completion_time = -1;
+    mutable std::map<Rational, JobAlloc*> allocations;
 };
+
+struct JobAlloc
+{
+  Rational begin;
+  Rational end;
+  bool started_in_first_slice;
+  bool has_been_inserted = true;
+  const Job * job;
+  MachineRange used_machines;
+};
+
 
 struct JobComparator
 {
