@@ -48,8 +48,19 @@ void Schedule::update_first_slice(Rational current_time)
     PPK_ASSERT_ERROR(current_time >= slice->begin, "current_time=%g, slice->begin=%g", (double)current_time, (double)slice->begin);
     PPK_ASSERT_ERROR(current_time <= slice->end, "current_time=%g, slice->end=%g", (double)current_time, (double)slice->end);
 
+    Rational old_time = slice->begin;
     slice->begin = current_time;
     slice->length = slice->end - slice->begin;
+    for(auto it=slice->allocated_jobs.begin();it!=slice->allocated_jobs.end();++it)
+      {
+	const Job *job_ref = (it->first);
+	auto alloc_it = job_ref->allocations.find(old_time);
+
+	if (alloc_it != job_ref->allocations.end()) {
+	  job_ref->allocations[current_time]= alloc_it->second;
+	  job_ref->allocations.erase(alloc_it);
+	}
+      }
 }
 
 void Schedule::update_first_slice_removing_remaining_jobs(Rational current_time)
@@ -157,16 +168,28 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
             if (totalTime >= job->walltime)
             {
                 // Let's create the job allocation
-                JobAlloc alloc;
+	      Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
 
                 // If the job fits in the current time slice (according to the fitting function)
-                if (selector->fit(job, pit->available_machines, alloc.used_machines))
+                if (selector->fit(job, pit->available_machines, alloc->used_machines))
                 {
-                    alloc.begin = pit->begin;
-                    alloc.end = alloc.begin + job->walltime;
-                    alloc.started_in_first_slice = (pit == _profile.begin()) ? true : false;
-                    alloc.job = job;
-
+	  	    Rational beginning = pit->begin;
+		    auto alloc_it = job->allocations.find(beginning);
+		    if(alloc_it == job->allocations.end())
+		    {
+                        alloc->begin = beginning;
+			alloc->end = alloc->begin + job->walltime;
+			alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
+			alloc->job = job;
+			job->allocations[beginning] = alloc;
+		    }
+		    else
+		    {
+		      //TODO check if this is really what we need !!!
+		      delete alloc;
+		      return *(alloc_it->second);
+		    }
+		    
                     // Let's split the current time slice if needed
                     TimeSliceIterator first_slice_after_split;
                     TimeSliceIterator second_slice_after_split;
@@ -174,9 +197,9 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                     split_slice(pit, split_date, first_slice_after_split, second_slice_after_split);
 
                     // Let's remove the allocated machines from the available machines of the time slice
-                    first_slice_after_split->available_machines.remove(alloc.used_machines);
-                    first_slice_after_split->allocated_jobs[job] = alloc.used_machines;
+                    first_slice_after_split->available_machines.remove(alloc->used_machines);
 		    first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
+                    first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
 
                     if (_debug)
                     {
@@ -187,7 +210,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                     }
 
                     // The job has been placed, we can leave this function
-                    return alloc;
+                    return *alloc;
                 }
             }
             else
@@ -210,23 +233,24 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                     else if (totalTime >= job->walltime) // The job fits in the slices [pit, pit2[ (temporarily speaking)
                     {
                         // Let's create the job allocation
-                        JobAlloc alloc;
+                        JobAlloc *alloc = new JobAlloc;
 
                         // If the job fits in the current time slice (according to the fitting function)
-                        if (selector->fit(job, availableMachines, alloc.used_machines))
+                        if (selector->fit(job, availableMachines, alloc->used_machines))
                         {
-                            alloc.begin = pit->begin;
-                            alloc.end = alloc.begin + job->walltime;
-                            alloc.started_in_first_slice = (pit == _profile.begin()) ? true : false;
-                            alloc.job = job;
-
+                            alloc->begin = pit->begin;
+                            alloc->end = alloc->begin + job->walltime;
+                            alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
+                            alloc->job = job;
+			    job->allocations[alloc->begin] = alloc;
+  
                             // Let's remove the used machines from the slices before pit2
                             auto pit3 = pit;
                             for (; pit3 != pit2; ++pit3)
                             {
-                                pit3->available_machines -= alloc.used_machines;
-                                pit3->allocated_jobs[job] = alloc.used_machines;
+                                pit3->available_machines -= alloc->used_machines;
 				pit3->nb_available_machines -= job->nb_requested_resources;
+				pit3->allocated_jobs[job] = alloc->used_machines;
                             }
 
                             // Let's split the current time slice if needed
@@ -236,9 +260,9 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                             split_slice(pit2, split_date, first_slice_after_split, second_slice_after_split);
 
                             // Let's remove the allocated machines from the available machines of the time slice
-                            first_slice_after_split->available_machines -= alloc.used_machines;
-                            first_slice_after_split->allocated_jobs[job] = alloc.used_machines;
+                            first_slice_after_split->available_machines -= alloc->used_machines;
                             first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
+                            first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
 
                             if (_debug)
                             {
@@ -249,7 +273,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                             }
 
                             // The job has been placed, we can leave this function
-                            return alloc;
+                            return *alloc;
                         }
                     }
                 }
