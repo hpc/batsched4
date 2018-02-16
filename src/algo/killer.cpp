@@ -70,14 +70,6 @@ void Killer::make_decisions(double date,
         current_allocations.erase(ended_job_id);
     }
 
-    for (const std::string & killed_job_id : _jobs_killed_recently)
-    {
-        int nb_available_before = available_machines.size();
-        available_machines.insert(current_allocations[killed_job_id]);
-        PPK_ASSERT_ERROR(nb_available_before + (*_workload)[killed_job_id]->nb_requested_resources == (int)available_machines.size());
-        current_allocations.erase(killed_job_id);
-    }
-
     printf("Date: %g. Available machines: %s\n", date, available_machines.to_string_brackets().c_str());
 
     // Let's handle recently released jobs
