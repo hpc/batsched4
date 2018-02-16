@@ -18,6 +18,7 @@ Schedule::Schedule(int nb_machines, Rational initial_time)
     slice.end = 1e19; // greater than the number of seconds elapsed since the big bang
     slice.length = slice.end - slice.begin;
     slice.available_machines.insert(MachineRange::ClosedInterval(0, nb_machines - 1));
+    slice.nb_available_machines = nb_machines;
     PPK_ASSERT(slice.available_machines.size() == (unsigned int) nb_machines);
 
     _profile.push_back(slice);
@@ -137,7 +138,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
     for (auto pit = first_time_slice; pit != _profile.end(); ++pit)
     {
         // If the current time slice is an anchor point
-        if ((int)pit->available_machines.size() >= job->nb_requested_resources)
+        if ((int)pit->nb_available_machines >= job->nb_requested_resources)
         {
             // Let's continue to scan the profile to ascertain that
             // the machines remain available until the job's expected termination
@@ -149,7 +150,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                 const_cast<Job*>(job)->walltime = infinite_horizon() - pit->begin;
             }
 
-            int availableMachinesCount = pit->available_machines.size();
+            int availableMachinesCount = pit->nb_available_machines;
             Rational totalTime = pit->length;
 
             // If the job fits in the current time slice (temporarily speaking)
@@ -175,6 +176,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                     // Let's remove the allocated machines from the available machines of the time slice
                     first_slice_after_split->available_machines.remove(alloc.used_machines);
                     first_slice_after_split->allocated_jobs[job] = alloc.used_machines;
+		    first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
 
                     if (_debug)
                     {
@@ -197,7 +199,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                 auto pit2 = pit;
                 ++pit2;
 
-                for (; (pit2 != _profile.end()) && ((int)pit2->available_machines.size() >= job->nb_requested_resources); ++pit2)
+                for (; (pit2 != _profile.end()) && ((int)pit2->nb_available_machines >= job->nb_requested_resources); ++pit2)
                 {
                     availableMachines &= pit2->available_machines;
                     availableMachinesCount = (int) availableMachines.size();
@@ -224,6 +226,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                             {
                                 pit3->available_machines -= alloc.used_machines;
                                 pit3->allocated_jobs[job] = alloc.used_machines;
+				pit3->nb_available_machines -= job->nb_requested_resources;
                             }
 
                             // Let's split the current time slice if needed
@@ -235,6 +238,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                             // Let's remove the allocated machines from the available machines of the time slice
                             first_slice_after_split->available_machines -= alloc.used_machines;
                             first_slice_after_split->allocated_jobs[job] = alloc.used_machines;
+                            first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
 
                             if (_debug)
                             {
@@ -841,6 +845,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
         if (pit->allocated_jobs.erase(job) == 1)
         {
             pit->available_machines.insert(job_machines);
+            pit->nb_available_machines += job->nb_requested_resources;
 
             // If the slice is not the first one, let's try to merge it with its preceding slice
             if (pit != _profile.begin())
@@ -869,6 +874,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             for(++pit; pit != _profile.end() && pit->allocated_jobs.erase(job) == 1; ++pit)
             {
                 pit->available_machines.insert(job_machines);
+		pit->nb_available_machines += job->nb_requested_resources;
 
                 // If the slice is not the first one, let's try to merge it with its preceding slice
                 if (pit != _profile.begin())
