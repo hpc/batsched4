@@ -49,6 +49,25 @@ namespace r = rapidjson;
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
          Workload &workload, bool call_make_decisions_on_single_nop = true);
 
+/** @def STR_HELPER(x)
+ *  @brief Helper macro to retrieve the string view of a macro.
+ */
+#define STR_HELPER(x) #x
+
+/** @def STR(x)
+ *  @brief Macro to get a const char* from a macro
+ */
+#define STR(x) STR_HELPER(x)
+
+/** @def BATSCHED_VERSION
+ *  @brief What batsched --version should return.
+ *
+ *  It is either set by CMake or set to vUNKNOWN_PLEASE_COMPILE_VIA_CMAKE
+**/
+#ifndef BATSCHED_VERSION
+    #define BATSCHED_VERSION vUNKNOWN_PLEASE_COMPILE_VIA_CMAKE
+#endif
+
 int main(int argc, char ** argv)
 {
     const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_plot_liquid_load_horizon",
@@ -83,6 +102,7 @@ int main(int argc, char ** argv)
     args::ValueFlag<string> flag_variant_options_filepath(parser, "options-filepath", "Sets the scheduling variant options as the content of the given filepath. Overrides the variant_options options.", {"variant_options_filepath"}, "");
     args::ValueFlag<string> flag_queue_order(parser, "order", "Sets the queue order. Available values are " + queue_orders_string, {'o', "queue_order"}, "fcfs");
     args::ValueFlag<bool> flag_call_make_decisions_on_single_nop(parser, "flag", "If set to true, make_decisions will be called after single NOP messages.", {"call_make_decisions_on_single_nop"}, true);
+    args::Flag flag_version(parser, "version", "Shows batsched version", {"version"});
 
     try
     {
@@ -104,7 +124,6 @@ int main(int argc, char ** argv)
                                             % flag_scheduling_variant.Name()
                                             % flag_scheduling_variant.Get()
                                             % variants_string));
-
     }
     catch(args::Help)
     {
@@ -126,6 +145,12 @@ int main(int argc, char ** argv)
     {
         printf("%s\n", e.what());
         return 1;
+    }
+
+    if (flag_version)
+    {
+        printf("%s\n", STR(BATSCHED_VERSION));
+        return 0;
     }
 
     string socket_endpoint = flag_socket_endpoint.Get();
