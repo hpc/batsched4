@@ -6,8 +6,11 @@
 
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 
 #include <rapidjson/document.h>
+
+#include "external/taywee_args.hpp"
 
 #include "isalgorithm.hpp"
 #include "decision.hpp"
@@ -38,7 +41,8 @@
 #include "algo/wt_estimator.hpp"
 
 using namespace std;
-namespace po = boost::program_options;
+using namespace boost;
+
 namespace n = network;
 namespace r = rapidjson;
 
@@ -47,15 +51,6 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 
 int main(int argc, char ** argv)
 {
-    string socket_endpoint;
-    string scheduling_variant;
-    string selection_policy;
-    string queue_order;
-    string variant_options;
-    string variant_options_filepath;
-    double rjms_delay;
-    bool call_make_decisions_on_single_nop;
-
     const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
@@ -76,39 +71,67 @@ int main(int argc, char ** argv)
     Queue * queue = nullptr;
     SortableJobOrder * order = nullptr;
 
+    args::ArgumentParser parser("A Batsim-compatible scheduler in C++.");
+    args::HelpFlag flag_help(parser, "help", "Display this help menu", {'h', "help"});
+    args::ValueFlag<double> flag_rjms_delay(parser, "delay", "Sets the expected time that the RJMS takes to do some things like killing a job", {'d', "rjms_delay"}, 5.0);
+    args::ValueFlag<string> flag_selection_policy(parser, "policy", "Sets the resource selection policy. Available values are " + policies_string, {'p', "policy"}, "basic");
+    args::ValueFlag<string> flag_socket_endpoint(parser, "endpoint", "Sets the socket endpoint.", {'s', "socket-endpoint"}, "tcp://*:28000");
+    args::ValueFlag<string> flag_scheduling_variant(parser, "variant", "Sets the scheduling variant. Available values are " + variants_string, {'v', "variant"}, "filler");
+    args::ValueFlag<string> flag_variant_options(parser, "options", "Sets the scheduling variant options. Must be formatted as a JSON object.", {"variant_options"}, "{}");
+    args::ValueFlag<string> flag_variant_options_filepath(parser, "options-filepath", "Sets the scheduling variant options as the content of the given filepath. Overrides the variant_options options.", {"variant_options_filepath"}, "");
+    args::ValueFlag<string> flag_queue_order(parser, "order", "Sets the queue order. Available values are " + queue_orders_string, {'o', "queue_order"}, "fcfs");
+    args::ValueFlag<bool> flag_call_make_decisions_on_single_nop(parser, "flag", "If set to true, make_decisions will be called after single NOP messages.", {"call_make_decisions_on_single_nop"}, true);
+
     try
     {
-        po::options_description desc("Allowed options");
-        desc.add_options()
-            ("rjms_delay,d", po::value<double>(&rjms_delay)->default_value(5.0), "sets the expected time that the RJMS takes to do some things like killing a job")
-            ("help,h", "produce help message")
-            ("policy,p", po::value<string>(&selection_policy)->default_value("basic"), string("sets resource selection policy. Available values are " + policies_string).c_str())
-            ("socket-endpoint,s", po::value<string>(&socket_endpoint)->default_value("tcp://*:28000"), "sets socket endpoint")
-            ("variant,v", po::value<string>(&scheduling_variant)->default_value("filler"), string("sets scheduling variant. Available values are " + variants_string).c_str())
-            ("variant_options", po::value<string>(&variant_options)->default_value("{}"), "sets scheduling variant options. Must be formatted as a JSON object.")
-            ("variant_options_filepath", po::value<string>(&variant_options_filepath)->default_value(""), "sets scheduling variants options as the content of the given filepath. Overrides the variant_options option.")
-            ("queue_order,o", po::value<string>(&queue_order)->default_value("fcfs"), string("sets queue order. Available values are " + queue_orders_string).c_str())
-            ("call_make_decisions_on_single_nop", po::value<bool>(&call_make_decisions_on_single_nop)->default_value(true), "If set to true, make_decisions will be called after single NOP messages")
-        ;
+        parser.ParseCLI(argc, argv);
 
-        po::variables_map vm;
-        po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
+        if (flag_rjms_delay.Get() < 0)
+            throw args::ValidationError(str(format("Invalid '%1%' parameter value (%2%): Must be non-negative.")
+                                            % flag_rjms_delay.Name()
+                                            % flag_rjms_delay.Get()));
 
-        if (vm.count("help"))
-        {
-            printf("Usage : %s [options]\n", argv[0]);
-            cout << desc << "\n";
-            return 1;
-        }
+        if (queue_orders_set.find(flag_queue_order.Get()) == queue_orders_set.end())
+            throw args::ValidationError(str(format("Invalid '%1%' value (%2%): Not in %3%")
+                                            % flag_queue_order.Name()
+                                            % flag_queue_order.Get()
+                                            % queue_orders_string));
 
-        po::notify(vm);
+        if (variants_set.find(flag_scheduling_variant.Get()) == variants_set.end())
+            throw args::ValidationError(str(format("Invalid '%1%' value (%2%): Not in %3%")
+                                            % flag_scheduling_variant.Name()
+                                            % flag_scheduling_variant.Get()
+                                            % variants_string));
 
-        if (rjms_delay < 0)
-        {
-            printf("Invalid RJMS delay parameter (%g). It must be non-negative.\n", rjms_delay);
-            return 1;
-        }
+    }
+    catch(args::Help)
+    {
+        parser.helpParams.addDefault = true;
+        printf("%s", parser.Help().c_str());
+        return 0;
+    }
+    catch(args::ParseError e)
+    {
+        printf("%s\n", e.what());
+        return 1;
+    }
+    catch(args::ValidationError e)
+    {
+        printf("%s\n", e.what());
+        return 1;
+    }
 
+    string socket_endpoint = flag_socket_endpoint.Get();
+    string scheduling_variant = flag_scheduling_variant.Get();
+    string selection_policy = flag_selection_policy.Get();
+    string queue_order = flag_queue_order.Get();
+    string variant_options = flag_variant_options.Get();
+    string variant_options_filepath = flag_variant_options_filepath.Get();
+    double rjms_delay = flag_rjms_delay.Get();
+    bool call_make_decisions_on_single_nop = flag_call_make_decisions_on_single_nop.Get();
+
+    try
+    {
         // Workload creation
         Workload w;
         w.set_rjms_delay(rjms_delay);
@@ -133,11 +156,6 @@ int main(int argc, char ** argv)
             order = new AscendingWalltimeOrder;
         else if (queue_order == "desc_walltime")
             order = new DescendingWalltimeOrder;
-        else
-        {
-            printf("Invalid queue order '%s'. Available options are %s\n", queue_order.c_str(), queue_orders_string.c_str());
-            return 1;
-        }
 
         queue = new Queue(order);
 
@@ -224,11 +242,6 @@ int main(int argc, char ** argv)
             algo = new Submitter(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "waiting_time_estimator")
             algo = new WaitingTimeEstimator(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
-        else
-        {
-            printf("Invalid scheduling variant '%s'. Available variants are %s\n", scheduling_variant.c_str(), variants_string.c_str());
-            return 1;
-        }
 
         // Network
         Network n;
