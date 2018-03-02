@@ -73,6 +73,8 @@ int main(int argc, char ** argv)
 
     args::ArgumentParser parser("A Batsim-compatible scheduler in C++.");
     args::HelpFlag flag_help(parser, "help", "Display this help menu", {'h', "help"});
+    args::CompletionFlag completion(parser, {"complete"});
+
     args::ValueFlag<double> flag_rjms_delay(parser, "delay", "Sets the expected time that the RJMS takes to do some things like killing a job", {'d', "rjms_delay"}, 5.0);
     args::ValueFlag<string> flag_selection_policy(parser, "policy", "Sets the resource selection policy. Available values are " + policies_string, {'p', "policy"}, "basic");
     args::ValueFlag<string> flag_socket_endpoint(parser, "endpoint", "Sets the socket endpoint.", {'s', "socket-endpoint"}, "tcp://*:28000");
@@ -108,6 +110,11 @@ int main(int argc, char ** argv)
     {
         parser.helpParams.addDefault = true;
         printf("%s", parser.Help().c_str());
+        return 0;
+    }
+    catch (args::Completion & e)
+    {
+        printf("%s", e.what());
         return 0;
     }
     catch(args::ParseError e)
