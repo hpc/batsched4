@@ -92,3 +92,20 @@ if (enable_warnings)
         set_property(TARGET batsched APPEND_STRING PROPERTY COMPILE_FLAGS ${warning_flags})
     endif()
 endif()
+
+####################
+# Batsched version #
+####################
+set(default_batsched_version "v1.1.0")
+include(GetGitRevisionDescription)
+git_describe(batsched_version)
+message(STATUS "Batsched version from git: ${batsched_version}")
+
+if(NOT((${batsched_version} STREQUAL "GIT-NOTFOUND") OR
+       (${batsched_version} STREQUAL "HEAD-HASH-NOTFOUND")))
+    add_definitions(-DBATSCHED_VERSION=${batsched_version})
+else()
+    message(WARNING "Cannot retrieve Batsched version from git. "
+                    "Using default version ${default_batsched_version}")
+    add_definitions(-DBATSCHED_VERSION=${default_batsched_version})
+endif()
