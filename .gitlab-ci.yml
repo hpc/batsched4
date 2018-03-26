@@ -25,32 +25,32 @@ build:
 ###############################################################################
 # Test stage
 ###############################################################################
-batsim_tests:
-  stage: test
-  script:
-    # Remove nix-installed batsched
-    - nix-env -e batsched-v1.1.0
+# batsim_tests:
+#   stage: test
+#   script:
+#     # Remove nix-installed batsched
+#     - nix-env -e batsched-v1.1.0
 
-    # Install ci-built batsched
-    - export PATH="${PATH}:${CI_PROJECT_DIR}/build"
+#     # Install ci-built batsched
+#     - export PATH="${PATH}:${CI_PROJECT_DIR}/build"
 
-    # Install and run the redis server
-    - nix-env -i redis
-    - |
-      redis-server>/dev/null &
-      while ! nc -z localhost 6379; do
-        sleep 1
-      done
+#     # Install and run the redis server
+#     - nix-env -i redis
+#     - |
+#       redis-server>/dev/null &
+#       while ! nc -z localhost 6379; do
+#         sleep 1
+#       done
 
-    # Prepare Batsim directory to generate the tests
-    - mkdir -p /batsim/build
-    - cd /batsim/build
-    - nix-shell /datamovepkgs -A batsim --command 'cmake ..'
+#     # Prepare Batsim directory to generate the tests
+#     - mkdir -p /batsim/build
+#     - cd /batsim/build
+#     - nix-shell /datamovepkgs -A batsim --command 'cmake ..'
 
 
-    # Finally run the tests
-    - cd /batsim
-    - echo "Batsim tests are not run yet."
-    - batsched --version
-  dependencies:
-    - build
+#     # Finally run the tests
+#     - cd /batsim
+#     - echo "Batsim tests are not run yet."
+#     - batsched --version
+#   dependencies:
+#     - build
