@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <signal.h>
 
+#include <stdexcept>
+
 Crasher::CrashType Crasher::crash_type_from_string(const std::string &str)
 {
     if (str == "segmentation_fault") return CrashType::SEGMENTATION_FAULT;
@@ -32,6 +34,8 @@ std::string Crasher::crash_type_to_string(Crasher::CrashType type)
     case CrashType::ABORT: return "abort";
     case CrashType::SUSPEND_PROCESS: return "suspend_process";
     }
+
+    throw std::invalid_argument("Unknown crash type");
 }
 
 Crasher::Crasher(Workload *workload,
