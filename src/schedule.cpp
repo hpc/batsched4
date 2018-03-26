@@ -174,21 +174,12 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                 if (selector->fit(job, pit->available_machines, alloc->used_machines))
                 {
 	  	    Rational beginning = pit->begin;
-		    auto alloc_it = job->allocations.find(beginning);
-		    if(alloc_it == job->allocations.end())
-		    {
                         alloc->begin = beginning;
 			alloc->end = alloc->begin + job->walltime;
 			alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
 			alloc->job = job;
 			job->allocations[beginning] = alloc;
-		    }
-		    else
-		    {
-		      //TODO check if this is really what we need !!!
-		      delete alloc;
-		      return *(alloc_it->second);
-		    }
+
 		    
                     // Let's split the current time slice if needed
                     TimeSliceIterator first_slice_after_split;
