@@ -22,6 +22,7 @@
 #include "algo/conservative_bf.hpp"
 #include "algo/crasher.hpp"
 #include "algo/easy_bf.hpp"
+#include "algo/easy_bf_fast.hpp"
 #include "algo/easy_bf_plot_liquid_load_horizon.hpp"
 #include "algo/energy_bf.hpp"
 #include "algo/energy_bf_dicho.hpp"
@@ -70,7 +71,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 
 int main(int argc, char ** argv)
 {
-    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_plot_liquid_load_horizon",
+    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_fast",
+                                      "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
@@ -242,6 +244,8 @@ int main(int argc, char ** argv)
             algo = new Crasher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf")
             algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "easy_bf_fast")
+            algo = new EasyBackfillingFast(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf_plot_liquid_load_horizon")
             algo = new EasyBackfillingPlotLiquidLoadHorizon(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "energy_bf")
