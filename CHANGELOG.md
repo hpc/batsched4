@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning][semver].
 ## [Unreleased]
 
 [//]: =========================================================================
+## [1.2.0] - 2018-04-09 - For [Batsim v2.0.0][Batsim v2.0.0]
+### Added
+- New algorithms:
+  - ``easy_bf_fast``, which is an efficient (usual) implementation of EASY
+    backfilling. In contrast with the robust and general ``easy_bf``
+    implementation, this one does floating-point computation, only handles
+    jobs will walltimes, use ad-hoc structures for its simple backfilling
+    mechanism (rather than a general-purpose 2D partition), only handles
+    the FCFS queue order (rather than sorting the queue at each event),
+    uses the first reservation of the priority job (rather than compressing
+    the reservation as soon as possible at each event), and tries to only
+    call the needed code depending on which event occured.
+  - ``fcfs_fast``, which is essentially ``easy_bf_fast`` without backfilling.
+
+[//]: =========================================================================
 ## [1.1.0] - 2018-03-03 - For [Batsim v2.0.0][Batsim v2.0.0]
 ### Added
 - Added minimal bash completion via [taywee/args][taywee/args].
@@ -46,5 +61,6 @@ Initial release.
 
 [Batsim v2.0.0]: https://github.com/oar-team/batsim/blob/master/doc/changelog.md#200---2018-02-20
 
-[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.1.0...master
+[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.0...master
+[1.2.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.1.0...v1.2.0
 [1.1.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.0.0...v1.1.0
