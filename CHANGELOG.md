@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning][semver].
 
 [//]: =========================================================================
 ## [Unreleased]
+### Fixed
+- The `sleeper` algorithm continued to send requests when the simulation was
+  finished, which should now be fixed.
 
 [//]: =========================================================================
 ## [1.2.0] - 2018-04-09 - For [Batsim v2.0.0][Batsim v2.0.0]

@@ -40,6 +40,8 @@ void Sleeper::on_simulation_start(double date, const rapidjson::Value &batsim_co
 void Sleeper::on_simulation_end(double date)
 {
     (void) date;
+
+    simulation_finished = true;
 }
 
 void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *update_info, SortableJobOrder::CompareInformation *compare_info)
@@ -175,7 +177,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
             }
         }
     }
-    else
+    else if (!simulation_finished)
     {
         // There are no jobs to compute at the moment.
 
