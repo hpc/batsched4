@@ -98,6 +98,13 @@ void Submitter::make_decisions(double date,
     {
         const Job * new_job = (*_workload)[new_job_id];
 
+        if (set_job_metadata)
+        {
+            _decision->add_set_job_metadata(new_job_id,
+                                            "just some metadata for job " + new_job_id,
+                                            date);
+        }
+
         if (new_job->nb_requested_resources > _nb_machines)
             _decision->add_reject_job(new_job_id, date);
         else
