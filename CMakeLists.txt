@@ -96,7 +96,7 @@ endif()
 ####################
 # Batsched version #
 ####################
-set(default_batsched_version "v1.2.0")
+set(default_batsched_version "v1.2.1")
 include(GetGitRevisionDescription)
 git_describe(batsched_version)
 message(STATUS "Batsched version from git: ${batsched_version}")
