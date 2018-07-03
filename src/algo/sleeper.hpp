@@ -36,4 +36,5 @@ private:
 
     int compute_pstate;
     int sleep_pstate;
+    bool simulation_finished = false;
 };

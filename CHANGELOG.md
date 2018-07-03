@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning][semver].
 ## [Unreleased]
 
 [//]: =========================================================================
+## [1.2.1] - 2018-07-03 - For [Batsim v2.0.0][Batsim v2.0.0]
+### Fixed
+- The `sleeper` algorithm continued to send requests when the simulation was
+  finished, which should now be fixed.
+- The `easy_bf_fast` algorithm rejected jobs that requested all the machines
+  if they could not be executed directly after being submitted
+  ([issue 6](https://gitlab.inria.fr/batsim/batsched/issues/6)).
+
+### Changed
+- The `submitter` algorithm now also sets metadata for usual jobs.
+
+[//]: =========================================================================
 ## [1.2.0] - 2018-04-09 - For [Batsim v2.0.0][Batsim v2.0.0]
 ### Added
 - New algorithms:
@@ -61,6 +73,7 @@ Initial release.
 
 [Batsim v2.0.0]: https://github.com/oar-team/batsim/blob/master/doc/changelog.md#200---2018-02-20
 
-[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.0...master
+[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.1...master
+[1.2.1]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.0...v1.2.1
 [1.2.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.1.0...v1.2.0
 [1.1.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.0.0...v1.1.0

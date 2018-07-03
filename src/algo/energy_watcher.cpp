@@ -49,7 +49,7 @@ void EnergyWatcher::make_decisions(double date,
 
     if (_consumed_joules_updated_recently)
     {
-        PPK_ASSERT_ERROR(_consumed_joules >= _previous_energy,
+        PPK_ASSERT_ERROR(_consumed_joules - _previous_energy >= -1e-6,
                          "Energy consumption inconsistency: it should be non-decreasing. "
                          "Received %g but previous value is %g.",
                          _consumed_joules, _previous_energy);
