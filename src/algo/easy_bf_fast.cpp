@@ -200,7 +200,7 @@ void EasyBackfillingFast::make_decisions(double date,
             // The job is too big to fit now.
 
             // Is the job valid on this platform?
-            if (new_job->nb_requested_resources >= _nb_machines)
+            if (new_job->nb_requested_resources > _nb_machines)
             {
                 _decision->add_reject_job(new_job_id, date);
             }
