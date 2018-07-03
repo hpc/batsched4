@@ -33,15 +33,7 @@ public:
     typedef std::list<TimeSlice>::iterator TimeSliceIterator;
     typedef std::list<TimeSlice>::const_iterator TimeSliceConstIterator;
 
-    struct JobAlloc
-    {
-        Rational begin;
-        Rational end;
-        bool started_in_first_slice;
-        bool has_been_inserted = true;
-        const Job * job;
-        MachineRange used_machines;
-    };
+    typedef struct JobAlloc JobAlloc;
 
 public:
     Schedule(int nb_machines = 1, Rational initial_time = 0);

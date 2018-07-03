@@ -22,6 +22,7 @@
 #include "algo/conservative_bf.hpp"
 #include "algo/crasher.hpp"
 #include "algo/easy_bf.hpp"
+#include "algo/easy_bf_fast.hpp"
 #include "algo/easy_bf_plot_liquid_load_horizon.hpp"
 #include "algo/energy_bf.hpp"
 #include "algo/energy_bf_dicho.hpp"
@@ -31,6 +32,7 @@
 #include "algo/energy_bf_machine_subpart_sleeper.hpp"
 #include "algo/energy_watcher.hpp"
 #include "algo/filler.hpp"
+#include "algo/fcfs_fast.hpp"
 #include "algo/killer.hpp"
 #include "algo/killer2.hpp"
 #include "algo/random.hpp"
@@ -70,11 +72,12 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 
 int main(int argc, char ** argv)
 {
-    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_plot_liquid_load_horizon",
+    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_fast",
+                                      "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
-                                      "energy_watcher",
+                                      "energy_watcher", "fcfs_fast",
                                       "filler", "killer", "killer2", "random", "rejecter",
                                       "sequencer", "sleeper", "submitter", "waiting_time_estimator"};
     const set<string> policies_set = {"basic", "contiguous"};
@@ -242,6 +245,8 @@ int main(int argc, char ** argv)
             algo = new Crasher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf")
             algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "easy_bf_fast")
+            algo = new EasyBackfillingFast(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf_plot_liquid_load_horizon")
             algo = new EasyBackfillingPlotLiquidLoadHorizon(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "energy_bf")
@@ -258,6 +263,8 @@ int main(int argc, char ** argv)
             algo = new EnergyBackfillingMachineSubpartSleeper(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "energy_watcher")
             algo = new EnergyWatcher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "fcfs_fast")
+            algo = new FCFSFast(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "killer2")
