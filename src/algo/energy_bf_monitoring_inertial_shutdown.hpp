@@ -35,7 +35,7 @@ public:
                                                 double rjms_delay,
                                                 rapidjson::Document * variant_options);
 
-    virtual void on_simulation_start(double date);
+    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
 
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
@@ -77,6 +77,10 @@ public:
                                                        MachineRange & priority_job_reserved_machines,
                                                        MachineRange & machines_that_can_be_used_by_the_priority_job);
 
+    Rational compute_priority_job_starting_time_expectancy(const Schedule & schedule,
+                                                           const Job * priority_job);
+
+
 protected:
     /**
 
@@ -100,6 +104,7 @@ protected:
 
     void write_output_file(double date,
                            int nb_jobs_in_queue,
+                           int first_job_size,
                            double load_in_queue,
                            double liquid_load_horizon);
 
@@ -121,14 +126,16 @@ protected:
     InertialAlterationType _alteration_type = PRODUCT;
     Rational _inertial_alteration_number = 2;
 
-    bool _sedate_on_classical_events = false;
-    double _needed_amount_of_idle_time_to_be_sedated;
+    bool _sedate_idle_on_classical_events = false;
+    double _needed_amount_of_idle_time_to_be_sedated = 1e18;
     int _nb_machines_sedated_for_being_idle = 0;
     int _nb_machines_sedated_by_inertia = 0;
     std::map<int, Rational> _machines_idle_start_date;
     MachineRange _idle_machines;
 
     bool _first_monitoring_stage = true;
+
+    Rational _priority_job_starting_time_expectancy = 0;
 
     DecisionType _last_decision;
     int _inertial_number;

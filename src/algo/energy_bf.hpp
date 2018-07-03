@@ -84,13 +84,13 @@ public:
                       double rjms_delay, rapidjson::Document * variant_options);
     virtual ~EnergyBackfilling();
 
-    virtual void on_simulation_start(double date);
+    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
 
     virtual void on_machine_state_changed(double date, MachineRange machines, int newState);
 
-    virtual void on_nop(double date);
+    virtual void on_requested_call(double date);
 
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
@@ -133,7 +133,7 @@ protected:
      * @return The moment at which the machine should be awakened
      */
     Rational awaken_machine_as_soon_as_possible(Schedule & schedule,
-                                            int machine_id) const;
+                                                int machine_id) const;
 
     ScheduleMetrics compute_metrics_of_schedule(const Schedule & schedule, Rational min_job_length = 30) const;
 

@@ -40,6 +40,33 @@ void Workload::add_job_from_redis(RedisStorage & storage, const string &job_id, 
     PPK_ASSERT_ERROR(job_json_desc_str != "", "Cannot retrieve job '%s'", job_id.c_str());
 
     Job * job = job_from_json_description_string(job_json_desc_str);
+    job->id = job_id;
+    job->submission_time = submission_time;
+
+    // Let's apply the RJMS delay on the job
+    job->walltime += _rjms_delay;
+
+    PPK_ASSERT_ERROR(_jobs.count(job_id) == 0, "Job '%s' already exists in the Workload", job_id.c_str());
+    _jobs[job_id] = job;
+}
+
+void Workload::add_job_from_json_object(const Value &object, const string & job_id, double submission_time)
+{
+    Job * job = job_from_json_object(object);
+    job->id = job_id;
+    job->submission_time = submission_time;
+
+    // Let's apply the RJMS delay on the job
+    job->walltime += _rjms_delay;
+
+    PPK_ASSERT_ERROR(_jobs.count(job_id) == 0, "Job '%s' already exists in the Workload", job_id.c_str());
+    _jobs[job_id] = job;
+}
+
+void Workload::add_job_from_json_description_string(const string &json_string, const string &job_id, double submission_time)
+{
+    Job * job = job_from_json_description_string(json_string);
+    job->id = job_id;
     job->submission_time = submission_time;
 
     // Let's apply the RJMS delay on the job
@@ -89,30 +116,37 @@ Job* Workload::job_from_json_description_string(const string &json_string)
     if (document.Parse(json_string.c_str()).HasParseError())
         throw runtime_error("Invalid json string '" + json_string + "'");
 
-    PPK_ASSERT_ERROR(document.HasMember("id"),
-                     "Invalid json string '%s': no 'id' member",
-                     json_string.c_str());
-    PPK_ASSERT_ERROR(document["id"].IsString(),
-                     "Invalid json string '%s': 'id' member is not a string",
-                     json_string.c_str());
-    PPK_ASSERT_ERROR(document.HasMember("walltime"),
-                     "Invalid json string '%s': no 'walltime' member",
-                     json_string.c_str());
-    PPK_ASSERT_ERROR(document["walltime"].IsNumber(),
-                     "Invalid json string '%s': 'walltime' member is not a number",
-                     json_string.c_str());
-    PPK_ASSERT_ERROR(document.HasMember("res"),
-                     "Invalid json string '%s': no 'res' member",
-                     json_string.c_str());
-    PPK_ASSERT_ERROR(document["res"].IsInt(),
-                     "Invalid json string '%s': 'res' member is not an integer",
-                     json_string.c_str());
+    return job_from_json_object(document);
+}
+
+Job *Workload::job_from_json_object(const Value &object)
+{
+    PPK_ASSERT_ERROR(object.IsObject(), "Invalid json object: not an object");
+
+    PPK_ASSERT_ERROR(object.HasMember("id"), "Invalid json object: no 'id' member");
+    PPK_ASSERT_ERROR(object["id"].IsString(), "Invalid json object: 'id' member is not a string");
+    PPK_ASSERT_ERROR(object.HasMember("res"), "Invalid json object: no 'res' member");
+    PPK_ASSERT_ERROR(object["res"].IsInt(), "Invalid json object: 'res' member is not an integer");
 
     Job * j = new Job;
-    j->id = document["id"].GetString();
-    j->walltime = document["walltime"].GetDouble();
-    j->nb_requested_resources = document["res"].GetInt();
+    j->id = object["id"].GetString();
+    j->walltime = -1;
+    j->has_walltime = true;
+    j->nb_requested_resources = object["res"].GetInt();
     j->unique_number = _job_number++;
+
+    if (object.HasMember("walltime"))
+    {
+        PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");
+        j->walltime = object["walltime"].GetDouble();
+    }
+
+    PPK_ASSERT_ERROR(j->walltime == -1 || j->walltime > 0,
+                     "Invalid json object: 'walltime' should either be -1 (no walltime) "
+                     "or strictly positive.");
+
+    if (j->walltime == -1)
+        j->has_walltime = false;
 
     return j;
 }

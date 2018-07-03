@@ -12,9 +12,10 @@ ConservativeBackfilling::~ConservativeBackfilling()
 {
 }
 
-void ConservativeBackfilling::on_simulation_start(double date)
+void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     _schedule = Schedule(_nb_machines, date);
+    (void) batsim_config;
 }
 
 void ConservativeBackfilling::on_simulation_end(double date)
@@ -36,7 +37,7 @@ void ConservativeBackfilling::make_decisions(double date,
         const Job * new_job = (*_workload)[new_job_id];
 
         if (new_job->nb_requested_resources > _nb_machines)
-            _decision->add_rejection(new_job_id, date);
+            _decision->add_reject_job(new_job_id, date);
         else
             _queue->append_job(new_job, update_info);
     }
@@ -58,7 +59,7 @@ void ConservativeBackfilling::make_decisions(double date,
             // If the job should start now, let's say it to the resource manager
             if (alloc.started_in_first_slice)
             {
-                _decision->add_allocation(new_job->id, alloc.used_machines, date);
+                _decision->add_execute_job(new_job->id, alloc.used_machines, date);
                 _queue->remove_job(new_job);
             }
         }
@@ -81,7 +82,7 @@ void ConservativeBackfilling::make_decisions(double date,
 
             if (alloc.started_in_first_slice)
             {
-                _decision->add_allocation(job->id, alloc.used_machines, date);
+                _decision->add_execute_job(job->id, alloc.used_machines, date);
                 job_it = _queue->remove_job(job_it);
             }
             else

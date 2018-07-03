@@ -49,6 +49,10 @@ include_directories(${HIREDIS_INCLUDE_DIRS})
 find_package(libev REQUIRED)
 include_directories(${LIBEV_INCLUDE_DIRS})
 
+# ZeroMQ dependency
+find_package(ZMQ REQUIRED)
+include_directories(${ZMQ_INCLUDE_DIRS})
+
 file(GLOB batsched_SRC
     "src/*.hpp"
     "src/*.cpp"
@@ -62,7 +66,8 @@ target_link_libraries(batsched ${GMP_LIBRARIES}
                       ${Boost_LOCALE_LIBRARY_DEBUG}
                       ${REDOX_LIBRARY}
                       ${LIBEV_LIBRARY}
-                      ${HIREDIS_LIBRARY})
+                      ${HIREDIS_LIBRARY}
+                      ${ZMQ_LIBRARIES})
 
 target_link_libraries(batsched boost_program_options)
 

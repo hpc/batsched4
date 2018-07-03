@@ -1,4 +1,7 @@
 #pragma once
+
+#include <zmq.hpp>
+
 #include "decision.hpp"
 
 namespace network
@@ -26,12 +29,13 @@ namespace network
 class Network
 {
 public:
-    void connect(const std::string & socketFilename);
+    ~Network();
+
+    void bind(const std::string & socket_endpoint);
     void write(const std::string & content);
     void read(std::string & received_content);
 
 private:
-    int _clientSocket = -1;
+    zmq::context_t _context;
+    zmq::socket_t * _socket = nullptr;
 };
-
-std::string absolute_filename(const std::string & filename);

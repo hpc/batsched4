@@ -160,9 +160,10 @@ EnergyBackfilling::~EnergyBackfilling()
     clear_machine_informations();
 }
 
-void EnergyBackfilling::on_simulation_start(double date)
+void EnergyBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     _schedule = Schedule(_nb_machines, date);
+    (void) batsim_config;
 
     generate_machine_informations(_nb_machines);
 
@@ -303,7 +304,7 @@ void EnergyBackfilling::on_machine_state_changed(double date, MachineRange machi
     }
 }
 
-void EnergyBackfilling::on_nop(double date)
+void EnergyBackfilling::on_requested_call(double date)
 {
     (void) date;
     PPK_ASSERT_ERROR(_nb_nop_me_later_running > 0,
@@ -470,7 +471,7 @@ void EnergyBackfilling::make_decisions(double date,
 
         if (new_job->nb_requested_resources > _nb_machines)
         {
-            _decision->add_rejection(new_job_id, date);
+            _decision->add_reject_job(new_job_id, date);
             ++_nb_jobs_completed;
         }
         else
@@ -587,7 +588,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
                 PPK_ASSERT_ERROR(alloc.begin == slice.begin);
 
                 // Let's tell the RJMS this job should be executed now
-                _decision->add_allocation(job->id, job_machines, (double)alloc.begin);
+                _decision->add_execute_job(job->id, job_machines, (double)alloc.begin);
                 did_something = true;
 
                 // Let's remove it from the queue
@@ -602,7 +603,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
         int target_pstate = mit.first;
         const MachineRange & machines = mit.second;
 
-        _decision->add_change_machine_state(machines, target_pstate, (double) slice.begin);
+        _decision->add_set_resource_state(machines, target_pstate, (double) slice.begin);
         did_something = true;
     }
 
@@ -613,7 +614,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
             // To avoid Batsim's deadlock, we should tell it to wait that we are ready.
 
             PPK_ASSERT_ERROR(_schedule.nb_slices() >= 1);
-            _decision->add_nop_me_later((double) _schedule.begin()->end + 1, (double) _schedule.begin()->begin);
+            _decision->add_call_me_later((double) _schedule.begin()->end + 1, (double) _schedule.begin()->begin);
             _nb_nop_me_later_running++;
         }
     }
@@ -985,21 +986,28 @@ void EnergyBackfilling::sedate_machine_without_switch(Schedule &schedule,
     // Let's retrieve the MachineInformation
     MachineInformation * minfo = _machine_informations.at(machine_id);
 
-    // Let's add the ensured sleep job into the schedule, right after the previous one
-    Schedule::JobAlloc ensured_sleep_alloc = schedule.add_job_first_fit_after_time(minfo->ensured_sleep_job, when_it_should_start, minfo->limited_resource_selector);
+    Rational when_ensured_sleep_job_finishes = when_it_should_start;
 
-    if (_debug)
+    if (minfo->ensured_sleep_job->walltime > 0)
     {
-        printf("Schedule after ensured_sleep_alloc : %s\n", schedule.to_string().c_str());
-        fflush(stdout);
+        // Let's add the ensured sleep job into the schedule, right after the previous one
+        Schedule::JobAlloc ensured_sleep_alloc = schedule.add_job_first_fit_after_time(minfo->ensured_sleep_job, when_it_should_start, minfo->limited_resource_selector);
+
+        if (_debug)
+        {
+            printf("Schedule after ensured_sleep_alloc : %s\n", schedule.to_string().c_str());
+            fflush(stdout);
+        }
+
+        PPK_ASSERT_ERROR(ensured_sleep_alloc.begin == when_it_should_start,
+                         "ensured_sleep_alloc.begin = %g, when_it_should_start = %g",
+                         (double) ensured_sleep_alloc.begin, (double) when_it_should_start);
+
+        when_ensured_sleep_job_finishes = ensured_sleep_alloc.end;
     }
 
-    PPK_ASSERT_ERROR(ensured_sleep_alloc.begin == when_it_should_start,
-                     "ensured_sleep_alloc.begin = %g, when_it_should_start = %g",
-                     (double) ensured_sleep_alloc.begin, (double) when_it_should_start);
-
     // Let's change the walltime of the potential sleep job to make sure it perfectly reaches the infinite horizon
-    minfo->potential_sleep_job->walltime = schedule.infinite_horizon() - ensured_sleep_alloc.end;
+    minfo->potential_sleep_job->walltime = schedule.infinite_horizon() - when_ensured_sleep_job_finishes;
     Rational infinite_horizon_before = schedule.infinite_horizon();
 
     // Let's add the potential sleep job into the schedule, right after the previous one
@@ -1011,7 +1019,7 @@ void EnergyBackfilling::sedate_machine_without_switch(Schedule &schedule,
         fflush(stdout);
     }
 
-    PPK_ASSERT_ERROR(potential_sleep_alloc.begin == ensured_sleep_alloc.end);
+    PPK_ASSERT_ERROR(potential_sleep_alloc.begin == when_ensured_sleep_job_finishes);
     PPK_ASSERT_ERROR(potential_sleep_alloc.end == schedule.infinite_horizon());
     PPK_ASSERT_ERROR(schedule.infinite_horizon() == infinite_horizon_before);
 }

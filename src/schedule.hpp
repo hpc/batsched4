@@ -18,7 +18,7 @@ public:
         Rational length;
 
         MachineRange available_machines;
-        std::map<const Job *, MachineRange> allocated_jobs;
+        std::map<const Job *, MachineRange, JobComparator> allocated_jobs;
 
         bool contains_job(const Job * job) const;
         bool contains_matching_job(std::function<bool(const Job *)> matching_function) const;

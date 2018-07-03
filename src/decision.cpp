@@ -2,62 +2,112 @@
 
 #include "network.hpp"
 #include "pempek_assert.hpp"
+#include "protocol.hpp"
+#include "data_storage.hpp"
 
 namespace n = network;
 using namespace std;
 
-void SchedulingDecision::add_allocation(const std::string & job_id, const MachineRange &machineIDs, double date)
+SchedulingDecision::SchedulingDecision()
 {
-    int nbMachines = machineIDs.size();
-    PPK_ASSERT(nbMachines > 0);
-    PPK_ASSERT(date >= _lastDate);
-
-    _lastDate = date;
-
-    _content += n::separator0 + to_string(date) + n::separator1 + n::jobAllocation + n::separator1;
-    _content += job_id + n::separator3;
-
-    _content += machineIDs.to_string_hyphen();
-
-    if (_display_decisions)
-        printf("Date=%g. Made decision to run job '%s' on machines %s\n", date, job_id.c_str(), machineIDs.to_string_hyphen().c_str());
+    _proto_writer = new JsonProtocolWriter;
 }
 
-void SchedulingDecision::add_rejection(const std::string & job_id, double date)
+SchedulingDecision::~SchedulingDecision()
 {
-    _lastDate = date;
-    _content += n::separator0 + to_string(date) + n::separator1 + n::jobRejection + n::separator1 + job_id;
-
-    if (_display_decisions)
-        printf("Made decision to reject job '%s'\n", job_id.c_str());
+    delete _proto_writer;
+    _proto_writer = nullptr;
 }
 
-void SchedulingDecision::add_change_machine_state(MachineRange machines, int newPState, double date)
+void SchedulingDecision::add_execute_job(const std::string & job_id, const MachineRange &machine_ids, double date, vector<int> executor_to_allocated_resource_mapping)
 {
-    PPK_ASSERT(date >= _lastDate);
-    _lastDate = date;
-
-    _content += n::separator0 + to_string(date) + n::separator1 + n::machinePStateChangeRequest + n::separator1;
-    _content += machines.to_string_hyphen() + n::separator3 + to_string(newPState);
-
-    if (_display_decisions)
-        printf("Date=%g. Made decision to change the pstate of machines %s to %d\n", date, machines.to_string_hyphen().c_str(), newPState);
+    if (executor_to_allocated_resource_mapping.size() == 0)
+        _proto_writer->append_execute_job(job_id, machine_ids, date);
+    else
+        _proto_writer->append_execute_job(job_id, machine_ids, date, executor_to_allocated_resource_mapping);
 }
 
-void SchedulingDecision::add_nop_me_later(double future_date, double date)
+void SchedulingDecision::add_reject_job(const std::string & job_id, double date)
 {
-    PPK_ASSERT(date >= _lastDate);
-    PPK_ASSERT(future_date >= date);
+    _proto_writer->append_reject_job(job_id, date);
+}
 
-    _content += n::separator0 + to_string(date) + n::separator1 + n::nopMeLater + n::separator1;
-    _content += to_string(future_date);
+void SchedulingDecision::add_kill_job(const vector<string> &job_ids, double date)
+{
+    _proto_writer->append_kill_job(job_ids, date);
+}
 
-    if (_display_decisions)
-        printf("Date=%g. Made decision to be nopped later at date=%g\n", date, future_date);
+void SchedulingDecision::add_submit_job(const string & workload_name,
+                                        const string & job_id,
+                                        const string & profile_name,
+                                        const string & job_json_description,
+                                        const string & profile_json_description,
+                                        double date,
+                                        bool send_profile)
+{
+    string complete_job_id = workload_name + '!' + job_id;
+
+    if (_redis_enabled)
+    {
+        string job_key = RedisStorage::job_key(workload_name, job_id);
+        string profile_key = RedisStorage::profile_key(workload_name, profile_name);
+
+        PPK_ASSERT_ERROR(_redis != nullptr);
+        _redis->set(job_key, job_json_description);
+        _redis->set(profile_key, profile_json_description);
+
+        _proto_writer->append_submit_job(complete_job_id, date, "", "", send_profile);
+    }
+    else
+        _proto_writer->append_submit_job(complete_job_id, date,
+                                         job_json_description,
+                                         profile_json_description,
+                                         send_profile);
+}
+
+void SchedulingDecision::add_submit_profile(const string &workload_name,
+                                            const string &profile_name,
+                                            const string &profile_json_description,
+                                            double date)
+{
+    _proto_writer->append_submit_profile(workload_name,
+                                         profile_name,
+                                         profile_json_description,
+                                         date);
+}
+
+void SchedulingDecision::add_set_resource_state(MachineRange machines, int new_state, double date)
+{
+    _proto_writer->append_set_resource_state(machines, std::to_string(new_state), date);
+}
+
+void SchedulingDecision::add_call_me_later(double future_date, double date)
+{
+    _proto_writer->append_call_me_later(future_date, date);
+}
+
+void SchedulingDecision::add_scheduler_finished_submitting_jobs(double date)
+{
+    _proto_writer->append_scheduler_finished_submitting_jobs(date);
 }
 
 void SchedulingDecision::clear()
 {
-    _content.clear();
-    _lastDate = -1;
+    _proto_writer->clear();
+}
+
+string SchedulingDecision::content(double date)
+{
+    return _proto_writer->generate_current_message(date);
+}
+
+double SchedulingDecision::last_date() const
+{
+    return _proto_writer->last_date();
+}
+
+void SchedulingDecision::set_redis(bool enabled, RedisStorage *redis)
+{
+    _redis_enabled = enabled;
+    _redis = redis;
 }

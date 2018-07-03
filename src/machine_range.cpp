@@ -164,7 +164,7 @@ MachineRange::Set::const_iterator MachineRange::biggest_interval() const
 
 int MachineRange::first_element() const
 {
-    PPK_ASSERT(size() > 0);
+    PPK_ASSERT_ERROR(size() > 0);
     return *elements_begin();
 }
 
@@ -325,4 +325,18 @@ MachineRange MachineRange::from_string_hyphen(const string &str, const string &s
     }
 
     return res;
+}
+
+int MachineRange::operator[](int index) const
+{
+    PPK_ASSERT_ERROR(index >= 0 && index < (int)this->size(),
+                     "Invalid call to MachineRange::operator[]: index (%d) should be in [0,%d[",
+                     index, (int)this->size());
+
+    // TODO: avoid O(n) retrieval
+    auto machine_it = this->elements_begin();
+    for (int i = 0; i < index; ++i)
+        ++machine_it;
+
+    return *machine_it;
 }
