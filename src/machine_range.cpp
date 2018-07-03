@@ -1,6 +1,7 @@
 #include "machine_range.hpp"
 
 #include <vector>
+#include <random>
 
 #include <boost/algorithm/string.hpp>
 
@@ -129,14 +130,37 @@ MachineRange MachineRange::left(int nb_machines) const
         nb_inserted += nb_to_add;
         PPK_ASSERT_ERROR(res.size() == (unsigned int) nb_inserted, "Invalid MachineRange size: got %u, expected %d",
                          res.size(), nb_inserted);
-
-        //printf("left, res=%s (%s)\n", res.to_string_hyphen().c_str(), res.to_string_elements().c_str());
     }
 
     PPK_ASSERT_ERROR(res.size() == (unsigned int) nb_machines, "Invalid MachineRange size : got %u, expected %d", res.size(), nb_machines);
-    /*printf("left, available=%s (%s), available_size=%u, nb_machines=%d, res=%s (%s), res_size=%u\n",
-           to_string_hyphen().c_str(), to_string_elements().c_str(), size(), nb_machines,
-           res.to_string_hyphen().c_str(), res.to_string_elements().c_str(), res.size());*/
+    return res;
+}
+
+MachineRange MachineRange::random_pick(int nb_machines) const
+{
+    PPK_ASSERT_ERROR(set.size() >= (unsigned int)nb_machines,
+                     "Invalid MachineRange::random_pick call: looking for %d machines in a set of size %lu",
+                     nb_machines, set.size());
+
+    // Boost interval set -> vector of int
+    vector<int> int_vector;
+    for (auto machine_it = elements_begin(); machine_it != elements_end(); ++machine_it)
+    {
+        int machine_id = *machine_it;
+        int_vector.push_back(machine_id);
+    }
+
+    // Shuffle the vector
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(int_vector.begin(), int_vector.end(), g);
+
+    // Keep the first n elements
+    MachineRange res;
+    for (int i = 0; i < nb_machines; ++i)
+        res.insert(int_vector[i]);
+
+    PPK_ASSERT_ERROR(res.size() == (unsigned int) nb_machines, "Invalid MachineRange size : got %u, expected %d", res.size(), nb_machines);
     return res;
 }
 

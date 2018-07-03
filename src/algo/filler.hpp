@@ -33,6 +33,9 @@ private:
 
 private:
     double fraction_of_machines_to_use = 1; //! In ]0,1]. If job requests 42 machines, the scheduler will allocate ceil(42*rho) machines.
+    bool set_job_metadata = false; //! If set to true, metadata will be associated to jobs when they are started.
+    bool custom_mapping = true;
+
     MachineRange available_machines;
     std::map<std::string, MachineRange> current_allocations;
     bool _debug = true;

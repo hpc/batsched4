@@ -43,8 +43,17 @@ public:
 
     void add_set_resource_state(MachineRange machines, int new_state, double date);
 
+    void add_set_job_metadata(const std::string & job_id,
+                              const std::string & metadata,
+                              double date);
+
     void add_call_me_later(double future_date, double date);
     void add_scheduler_finished_submitting_jobs(double date);
+
+    void add_query_energy_consumption(double date);
+    void add_answer_estimate_waiting_time(const std::string & job_id,
+                                          double estimated_waiting_time,
+                                          double date);
 
     void clear();
 

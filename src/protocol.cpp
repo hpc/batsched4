@@ -19,11 +19,64 @@ JsonProtocolWriter::~JsonProtocolWriter()
 
 }
 
-void JsonProtocolWriter::append_nop(double date)
+void JsonProtocolWriter::append_query_consumed_energy(double date)
 {
+    /* {
+      "timestamp": 10.0,
+      "type": "QUERY",
+      "data": {
+        "requests": {"consumed_energy": {}}
+      }
+    } */
+
     PPK_ASSERT(date >= _last_date, "Date inconsistency");
-   _last_date = date;
-   _is_empty = false;
+    _last_date = date;
+    _is_empty = false;
+
+    Value empty_object(rapidjson::kObjectType);
+    Value requests_object(rapidjson::kObjectType);
+    requests_object.AddMember("consumed_energy", empty_object, _alloc);
+
+    Value data(rapidjson::kObjectType);
+    data.AddMember("requests", requests_object, _alloc);
+
+    Value event(rapidjson::kObjectType);
+    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
+    event.AddMember("type", Value().SetString("QUERY"), _alloc);
+    event.AddMember("data", data, _alloc);
+
+    _events.PushBack(event, _alloc);
+}
+
+void JsonProtocolWriter::append_answer_estimate_waiting_time(const string &job_id,
+                                                             double estimated_waiting_time,
+                                                             double date)
+{
+    /* {
+      "timestamp": 10.0,
+      "type": "ANSWER",
+      "data": {
+        "estimate_waiting_time": {
+          "job_id": "workflow_submitter0!potential_job17",
+          "estimated_waiting_time": 56
+        }
+      }
+    } */
+
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
+    _last_date = date;
+    _is_empty = false;
+
+    Value estimation(rapidjson::kObjectType);
+    estimation.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
+    estimation.AddMember("estimated_waiting_time", Value().SetDouble(estimated_waiting_time), _alloc);
+
+    Value event(rapidjson::kObjectType);
+    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
+    event.AddMember("type", Value().SetString("ANSWER"), _alloc);
+    event.AddMember("data", Value().SetObject().AddMember("estimate_waiting_time", estimation, _alloc), _alloc);
+
+    _events.PushBack(event, _alloc);
 }
 
 void JsonProtocolWriter::append_submit_job(const string &job_id,
@@ -263,6 +316,35 @@ void JsonProtocolWriter::append_set_resource_state(MachineRange resources,
     _events.PushBack(event, _alloc);
 }
 
+void JsonProtocolWriter::append_set_job_metadata(const string & job_id,
+                                                 const string & metadata,
+                                                 double date)
+{
+    /* {
+      "timestamp": 13.0,
+      "type": "SET_JOB_METADATA",
+      "data": {
+        "job_id": "wload!42",
+        "metadata": "scheduler-defined string"
+      }
+    } */
+
+    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    _last_date = date;
+    _is_empty = false;
+
+    Value data(rapidjson::kObjectType);
+    data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
+    data.AddMember("metadata", Value().SetString(metadata.c_str(), _alloc), _alloc);
+
+    Value event(rapidjson::kObjectType);
+    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
+    event.AddMember("type", Value().SetString("SET_JOB_METADATA"), _alloc);
+    event.AddMember("data", data, _alloc);
+
+    _events.PushBack(event, _alloc);
+}
+
 void JsonProtocolWriter::append_call_me_later(double future_date,
                                               double date)
 {
@@ -310,187 +392,7 @@ void JsonProtocolWriter::append_scheduler_finished_submitting_jobs(double date)
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_query_request(void *anything,
-                                              double date)
-{
-    PPK_ASSERT(false, "Unimplemented!");
-    (void) anything;
-    (void) date;
-}
 
-
-
-void JsonProtocolWriter::append_simulation_begins(int nb_resources, double date)
-{
-    /* {
-      "timestamp": 0.0,
-      "type": "SIMULATION_BEGINS",
-      "data": {}
-    } */
-
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value data(rapidjson::kObjectType);
-    data.AddMember("nb_resources", Value().SetInt(nb_resources), _alloc);
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("SIMULATION_BEGINS"), _alloc);
-    event.AddMember("data", data, _alloc);
-
-    _events.PushBack(event, _alloc);
-}
-
-void JsonProtocolWriter::append_simulation_ends(double date)
-{
-    /* {
-      "timestamp": 0.0,
-      "type": "SIMULATION_ENDS",
-      "data": {}
-    } */
-
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("SIMULATION_ENDS"), _alloc);
-    event.AddMember("data", Value().SetObject(), _alloc);
-
-    _events.PushBack(event, _alloc);
-}
-
-void JsonProtocolWriter::append_job_submitted(const string & job_id,
-                                              double date)
-{
-    /* {
-      "timestamp": 10.0,
-      "type": "JOB_SUBMITTED",
-      "data": {
-        "job_ids": ["w0!1", "w0!2"]
-      }
-    } */
-
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value data(rapidjson::kObjectType);
-    data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("JOB_SUBMITTED"), _alloc);
-    event.AddMember("data", data, _alloc);
-
-    _events.PushBack(event, _alloc);
-}
-
-void JsonProtocolWriter::append_job_completed(const string & job_id,
-                                              const string & job_status,
-                                              double date)
-{
-    /* {
-      "timestamp": 10.0,
-      "type": "JOB_COMPLETED",
-      "data": {"job_id": "w0!1", "status": "SUCCESS"}
-    } */
-
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    PPK_ASSERT(std::find(accepted_completion_statuses.begin(), accepted_completion_statuses.end(), job_status) != accepted_completion_statuses.end(),
-               "Unsupported job status '%s'!", job_status.c_str());
-    _last_date = date;
-    _is_empty = false;
-
-    Value data(rapidjson::kObjectType);
-    data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
-    data.AddMember("status", Value().SetString(job_status.c_str(), _alloc), _alloc);
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("JOB_COMPLETED"), _alloc);
-    event.AddMember("data", data, _alloc);
-
-    _events.PushBack(event, _alloc);
-}
-
-void JsonProtocolWriter::append_job_killed(const vector<string> & job_ids,
-                                           double date)
-{
-    /* {
-      "timestamp": 10.0,
-      "type": "JOB_KILLED",
-      "data": {"job_ids": ["w0!1", "w0!2"]}
-    } */
-
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("JOB_KILLED"), _alloc);
-
-    Value jobs(rapidjson::kArrayType);
-    jobs.Reserve(job_ids.size(), _alloc);
-    for (const string & job_id : job_ids)
-        jobs.PushBack(Value().SetString(job_id.c_str(), _alloc), _alloc);
-
-    event.AddMember("data", Value().SetObject().AddMember("job_ids", jobs, _alloc), _alloc);
-
-    _events.PushBack(event, _alloc);
-}
-
-void JsonProtocolWriter::append_resource_state_changed(const MachineRange & resources,
-                                                       const string & new_state,
-                                                       double date)
-{
-    /* {
-      "timestamp": 10.0,
-      "type": "RESOURCE_STATE_CHANGED",
-      "data": {"resources": "1 2 3-5", "state": "42"}
-    } */
-
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value data(rapidjson::kObjectType);
-    data.AddMember("resources",
-                   Value().SetString(resources.to_string_hyphen(" ", "-").c_str(), _alloc), _alloc);
-    data.AddMember("state", Value().SetString(new_state.c_str(), _alloc), _alloc);
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("RESOURCE_STATE_CHANGED"), _alloc);
-    event.AddMember("data", data, _alloc);
-
-    _events.PushBack(event, _alloc);
-}
-
-void JsonProtocolWriter::append_query_reply_energy(double consumed_energy,
-                                                   double date)
-{
-    /* {
-      "timestamp": 10.0,
-      "type": "QUERY_REPLY",
-      "data": {"energy_consumed": "12500" }
-    } */
-
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("QUERY_REPLY"), _alloc);
-    event.AddMember("data", Value().SetObject().AddMember("energy_consumed", Value().SetDouble(consumed_energy), _alloc), _alloc);
-
-    _events.PushBack(event, _alloc);
-}
 
 void JsonProtocolWriter::clear()
 {
@@ -518,43 +420,4 @@ string JsonProtocolWriter::generate_current_message(double date)
 
     // Returning the buffer as a string
     return string(buffer.GetString(), buffer.GetSize());
-}
-
-bool test_json_writer()
-{
-    AbstractProtocolWriter * proto_writer = new JsonProtocolWriter;
-    printf("EMPTY content:\n%s\n", proto_writer->generate_current_message(0).c_str());
-    proto_writer->clear();
-
-    proto_writer->append_simulation_begins(4, 10);
-    printf("SIM_BEGINS content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
-    proto_writer->append_simulation_ends(10);
-    printf("SIM_ENDS content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
-    proto_writer->append_job_submitted({"w0!j0", "w0!j1"}, 10);
-    printf("JOB_SUBMITTED content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
-    proto_writer->append_job_completed("w0!j0", "SUCCESS", 10);
-    printf("JOB_COMPLETED content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
-    proto_writer->append_job_killed({"w0!j0", "w0!j1"}, 10);
-    printf("JOB_KILLED content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
-    proto_writer->append_resource_state_changed(MachineRange::from_string_hyphen("1,3-5"), "42", 10);
-    printf("RESOURCE_STATE_CHANGED content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
-    proto_writer->append_query_reply_energy(65535, 10);
-    printf("QUERY_REPLY (energy) content:\n%s\n", proto_writer->generate_current_message(42).c_str());
-    proto_writer->clear();
-
-    delete proto_writer;
-
-    return true;
 }

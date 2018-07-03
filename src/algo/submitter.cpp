@@ -40,10 +40,18 @@ Submitter::Submitter(Workload *workload, SchedulingDecision *decision, Queue *qu
         send_profiles_in_separate_event = (*variant_options)["send_profiles_in_separate_event"].GetBool();
     }
 
+    if (variant_options->HasMember("set_job_metadata"))
+    {
+        PPK_ASSERT_ERROR((*variant_options)["set_job_metadata"].IsBool(),
+                "Invalid options: 'set_job_metadata' should be a boolean");
+        set_job_metadata = (*variant_options)["set_job_metadata"].GetBool();
+    }
+
     printf("nb_jobs_to_submit: %d\n", nb_jobs_to_submit);
     printf("increase_jobs_duration: %d\n", increase_jobs_duration);
     printf("send_profile_if_already_sent: %d\n", send_profile_if_already_sent);
     printf("send_profiles_in_separate_event: %d\n", send_profiles_in_separate_event);
+    printf("set_job_metadata: %d\n", set_job_metadata);
 }
 
 Submitter::~Submitter()
@@ -173,7 +181,7 @@ void Submitter::submit_delay_job(double delay, double date)
     char * buf_job = new char[buf_size];
     int nb_chars = snprintf(buf_job, buf_size,
              R"foo({"id":"%s", "subtime":%g, "walltime":%g, "res":%d, "profile":"%s"})foo",
-             unique_job_id.c_str(), submit_time, walltime, res, profile.c_str());
+             job_id.c_str(), submit_time, walltime, res, profile.c_str());
     PPK_ASSERT_ERROR(nb_chars < buf_size - 1);
 
     char * buf_profile = new char[buf_size];
@@ -191,6 +199,14 @@ void Submitter::submit_delay_job(double delay, double date)
     _decision->add_submit_job(workload_name, job_id, profile,
                               buf_job, buf_profile, date,
                               send_profile && !send_profiles_in_separate_event);
+
+    if (set_job_metadata)
+    {
+        string job_id_str = workload_name + "!" + job_id;
+        _decision->add_set_job_metadata(job_id_str,
+                                        "just some metadata for job " + job_id_str,
+                                        date);
+    }
 
     profiles_already_sent.insert(profile);
 
