@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#! nix-shell -i bash ./default.nix
+#! nix-shell . -i bash -A batsched_local
 set -eux
 
 # Start from a clean build directory
