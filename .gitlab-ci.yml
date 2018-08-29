@@ -5,6 +5,7 @@ variables:
 
 stages:
   - build
+  - update_dependencies_cache
 
 ###############################################################################
 # Build stage
@@ -16,3 +17,11 @@ build:
   artifacts:
     paths:
       - /builds/batsim/batsched/build
+
+###############################################################################
+# Dependencies cache stage
+###############################################################################
+update_dependencies_cache:
+  stage: update_dependencies_cache
+  script:
+    - ./ci/update-dependencies-cache.bash
