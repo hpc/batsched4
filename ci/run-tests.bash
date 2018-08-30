@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#! nix-shell -i bash ./default.nix
+#! nix-shell . -i bash -A test_dev
 set -eu
 
 # Run a redis server if needed
