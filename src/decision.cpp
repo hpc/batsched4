@@ -19,7 +19,7 @@ SchedulingDecision::~SchedulingDecision()
     _proto_writer = nullptr;
 }
 
-void SchedulingDecision::add_execute_job(const std::string & job_id, const MachineRange &machine_ids, double date, vector<int> executor_to_allocated_resource_mapping)
+void SchedulingDecision::add_execute_job(const std::string & job_id, const IntervalSet &machine_ids, double date, vector<int> executor_to_allocated_resource_mapping)
 {
     if (executor_to_allocated_resource_mapping.size() == 0)
         _proto_writer->append_execute_job(job_id, machine_ids, date);
@@ -76,7 +76,7 @@ void SchedulingDecision::add_submit_profile(const string &workload_name,
                                          date);
 }
 
-void SchedulingDecision::add_set_resource_state(MachineRange machines, int new_state, double date)
+void SchedulingDecision::add_set_resource_state(IntervalSet machines, int new_state, double date)
 {
     _proto_writer->append_set_resource_state(machines, std::to_string(new_state), date);
 }

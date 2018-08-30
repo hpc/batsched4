@@ -17,9 +17,9 @@ public:
         Rational end;
         Rational length;
 
-        MachineRange available_machines;
+        IntervalSet available_machines;
         int nb_available_machines;
-        std::map<const Job *, MachineRange, JobComparator> allocated_jobs;
+        std::map<const Job *, IntervalSet, JobComparator> allocated_jobs;
 
         bool contains_job(const Job * job) const;
         bool contains_matching_job(std::function<bool(const Job *)> matching_function) const;
@@ -87,7 +87,7 @@ public:
     TimeSliceIterator find_first_time_slice_after_date(Rational date, bool assert_not_found = true);
     TimeSliceConstIterator find_first_time_slice_after_date(Rational date, bool assert_not_found = true) const;
 
-    MachineRange available_machines_during_period(Rational begin, Rational end) const;
+    IntervalSet available_machines_during_period(Rational begin, Rational end) const;
 
     std::list<TimeSlice>::iterator begin() { return _profile.begin(); }
     std::list<TimeSlice>::iterator end() { return _profile.end(); }

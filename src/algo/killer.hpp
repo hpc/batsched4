@@ -30,8 +30,8 @@ public:
                                 SortableJobOrder::CompareInformation * compare_info);
 
 private:
-    MachineRange available_machines;
-    std::map<std::string, MachineRange> current_allocations;
+    IntervalSet available_machines;
+    std::map<std::string, IntervalSet> current_allocations;
     int nb_kills_per_job = 1;
     double delay_before_kill = 10;
 };

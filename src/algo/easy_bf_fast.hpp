@@ -34,7 +34,7 @@ private:
 
     struct Allocation
     {
-        MachineRange machines;
+        IntervalSet machines;
         std::list<FinishedHorizonPoint>::iterator horizon_it;
     };
 
@@ -44,7 +44,7 @@ private:
 
 private:
     // Machines currently available
-    MachineRange _available_machines;
+    IntervalSet _available_machines;
     int _nb_available_machines = -1;
 
     // Pending jobs (queue; without the priority job)

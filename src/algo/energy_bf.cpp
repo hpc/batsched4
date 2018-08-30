@@ -119,7 +119,7 @@ void EnergyBackfilling::MachineInformation::create_selector()
     PPK_ASSERT_ERROR(limited_resource_selector  == nullptr);
     PPK_ASSERT_ERROR(machine_number >= 0);
 
-    limited_resource_selector  = new LimitedRangeResourceSelector(MachineRange(machine_number));
+    limited_resource_selector  = new LimitedRangeResourceSelector(IntervalSet(machine_number));
 }
 
 void EnergyBackfilling::MachineInformation::free_selector()
@@ -167,7 +167,7 @@ void EnergyBackfilling::on_simulation_start(double date, const rapidjson::Value 
 
     generate_machine_informations(_nb_machines);
 
-    _all_machines = MachineRange::ClosedInterval(0, _nb_machines - 1);
+    _all_machines = IntervalSet::ClosedInterval(0, _nb_machines - 1);
     PPK_ASSERT_ERROR((int)(_all_machines.size()) == _nb_machines);
 
     _awake_machines.insert(_all_machines);
@@ -179,7 +179,7 @@ void EnergyBackfilling::on_simulation_end(double date)
     // TODO: do something about this?
 }
 
-void EnergyBackfilling::on_machine_state_changed(double date, MachineRange machines, int new_state)
+void EnergyBackfilling::on_machine_state_changed(double date, IntervalSet machines, int new_state)
 {
     if (_debug)
     {
@@ -188,7 +188,7 @@ void EnergyBackfilling::on_machine_state_changed(double date, MachineRange machi
     }
 
     // Let's update the current schedule to take the machine state change into account
-    MachineRange switched_off_machines;
+    IntervalSet switched_off_machines;
 
     // Let's remove all related switch jobs from the online schedule
     for (auto machine_it = machines.elements_begin(); machine_it != machines.elements_end(); ++machine_it)
@@ -514,12 +514,12 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
     const Schedule::TimeSlice & slice = *schedule.begin();
     PPK_ASSERT_ERROR(slice.begin == _schedule.first_slice_begin());
 
-    map<int, MachineRange> state_switches_to_do;
+    map<int, IntervalSet> state_switches_to_do;
 
     for (auto mit : slice.allocated_jobs)
     {
         const Job * job = mit.first;
-        const MachineRange & job_machines = mit.second;
+        const IntervalSet & job_machines = mit.second;
 
         // If the job is a fake one
         if (is_fake_job(job->id))
@@ -601,7 +601,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
     for (auto mit : state_switches_to_do)
     {
         int target_pstate = mit.first;
-        const MachineRange & machines = mit.second;
+        const IntervalSet & machines = mit.second;
 
         _decision->add_set_resource_state(machines, target_pstate, (double) slice.begin);
         did_something = true;
@@ -658,7 +658,7 @@ void EnergyBackfilling::update_first_slice_taking_sleep_jobs_into_account(Ration
 
         // Let's make sure all jobs but ensured-sleep related ones remain in the same
         // state in the scheduling, from the first slice to the current date
-        MachineRange sleeping_machines;
+        IntervalSet sleeping_machines;
         set<string> non_sleep_jobs;
 
         const Schedule::TimeSlice & first_slice = *slice_it;
@@ -674,7 +674,7 @@ void EnergyBackfilling::update_first_slice_taking_sleep_jobs_into_account(Ration
         while (slice_it->end <= date)
         {
             set<string> non_sleep_jobs_in_slice;
-            MachineRange sleeping_machines_in_slice;
+            IntervalSet sleeping_machines_in_slice;
             const Schedule::TimeSlice & slice = *slice_it;
 
             // Let's check that aside from ensured sleep jobs, the jobs
@@ -742,12 +742,12 @@ void EnergyBackfilling::update_first_slice_taking_sleep_jobs_into_account(Ration
         // Let's update whether machines are wakable.
         slice_it = _schedule.begin();
 
-        MachineRange wakable_machines_now, non_wakable_machines_now;
+        IntervalSet wakable_machines_now, non_wakable_machines_now;
 
         for (const auto mit : slice_it->allocated_jobs)
         {
             const Job * job = mit.first;
-            const MachineRange & alloc = mit.second;
+            const IntervalSet & alloc = mit.second;
             if (is_ensured_sleep_job(job->id))
                 non_wakable_machines_now.insert(alloc);
             else if (is_potential_sleep_job(job->id))
@@ -755,7 +755,7 @@ void EnergyBackfilling::update_first_slice_taking_sleep_jobs_into_account(Ration
         }
 
         // Let's make sure these machines are valid.
-        PPK_ASSERT_ERROR((wakable_machines_now & non_wakable_machines_now) == MachineRange::empty_range(),
+        PPK_ASSERT_ERROR((wakable_machines_now & non_wakable_machines_now) == IntervalSet::empty_range(),
                          "Invalid schedule update: the new wakable and non-wakable machines are not"
                          "distinct. New wakable: %s. New non wakable: %s.",
                          wakable_machines_now.to_string_brackets().c_str(),
@@ -794,10 +794,10 @@ void EnergyBackfilling::put_jobs_into_schedule(Schedule &schedule) const
             const Schedule::TimeSlice & last_slice = *slice_it;
 
             // Let's compute which machines can be awakened in the last slice
-            MachineRange machines_that_can_be_awakened = compute_potentially_awaken_machines(last_slice);
+            IntervalSet machines_that_can_be_awakened = compute_potentially_awaken_machines(last_slice);
 
             // Let's find which machines to awaken
-            MachineRange machines_to_awaken;
+            IntervalSet machines_to_awaken;
             _selector->select_resources_to_awaken_to_make_job_fit(job, last_slice.available_machines, machines_that_can_be_awakened, machines_to_awaken);
             PPK_ASSERT_ERROR(machines_to_awaken.size() > 0);
 
@@ -830,7 +830,7 @@ void EnergyBackfilling::put_jobs_into_schedule(Schedule &schedule) const
             }
 
             // Let's make sure the machine awakening was not useless
-            PPK_ASSERT_ERROR((job_alloc.used_machines & machines_to_awaken) != MachineRange::empty_range());
+            PPK_ASSERT_ERROR((job_alloc.used_machines & machines_to_awaken) != IntervalSet::empty_range());
 
             // Let's make sure the infinite horizon has not been changed
             PPK_ASSERT_ERROR(initial_infinite_horizon == schedule.infinite_horizon());
@@ -838,7 +838,7 @@ void EnergyBackfilling::put_jobs_into_schedule(Schedule &schedule) const
     }
 }
 
-Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &schedule, const MachineRange &machines_to_sedate) const
+Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &schedule, const IntervalSet &machines_to_sedate) const
 {
     PPK_ASSERT_ERROR(schedule.nb_slices() >= 1);
 
@@ -851,9 +851,9 @@ Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &sch
     Rational earliest_sedating_date = schedule.infinite_horizon();
 
     // Let's store awaken_machines into one variable
-    MachineRange awaken_machines = time_slice_it->available_machines; // Since sleep jobs targets the infinite horizon, the sleeping machines are not available in the last time slice
+    IntervalSet awaken_machines = time_slice_it->available_machines; // Since sleep jobs targets the infinite horizon, the sleeping machines are not available in the last time slice
 
-    while ((machines_to_sedate & awaken_machines) != MachineRange::empty_range())
+    while ((machines_to_sedate & awaken_machines) != IntervalSet::empty_range())
     {
         if (time_slice_it != schedule.begin())
             --time_slice_it;
@@ -862,7 +862,7 @@ Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &sch
         // Since time slices are traversed from future to past, we know that if a machine is still awaken,
         // it does nothing in the future. Then, if a machine in the awaken_machines set does something in the
         // current time slice, it should be sedated at the end of the time slice currently being traversed.
-        MachineRange machines_to_sedate_now;
+        IntervalSet machines_to_sedate_now;
 
         if (_debug)
         {
@@ -876,7 +876,7 @@ Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &sch
         for (auto mit : time_slice_it->allocated_jobs)
         {
             const Job * job = mit.first;
-            const MachineRange & job_machines = mit.second;
+            const IntervalSet & job_machines = mit.second;
 
             // If the job is a fake one
             if (is_fake_job(job->id))
@@ -935,7 +935,7 @@ Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &sch
 
             awaken_machines -= machines_to_sedate_now;
 
-            PPK_ASSERT_ERROR((awaken_machines & machines_to_sedate) == MachineRange::empty_range());
+            PPK_ASSERT_ERROR((awaken_machines & machines_to_sedate) == IntervalSet::empty_range());
         }
     }
 
@@ -1203,17 +1203,17 @@ EnergyBackfilling::ScheduleMetrics EnergyBackfilling::compute_metrics_of_schedul
     return ret;
 }
 
-MachineRange EnergyBackfilling::compute_potentially_awaken_machines(const Schedule::TimeSlice &time_slice)
+IntervalSet EnergyBackfilling::compute_potentially_awaken_machines(const Schedule::TimeSlice &time_slice)
 {
     // Computes the machines that can be awaken in one time slice.
     // These machines are the one on which potential sleep jobs are allocated
 
-    MachineRange res;
+    IntervalSet res;
 
     for (auto mit : time_slice.allocated_jobs)
     {
         const Job * job = mit.first;
-        const MachineRange & job_machines = mit.second;
+        const IntervalSet & job_machines = mit.second;
 
         if (is_potential_sleep_job(job->id))
             res.insert(job_machines);
@@ -1222,18 +1222,18 @@ MachineRange EnergyBackfilling::compute_potentially_awaken_machines(const Schedu
     return res;
 }
 
-MachineRange EnergyBackfilling::compute_sleeping_machines(const Schedule::TimeSlice &time_slice)
+IntervalSet EnergyBackfilling::compute_sleeping_machines(const Schedule::TimeSlice &time_slice)
 {
     // Computes the machines that are sleeping in one time slice:
     //   - those in ensured sleep
     //   - those in potential sleep
 
-    MachineRange res;
+    IntervalSet res;
 
     for (auto mit : time_slice.allocated_jobs)
     {
         const Job * job = mit.first;
-        const MachineRange & job_machines = mit.second;
+        const IntervalSet & job_machines = mit.second;
 
         if (is_potential_sleep_job(job->id) || is_ensured_sleep_job(job->id))
             res.insert(job_machines);
@@ -1242,7 +1242,7 @@ MachineRange EnergyBackfilling::compute_sleeping_machines(const Schedule::TimeSl
     return res;
 }
 
-Rational EnergyBackfilling::find_earliest_moment_to_awaken_machines(Schedule &schedule, const MachineRange &machines_to_awaken) const
+Rational EnergyBackfilling::find_earliest_moment_to_awaken_machines(Schedule &schedule, const IntervalSet &machines_to_awaken) const
 {
     // Let's traverse the schedule Future -> Past
     // As soon as we find any machine to awaken not computing a potential sleep job,
@@ -1253,7 +1253,7 @@ Rational EnergyBackfilling::find_earliest_moment_to_awaken_machines(Schedule &sc
     --slice_it;
 
     // Let's make sure this method is called correctly by checking that all machines are sleeping in the last time slice
-    MachineRange sleeping_machines = compute_potentially_awaken_machines(*slice_it);
+    IntervalSet sleeping_machines = compute_potentially_awaken_machines(*slice_it);
     PPK_ASSERT_ERROR((sleeping_machines & machines_to_awaken) == machines_to_awaken);
 
     do
@@ -1286,12 +1286,12 @@ Rational EnergyBackfilling::estimate_energy_of_schedule(const Schedule &schedule
         if (slice_it->end > horizon)
             length = horizon - slice_it->begin;
 
-        MachineRange idle_machines = _all_machines;
+        IntervalSet idle_machines = _all_machines;
 
         for (auto mit : slice.allocated_jobs)
         {
             const Job * job = mit.first;
-            const MachineRange & mr = mit.second;
+            const IntervalSet & mr = mit.second;
 
             idle_machines -= mr;
             Rational job_power_in_slice = 0;

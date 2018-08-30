@@ -36,7 +36,7 @@ private:
     bool set_job_metadata = false; //! If set to true, metadata will be associated to jobs when they are started.
     bool custom_mapping = true;
 
-    MachineRange available_machines;
-    std::map<std::string, MachineRange> current_allocations;
+    IntervalSet available_machines;
+    std::map<std::string, IntervalSet> current_allocations;
     bool _debug = true;
 };

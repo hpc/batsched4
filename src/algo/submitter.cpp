@@ -63,7 +63,7 @@ void Submitter::on_simulation_start(double date, const rapidjson::Value & batsim
 {
     (void) date;
 
-    available_machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     PPK_ASSERT_ERROR(available_machines.size() == (unsigned int) _nb_machines);
 
     PPK_ASSERT_ERROR(batsim_config["job_submission"]["from_scheduler"]["enabled"].GetBool(),
@@ -121,7 +121,7 @@ void Submitter::make_decisions(double date,
 
         if (job->nb_requested_resources <= (int)available_machines.size())
         {
-            MachineRange used_machines;
+            IntervalSet used_machines;
             if (_selector->fit(job, available_machines, used_machines))
             {
                 _decision->add_execute_job(job->id, used_machines, date);
@@ -150,7 +150,7 @@ void Submitter::make_decisions(double date,
                 // The execution is done 10 seconds after submitting the job
                 date = date + 10;
 
-                MachineRange used_machines = available_machines.left(1);
+                IntervalSet used_machines = available_machines.left(1);
 
                 string job_id = "dynamic!" + to_string(nb_submitted_jobs);
                 _decision->add_execute_job(job_id, used_machines, date);

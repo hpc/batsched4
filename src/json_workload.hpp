@@ -29,7 +29,7 @@ struct JobAlloc
   bool started_in_first_slice;
   bool has_been_inserted = true;
   const Job * job;
-  MachineRange used_machines;
+  IntervalSet used_machines;
 };
 
 

@@ -27,12 +27,12 @@ public:
 
 private:
     // Machines currently available
-    MachineRange _available_machines;
+    IntervalSet _available_machines;
     int _nb_available_machines = -1;
 
     // Pending jobs (queue)
     std::list<Job *> _pending_jobs;
 
     // Allocations of running jobs
-    std::unordered_map<std::string, MachineRange> _current_allocations;
+    std::unordered_map<std::string, IntervalSet> _current_allocations;
 };

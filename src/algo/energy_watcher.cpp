@@ -24,7 +24,7 @@ void EnergyWatcher::on_simulation_start(double date, const rapidjson::Value & ba
 {
     (void) date;
 
-    _machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    _machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     PPK_ASSERT_ERROR(_machines.size() == (unsigned int) _nb_machines);
 
     // TODO: print warning if time sharing is disabled
@@ -101,7 +101,7 @@ void EnergyWatcher::execute_job_if_whole_machine_is_idle(double date)
     // If all the machines are available and that there are jobs to compute
     if (!_is_machine_busy && job != nullptr)
     {
-        MachineRange machines_to_use = _machines.left(job->nb_requested_resources);
+        IntervalSet machines_to_use = _machines.left(job->nb_requested_resources);
         _decision->add_execute_job(job->id, machines_to_use, date);
 
         _is_machine_busy = true;

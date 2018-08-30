@@ -19,5 +19,5 @@ public:
                                 SortableJobOrder::CompareInformation * compare_info);
 
 private:
-    MachineRange machines;
+    IntervalSet machines;
 };

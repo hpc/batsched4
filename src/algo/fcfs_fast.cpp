@@ -18,7 +18,7 @@ void FCFSFast::on_simulation_start(double date,
     (void) date;
     (void) batsim_config;
 
-    _available_machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     _nb_available_machines = _nb_machines;
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
 }
@@ -69,7 +69,7 @@ void FCFSFast::make_decisions(double date,
             Job * pending_job = *job_it;
             if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
-                MachineRange machines = _available_machines.left(
+                IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
                 _decision->add_execute_job(pending_job->id,
                     machines, date);
@@ -115,7 +115,7 @@ void FCFSFast::make_decisions(double date,
             if (new_job->nb_requested_resources <= _nb_available_machines)
             {
                 // Yes, the job can be executed right away!
-                MachineRange machines = _available_machines.left(
+                IntervalSet machines = _available_machines.left(
                     new_job->nb_requested_resources);
                 _decision->add_execute_job(new_job_id, machines, date);
 

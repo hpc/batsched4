@@ -17,7 +17,7 @@ Schedule::Schedule(int nb_machines, Rational initial_time)
     slice.begin = initial_time;
     slice.end = 1e19; // greater than the number of seconds elapsed since the big bang
     slice.length = slice.end - slice.begin;
-    slice.available_machines.insert(MachineRange::ClosedInterval(0, nb_machines - 1));
+    slice.available_machines.insert(IntervalSet::ClosedInterval(0, nb_machines - 1));
     slice.nb_available_machines = nb_machines;
     PPK_ASSERT(slice.available_machines.size() == (unsigned int)nb_machines);
 
@@ -350,7 +350,7 @@ double Schedule::query_wait(int size, Rational time, ResourceSelector *selector)
             // If the job fits in the current time slice (temporarily speaking)
             if (totalTime >= time)
             {
-                MachineRange used_machines;
+                IntervalSet used_machines;
 
                 // If the job fits in the current time slice (according to the fitting function)
                 if (selector->fit(&fake_job, pit->available_machines, used_machines))
@@ -378,7 +378,7 @@ double Schedule::query_wait(int size, Rational time, ResourceSelector *selector)
                     else if (totalTime >= time) // The job fits in the slices [pit, pit2[ (temporarily speaking)
                     {
 
-                        MachineRange used_machines;
+                        IntervalSet used_machines;
 
                         // If the job fits in the current time slice (according to the fitting function)
                         if (selector->fit(&fake_job, availableMachines, used_machines))
@@ -694,7 +694,7 @@ Schedule::TimeSliceConstIterator Schedule::find_first_time_slice_after_date(Rati
     return _profile.end();
 }
 
-MachineRange Schedule::available_machines_during_period(Rational begin, Rational end) const
+IntervalSet Schedule::available_machines_during_period(Rational begin, Rational end) const
 {
     PPK_ASSERT_ERROR(
         begin >= first_slice_begin(), "begin=%f, first_slice_begin()=%f", (double)begin, (double)first_slice_begin());
@@ -702,7 +702,7 @@ MachineRange Schedule::available_machines_during_period(Rational begin, Rational
         end <= infinite_horizon(), "end=%f, infinite_horizon()=%f", (double)end, (double)infinite_horizon());
 
     auto slice_it = find_first_time_slice_after_date(begin);
-    MachineRange available_machines = slice_it->available_machines;
+    IntervalSet available_machines = slice_it->available_machines;
 
     while (slice_it != _profile.end() && slice_it->begin < end)
     {
@@ -815,7 +815,7 @@ string Schedule::to_svg() const
             auto previous_slice_it = slice_it;
             --previous_slice_it;
 
-            MachineRange job_machines = previous_slice_it->allocated_jobs.at(job);
+            IntervalSet job_machines = previous_slice_it->allocated_jobs.at(job);
 
             // Let's create a rectangle for each contiguous part of the allocation
             for (auto it = job_machines.intervals_begin(); it != job_machines.intervals_end(); ++it)
@@ -919,7 +919,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
 {
     // Let's retrieve the machines used by the job
     PPK_ASSERT_ERROR(removal_point->allocated_jobs.count(job) == 1);
-    MachineRange job_machines = removal_point->allocated_jobs.at(job);
+    IntervalSet job_machines = removal_point->allocated_jobs.at(job);
 
     if (_debug)
     {

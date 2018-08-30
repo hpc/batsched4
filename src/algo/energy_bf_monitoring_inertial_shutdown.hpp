@@ -45,26 +45,26 @@ public:
 
 
     void select_machines_to_sedate(int nb_machines,
-                                   const MachineRange & sedatable_machines,
-                                   const MachineRange & machines_that_can_be_used_by_the_priority_job,
-                                   MachineRange & machines_to_sedate,
+                                   const IntervalSet & sedatable_machines,
+                                   const IntervalSet & machines_that_can_be_used_by_the_priority_job,
+                                   IntervalSet & machines_to_sedate,
                                    const Job * priority_job) const;
 
     void select_machines_to_awaken(int nb_machines,
-                                   const MachineRange & awakable_machines,
-                                   MachineRange & machines_to_awaken) const;
+                                   const IntervalSet & awakable_machines,
+                                   IntervalSet & machines_to_awaken) const;
 
     static void select_first_machines_to_sedate(int nb_machines,
                                                 const Schedule & schedule,
-                                                const MachineRange & sedatable_machines,
-                                                const MachineRange &machines_that_can_be_used_by_the_priority_job,
-                                                MachineRange & machines_to_sedate,
+                                                const IntervalSet & sedatable_machines,
+                                                const IntervalSet &machines_that_can_be_used_by_the_priority_job,
+                                                IntervalSet & machines_to_sedate,
                                                 const Job * priority_job = nullptr);
 
     static void select_first_machines_to_awaken(int nb_machines,
                                                 const Schedule & schedule,
-                                                const MachineRange & awakable_machines,
-                                                MachineRange & machines_to_awaken);
+                                                const IntervalSet & awakable_machines,
+                                                IntervalSet & machines_to_awaken);
 
     void write_schedule_debug(const std::string & filename_suffix = "");
 
@@ -74,8 +74,8 @@ public:
                                                        ResourceSelector * priority_job_selector,
                                                        bool & priority_job_needs_awakenings,
                                                        Schedule::JobAlloc & first_insertion_alloc,
-                                                       MachineRange & priority_job_reserved_machines,
-                                                       MachineRange & machines_that_can_be_used_by_the_priority_job);
+                                                       IntervalSet & priority_job_reserved_machines,
+                                                       IntervalSet & machines_that_can_be_used_by_the_priority_job);
 
     Rational compute_priority_job_starting_time_expectancy(const Schedule & schedule,
                                                            const Job * priority_job);
@@ -97,10 +97,10 @@ protected:
      * @param[out] machines_awakened_now The machines that have been awakened in the first time slice
      */
     void handle_queued_switches(Schedule & schedule,
-                                const MachineRange & machines_to_sedate,
-                                const MachineRange & machines_to_awaken,
-                                MachineRange & machines_sedated_now,
-                                MachineRange & machines_awakened_now);
+                                const IntervalSet & machines_to_sedate,
+                                const IntervalSet & machines_to_awaken,
+                                IntervalSet & machines_sedated_now,
+                                IntervalSet & machines_awakened_now);
 
     void write_output_file(double date,
                            int nb_jobs_in_queue,
@@ -131,7 +131,7 @@ protected:
     int _nb_machines_sedated_for_being_idle = 0;
     int _nb_machines_sedated_by_inertia = 0;
     std::map<int, Rational> _machines_idle_start_date;
-    MachineRange _idle_machines;
+    IntervalSet _idle_machines;
 
     bool _first_monitoring_stage = true;
 
@@ -147,10 +147,10 @@ protected:
     MachinesSedatingPolicy _sedating_policy = SEDATE_FIRST_MACHINES;
     MachinesAwakeningPolicy _awakening_policy = AWAKEN_FIRST_MACHINES;
 
-    MachineRange _machines_to_sedate;
-    MachineRange _machines_to_awaken;
+    IntervalSet _machines_to_sedate;
+    IntervalSet _machines_to_awaken;
 
     // The pstates changes that were asked since the last monitoring stage
-    MachineRange _machines_awakened_since_last_monitoring_stage_inertia;
-    MachineRange _machines_sedated_since_last_monitoring_stage_inertia;
+    IntervalSet _machines_awakened_since_last_monitoring_stage_inertia;
+    IntervalSet _machines_sedated_since_last_monitoring_stage_inertia;
 };

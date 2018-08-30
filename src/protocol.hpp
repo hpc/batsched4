@@ -73,7 +73,7 @@ public:
      *            the job size, and executor i is launched on allocated resource i.
      */
     virtual void append_execute_job(const std::string & job_id,
-                                    const MachineRange & allocated_resources,
+                                    const IntervalSet & allocated_resources,
                                     double date,
                                     const std::vector<int> & executor_to_allocated_resource_mapping = {}) = 0;
 
@@ -100,7 +100,7 @@ public:
      * @param[in] new_state The state the machines should be set into.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_set_resource_state(MachineRange resources,
+    virtual void append_set_resource_state(IntervalSet resources,
                                            const std::string & new_state,
                                            double date)  = 0;
 
@@ -226,7 +226,7 @@ public:
      *            the job size, and executor i is launched on allocated resource i.
      */
     void append_execute_job(const std::string & job_id,
-                            const MachineRange & allocated_resources,
+                            const IntervalSet & allocated_resources,
                             double date,
                             const std::vector<int> & executor_to_allocated_resource_mapping = {});
 
@@ -253,7 +253,7 @@ public:
      * @param[in] new_state The state the machines should be set into.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_set_resource_state(MachineRange resources,
+    void append_set_resource_state(IntervalSet resources,
                                    const std::string & new_state,
                                    double date);
 

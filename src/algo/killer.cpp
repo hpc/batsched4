@@ -46,7 +46,7 @@ void Killer::on_simulation_start(double date, const rapidjson::Value & batsim_co
     (void) date;
     (void) batsim_config;
 
-    available_machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     PPK_ASSERT_ERROR(available_machines.size() == (unsigned int) _nb_machines);
 }
 
@@ -97,7 +97,7 @@ void Killer::make_decisions(double date,
 
         if (job->nb_requested_resources <= (int)available_machines.size())
         {
-            MachineRange used_machines;
+            IntervalSet used_machines;
             if (_selector->fit(job, available_machines, used_machines))
             {
                 _decision->add_execute_job(job->id, used_machines, date);
