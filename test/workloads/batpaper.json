@@ -4,13 +4,6 @@
     "date": "2016-05-17 10:28:31.851083",
     "jobs": [
         {
-            "id": 424242,
-            "profile": "delay_ft.B.1",
-            "res": 1,
-            "subtime": 16000,
-            "walltime": 149
-        },
-        {
             "id": 0,
             "profile": "delay_ft.B.1",
             "res": 1,

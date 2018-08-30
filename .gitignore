@@ -1,2 +1,4 @@
 *.user
 build
+test-out
+test-instances
