@@ -15,9 +15,6 @@ build:
   stage: build
   script:
     - ./ci/build.bash
-  artifacts:
-    paths:
-      - /builds/batsim/batsched/build
 
 ###############################################################################
 # Dependencies cache stage
@@ -30,9 +27,12 @@ update_dependencies_cache:
 ###############################################################################
 # Test stage
 ###############################################################################
-test:
+test_pinned_batsim:
   stage: test
   script:
-    - ./ci/run-tests.bash
-  dependencies:
-    - build
+    - nix-shell ./ci -A test_pinned --command './ci/run-tests.bash'
+
+test_dev_batsim:
+  stage: test
+  script:
+    - nix-shell ./ci -A test_dev --command './ci/run-tests.bash'
