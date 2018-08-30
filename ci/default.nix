@@ -12,7 +12,15 @@ let
 
     # Redefine some packages for clarity's sake
     batexpe = kapack.batexpe;
-    batsim_pinned = kapack.batsim;
+    batsim_pinned = (kapack.batsim_dev.override {}).overrideAttrs (attrs: rec {
+      name = "batsim-${version}";
+      version = "2.0.0-pinned";
+      src = pkgs.fetchgit {
+        url = "https://framagit.org/batsim/batsim.git";
+        rev = "117ce271e806e0492786b38e62145117722133d3";
+        sha256 = "038g4ymplfcw3ygj3f5gc2kmyxl0wz8igr87nkj424slp1rzx3ky";
+      };
+    });
     batsim_dev = kapack.batsim_dev;
 
     # Packages defined in this tree

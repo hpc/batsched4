@@ -1,7 +1,7 @@
 {
   "url": "https://framagit.org/batsim/batsim.git",
-  "rev": "6cdcd274c31fb11dfed03f2409f059b11c74a4f1",
-  "date": "2018-07-11T15:59:48+02:00",
-  "sha256": "1a0knfi935xw84g2lfn1s9fsnyvg00nygdqyyp5mird47gj8c72a",
+  "rev": "117ce271e806e0492786b38e62145117722133d3",
+  "date": "2018-07-30T16:03:35+02:00",
+  "sha256": "038g4ymplfcw3ygj3f5gc2kmyxl0wz8igr87nkj424slp1rzx3ky",
   "fetchSubmodules": true
 }
