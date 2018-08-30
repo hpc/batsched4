@@ -1,4 +1,6 @@
-{ stdenv, batsim, batexpe }:
+{ stdenv, batsim, batexpe,
+  which, redis, procps, psmisc
+}:
 
 stdenv.mkDerivation rec {
   name = "batsched-test-deps";
@@ -6,5 +8,5 @@ stdenv.mkDerivation rec {
   # This package is not meant to be built
   unpackPhase = "true";
   installPhase = "true";
-  propagatedBuildInputs = [ batsim batexpe ];
+  propagatedBuildInputs = [ batsim batexpe which redis procps psmisc ];
 }
