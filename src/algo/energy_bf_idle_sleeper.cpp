@@ -178,12 +178,12 @@ void EnergyBackfillingIdleSleeper::update_idle_states(Rational current_date,
         machines_idle_start_date[machine_id] = schedule.infinite_horizon();
     }
 
-    PPK_ASSERT_ERROR((machines_newly_available & machines_newly_busy) == IntervalSet::empty_range(),
+    PPK_ASSERT_ERROR((machines_newly_available & machines_newly_busy) == IntervalSet::empty_interval_set(),
                      "machines_newly_available=%s. machines_newly_busy=%s",
                      machines_newly_available.to_string_brackets().c_str(),
                      machines_newly_busy.to_string_brackets().c_str());
 
-    PPK_ASSERT_ERROR((machines_newly_available & idle_machines) == IntervalSet::empty_range(),
+    PPK_ASSERT_ERROR((machines_newly_available & idle_machines) == IntervalSet::empty_interval_set(),
                      "machines_newly_available=%s. _idle_machines=%s",
                      machines_newly_available.to_string_brackets().c_str(),
                      idle_machines.to_string_brackets().c_str());
@@ -230,7 +230,7 @@ void EnergyBackfillingIdleSleeper::make_idle_sleep_decisions(double date)
         _machines_sedated_since_last_monitoring_stage_inertia = machines_sedated_this_turn;
         _machines_awakened_since_last_monitoring_stage_inertia = machines_awakened_this_turn;
 
-        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_range());
+        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
         make_decisions_of_schedule(_inertial_schedule, false);
     }

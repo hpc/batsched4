@@ -755,7 +755,7 @@ void EnergyBackfilling::update_first_slice_taking_sleep_jobs_into_account(Ration
         }
 
         // Let's make sure these machines are valid.
-        PPK_ASSERT_ERROR((wakable_machines_now & non_wakable_machines_now) == IntervalSet::empty_range(),
+        PPK_ASSERT_ERROR((wakable_machines_now & non_wakable_machines_now) == IntervalSet::empty_interval_set(),
                          "Invalid schedule update: the new wakable and non-wakable machines are not"
                          "distinct. New wakable: %s. New non wakable: %s.",
                          wakable_machines_now.to_string_brackets().c_str(),
@@ -830,7 +830,7 @@ void EnergyBackfilling::put_jobs_into_schedule(Schedule &schedule) const
             }
 
             // Let's make sure the machine awakening was not useless
-            PPK_ASSERT_ERROR((job_alloc.used_machines & machines_to_awaken) != IntervalSet::empty_range());
+            PPK_ASSERT_ERROR((job_alloc.used_machines & machines_to_awaken) != IntervalSet::empty_interval_set());
 
             // Let's make sure the infinite horizon has not been changed
             PPK_ASSERT_ERROR(initial_infinite_horizon == schedule.infinite_horizon());
@@ -853,7 +853,7 @@ Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &sch
     // Let's store awaken_machines into one variable
     IntervalSet awaken_machines = time_slice_it->available_machines; // Since sleep jobs targets the infinite horizon, the sleeping machines are not available in the last time slice
 
-    while ((machines_to_sedate & awaken_machines) != IntervalSet::empty_range())
+    while ((machines_to_sedate & awaken_machines) != IntervalSet::empty_interval_set())
     {
         if (time_slice_it != schedule.begin())
             --time_slice_it;
@@ -935,7 +935,7 @@ Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &sch
 
             awaken_machines -= machines_to_sedate_now;
 
-            PPK_ASSERT_ERROR((awaken_machines & machines_to_sedate) == IntervalSet::empty_range());
+            PPK_ASSERT_ERROR((awaken_machines & machines_to_sedate) == IntervalSet::empty_interval_set());
         }
     }
 

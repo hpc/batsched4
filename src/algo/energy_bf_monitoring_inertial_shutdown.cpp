@@ -354,11 +354,11 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                                          machines_sedated_this_turn_tmp.to_string_brackets().c_str(),
                                          non_disturbing_machines_switches_off.to_string_brackets().c_str());
 
-                        PPK_ASSERT_ERROR(thrash == IntervalSet::empty_range(),
+                        PPK_ASSERT_ERROR(thrash == IntervalSet::empty_interval_set(),
                                          "The machines that have been awakeend by this call are not the "
                                          "expected ones.\nawakened=%s\nexpected=%s",
                                          thrash.to_string_elements().c_str(),
-                                         IntervalSet::empty_range().to_string_brackets().c_str());
+                                         IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
                         machines_sedated_this_turn -= disturbing_machines_switches_off;
                         _machines_to_sedate -= disturbing_machines_switches_off;
@@ -413,11 +413,11 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                         handle_queued_switches(_inertial_schedule, IntervalSet(),
                                                machines_to_awaken_to_make_priority_job_fit,
                                                thrash, machines_really_awakened_to_make_priority_job_fit);
-                        PPK_ASSERT_ERROR(thrash == IntervalSet::empty_range(),
+                        PPK_ASSERT_ERROR(thrash == IntervalSet::empty_interval_set(),
                                          "The machines that have been sedated by this call are not the "
                                          "expected ones.\nsedated=%s\nexpected=%s",
                                          thrash.to_string_elements().c_str(),
-                                         IntervalSet::empty_range().to_string_brackets().c_str());
+                                         IntervalSet::empty_interval_set().to_string_brackets().c_str());
                         PPK_ASSERT_ERROR((machines_really_awakened_to_make_priority_job_fit &
                                           machines_to_awaken_to_make_priority_job_fit) ==
                                          machines_really_awakened_to_make_priority_job_fit,
@@ -494,7 +494,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
         _machines_sedated_since_last_monitoring_stage_inertia += machines_sedated_this_turn;
         _machines_awakened_since_last_monitoring_stage_inertia += machines_awakened_this_turn;
 
-        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_range(),
+        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set(),
                          "The machines to awaken and those to sedate should be distinct...\n"
                          "machines_to_awaken=%s\nmachines_to_sedate=%s",
                          _machines_to_awaken.to_string_brackets().c_str(),
@@ -601,17 +601,17 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                          machines_awakened_this_turn.to_string_brackets().c_str(),
                          machines_to_awaken_for_being_idle.to_string_brackets().c_str());
 
-        PPK_ASSERT_ERROR(machines_sedated_this_turn == IntervalSet::empty_range(),
+        PPK_ASSERT_ERROR(machines_sedated_this_turn == IntervalSet::empty_interval_set(),
                          "The sedated machines are not the expected ones.Sedated=%s.\nExpected=%s",
                          machines_sedated_this_turn.to_string_brackets().c_str(),
-                         IntervalSet::empty_range().to_string_brackets().c_str());
+                         IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
         printf("Date=%g. Those machines should be awakened now (previously idle ones): %s\n",
                date, machines_awakened_this_turn.to_string_brackets().c_str());
 
         _machines_to_awaken -= machines_awakened_this_turn;
 
-        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_range());
+        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
         // Let's make the new decisions (switches ON)!
         make_decisions_of_schedule(_inertial_schedule, false);
@@ -665,15 +665,15 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                              machines_sedated_this_turn.to_string_brackets().c_str(),
                              machines_to_sedate_for_being_idle.to_string_brackets().c_str());
 
-            PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_range(),
+            PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_interval_set(),
                              "The awakened machines are not the expected ones.Awakened=%s.\nExpected=%s",
                              machines_awakened_this_turn.to_string_brackets().c_str(),
-                             IntervalSet::empty_range().to_string_brackets().c_str());
+                             IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
             printf("Date=%g. Those machines should be put to sleep now for being idle: %s\n",
                        date, machines_sedated_this_turn.to_string_brackets().c_str());
 
-            PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_range());
+            PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
             if (_inertial_shutdown_debug)
             {
@@ -1108,16 +1108,16 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                              machines_sedated_this_turn.to_string_brackets().c_str(),
                              machines_to_sedate_for_being_idle.to_string_brackets().c_str());
 
-            PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_range(),
+            PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_interval_set(),
                              "The awakened machines are not the expected ones.Awakened=%s.\nExpected=%s",
                              machines_awakened_this_turn.to_string_brackets().c_str(),
-                             IntervalSet::empty_range().to_string_brackets().c_str());
+                             IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
             printf("Date=%g. Those machines should be put to sleep now for being idle: %s\n",
                        date, machines_sedated_this_turn.to_string_brackets().c_str());
 
 
-            PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_range());
+            PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
             if (_inertial_shutdown_debug)
             {
@@ -1238,7 +1238,7 @@ void EnergyBackfillingMonitoringInertialShutdown::select_first_machines_to_sedat
 
         // The sedatable machines might annoy the priority job...
         IntervalSet annoying_sedatable_machines = (sedatable_machines_now & (really_stolable_machines - stolen_machines));
-        if (annoying_sedatable_machines != IntervalSet::empty_range())
+        if (annoying_sedatable_machines != IntervalSet::empty_interval_set())
         {
             // Let's see if we can "steal" some machines from the priority job.
             int nb_machines_stolable_now = nb_machines_that_can_be_stolen_from_priority_job - stolen_machines.size();

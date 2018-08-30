@@ -155,7 +155,7 @@ void EnergyBackfillingMachineSubpartSleeper::on_monitoring_stage(double date)
                                    empty_range, machines_sedated_this_turn,
                                    machines_awakened_this_turn);
 
-            PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_range());
+            PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_interval_set());
 
             if (machines_sedated_this_turn.size() > 0)
                 printf("Date=%g. Those machines should be put to sleep now: %s\n",
@@ -163,7 +163,7 @@ void EnergyBackfillingMachineSubpartSleeper::on_monitoring_stage(double date)
 
             _machines_to_sedate -= machines_sedated_this_turn;
 
-            PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_range());
+            PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
             make_decisions_of_schedule(_inertial_schedule, false);
 
@@ -212,16 +212,16 @@ void EnergyBackfillingMachineSubpartSleeper::on_monitoring_stage(double date)
                                  machines_sedated_this_turn.to_string_brackets().c_str(),
                                  machines_to_sedate_for_being_idle.to_string_brackets().c_str());
 
-                PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_range(),
+                PPK_ASSERT_ERROR(machines_awakened_this_turn == IntervalSet::empty_interval_set(),
                                  "The awakened machines are not the expected ones.Awakened=%s.\nExpected=%s",
                                  machines_awakened_this_turn.to_string_brackets().c_str(),
-                                 IntervalSet::empty_range().to_string_brackets().c_str());
+                                 IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
                 printf("Date=%g. Those machines should be put to sleep now for being idle: %s\n",
                            date, machines_sedated_this_turn.to_string_brackets().c_str());
 
 
-                PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_range());
+                PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
                 if (_inertial_shutdown_debug)
                 {
