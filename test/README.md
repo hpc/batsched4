@@ -10,7 +10,7 @@ pytest
   2. pytest executes [robin][robin] on the generated file
 
 ### Running a specific test
-You can therefore directly rerun a test (a failing one for example):
+You can manually rerun a test with [robin][robin] (a failing one for example):
 ```
 robin test-instances/FAILING-TEST.yaml
 ```
