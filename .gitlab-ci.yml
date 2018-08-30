@@ -6,6 +6,7 @@ variables:
 stages:
   - build
   - update_dependencies_cache
+  - test
 
 ###############################################################################
 # Build stage
@@ -29,7 +30,7 @@ update_dependencies_cache:
 ###############################################################################
 # Test stage
 ###############################################################################
-test_test:
+test:
   stage: test
   script:
     - ./ci/run-tests.bash
