@@ -1,7 +1,7 @@
 let
   pkgs = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/18.03.tar.gz") {};
   kapack = import
-    ( fetchTarball "https://github.com/kapack/kapack/archive/master.tar.gz")
+    ( fetchTarball "https://github.com/oar-team/kapack/archive/master.tar.gz")
   { inherit pkgs; };
 in
 
@@ -14,7 +14,7 @@ let
     batexpe = kapack.batexpe;
     batsim_stable = kapack.batsim;
     batsim_dev = kapack.batsim_dev;
-    
+
     # Packages defined in this tree
     batsched_local = callPackage ./local.nix {};
     test_deps_stable = callPackage ./test-deps.nix {
