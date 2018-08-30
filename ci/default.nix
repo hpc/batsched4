@@ -18,7 +18,7 @@ let
       src = pkgs.fetchgit {
         url = "https://framagit.org/batsim/batsim.git";
         rev = "117ce271e806e0492786b38e62145117722133d3";
-        sha256 = "038g4ymplfcw3ygj3f5gc2kmyxl0wz8igr87nkj424slp1rzx3ky";
+        sha256 = "1j15yx25a6r63sgba51l6ph44c81s7vj3m5jfn186sq1pc2b40hg";
       };
     });
     batsim_dev = kapack.batsim_dev;
