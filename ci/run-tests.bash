@@ -19,7 +19,7 @@ then
 fi
 
 # Add built batsched in PATH
-export PATH=$(realpath ./build):${PATH}
+export PATH="${PATH}:$(realpath ./build)"
 
 # Set TEST_ROOT so simulation input files can be found
 export TEST_ROOT=$(realpath ./test)
