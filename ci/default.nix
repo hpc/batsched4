@@ -12,22 +12,22 @@ let
 
     # Redefine some packages for clarity's sake
     batexpe = kapack.batexpe;
-    batsim_stable = kapack.batsim;
+    batsim_pinned = kapack.batsim;
     batsim_dev = kapack.batsim_dev;
 
     # Packages defined in this tree
     batsched_local = callPackage ./local.nix {};
-    test_deps_stable = callPackage ./test-deps.nix {
-      batsim = batsim_stable;
+    test_deps_pinned = callPackage ./test-deps.nix {
+      batsim = batsim_pinned;
     };
     test_deps_dev = callPackage ./test-deps.nix {
       batsim = batsim_dev;
     };
 
     # Packages meant to be used as shells
-    test_stable = callPackage ./test-env.nix {
+    test_pinned = callPackage ./test-env.nix {
       batsched = batsched_local;
-      test_deps = test_deps_stable;
+      test_deps = test_deps_pinned;
     };
     test_dev = callPackage ./test-env.nix {
       batsched = batsched_local;
