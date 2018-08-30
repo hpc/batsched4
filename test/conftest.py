@@ -15,11 +15,10 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize('platform', platforms)
 
     if 'workload' in metafunc.fixturenames:
-        # workload_files = glob.glob('workloads/*.json')
-        # workloads = [Workload(
-        #     name=basename(workload_file).replace('.json', ''),
-        #     filename=workload_file) for workload_file in workload_files]
-        workloads = [Workload('mixed', abspath('workloads/mixed.json'))]
+        workload_files = glob.glob('workloads/*.json')
+        workloads = [Workload(
+            name=basename(workload_file).replace('.json', ''),
+            filename=abspath(workload_file)) for workload_file in workload_files]
         metafunc.parametrize('workload', workloads)
 
     if 'algo' in metafunc.fixturenames:
