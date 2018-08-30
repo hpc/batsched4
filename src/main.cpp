@@ -464,6 +464,10 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     }
                 }
             }
+            else if (event_type == "NOTIFY")
+            {
+                printf("NOTIFY received. TODO: handle correctly.");
+            }
             else
             {
                 throw runtime_error("Unknown event received. Type = " + event_type);
