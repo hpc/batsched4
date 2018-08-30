@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning][semver].
 
 [//]: =========================================================================
 ## [Unreleased]
+### Changed
+- Dependencies: added [intervalset](https://framagit.org/batsim/intervalset).
 
 [//]: =========================================================================
 ## [1.2.1] - 2018-07-03 - For [Batsim v2.0.0][Batsim v2.0.0]
