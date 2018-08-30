@@ -92,6 +92,12 @@ public:
     virtual void on_requested_call(double date);
 
     /**
+     * @brief This function is called when the no_more_static_job_to_submit
+     *        notification is received
+     */
+    virtual void on_no_more_static_job_to_submit_received(double date);
+
+    /**
      * @brief This function is called when an ANSWER message about energy consumption is received
      * @param[in] date The date at which the ANSWER message has been received
      * @param[in] consumed_joules The number of joules consumed since time 0
@@ -143,6 +149,7 @@ protected:
     rapidjson::Document * _variant_options;
     int _nb_machines = -1;
     RedisStorage * _redis = nullptr;
+    bool _no_more_static_job_to_submit_received = false;
 
     struct Failure
     {

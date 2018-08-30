@@ -464,6 +464,20 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     }
                 }
             }
+            else if (event_type == "NOTIFY")
+            {
+                string notify_type = event_data["type"].GetString();
+
+                if (notify_type == "no_more_static_job_to_submit")
+                {
+                    algo->on_no_more_static_job_to_submit_received(current_date);
+                }
+                else
+                {
+                    throw runtime_error("Unknown NOTIFY type received. Type = " + notify_type);
+                }
+
+            }
             else
             {
                 throw runtime_error("Unknown event received. Type = " + event_type);

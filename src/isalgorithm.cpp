@@ -93,6 +93,12 @@ void ISchedulingAlgorithm::on_requested_call(double date)
     _nopped_recently = true;
 }
 
+void ISchedulingAlgorithm::on_no_more_static_job_to_submit_received(double date)
+{
+    (void) date;
+    _no_more_static_job_to_submit_received = true;
+}
+
 void ISchedulingAlgorithm::on_answer_energy_consumption(double date, double consumed_joules)
 {
     (void) date;
