@@ -1,5 +1,5 @@
 { stdenv, batsim, batexpe,
-  which, redis, procps, psmisc,
+  which, redis, procps, psmisc, pytest,
   nix-prefetch-git
 }:
 
@@ -10,7 +10,7 @@ stdenv.mkDerivation rec {
   unpackPhase = "true";
   installPhase = "true";
   propagatedBuildInputs = [ batsim batexpe
-    which redis procps psmisc
+    which redis procps psmisc pytest
     nix-prefetch-git
   ];
 }

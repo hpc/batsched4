@@ -22,6 +22,7 @@ let
       };
     });
     batsim_dev = kapack.batsim_dev;
+    pytest = pkgs.python36Packages.pytest;
 
     # Packages defined in this tree
     batsched_local = callPackage ./local.nix {};

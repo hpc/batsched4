@@ -1,6 +1,8 @@
 #!/usr/bin/env nix-shell
-#! nix-shell . -i bash -A test_dev
+#! nix-shell . -i bash -A test_pinned
 set -eu
+
+initial_dir=$(realpath .)
 
 # Run a redis server if needed
 redis_launched_here=0
@@ -28,12 +30,9 @@ echo "batsim realpath: $(realpath $(which batsim))"
 echo "robin realpath: $(realpath $(which robin))"
 
 # Execute the tests (TODO: clean tests)
-set +e
-find ./test/instances -name '*.yaml' | \
-    sed -E 's/(.*)/robintest \1 --test-timeout 30 --expect-robin-success --expect-sched-success --expect-batsim-success/' | \
-    bash -x
-failed=0
-
+cd test
+pytest
+failed=$?
 
 # Stop the redis server if it has been launched by this script
 if [ $redis_launched_here -eq 1 ]
@@ -42,4 +41,5 @@ then
     killall redis-server
 fi
 
+cd ${initial_dir}
 exit ${failed}
