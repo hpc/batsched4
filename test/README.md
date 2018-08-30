@@ -16,9 +16,11 @@ robin test-instances/FAILING-TEST.yaml
 ```
 
 You can also run batsim and batsched in different terminals:
-```
+``` bash
 ./test-out/FAILING-TEST/cmd/batsim.bash
-./test-out/FAILING-TEST/cmd/batsim.bash
+
+# feel free to hack — e.g., prepend command with gdb, valgrind...
+./test-out/FAILING-TEST/cmd/sched.bash
 ```
 
 [conftest.py]: ./conftest.py
