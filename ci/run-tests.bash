@@ -3,18 +3,18 @@
 set -eu
 
 # Run a redis server if needed
-redis_launched_here=0
-r=$(ps faux | grep redis-server | grep -v grep | wc -l)
-if [ $r -eq 0 ]
-then
-    echo "Running a Redis server..."
-    redis-server>/dev/null &
-    redis_launched_here=1
+# redis_launched_here=0
+# r=$(ps faux | grep redis-server | grep -v grep | wc -l)
+# if [ $r -eq 0 ]
+# then
+#     echo "Running a Redis server..."
+#     redis-server>/dev/null &
+#     redis_launched_here=1
 
-    while ! nc -z localhost 6379; do
-      sleep 1
-    done
-fi
+#     while ! nc -z localhost 6379; do
+#       sleep 1
+#     done
+# fi
 
 # Add built batsched in PATH
 export PATH=$(realpath ./build):${PATH}
@@ -36,10 +36,10 @@ failed=0
 
 
 # Stop the redis server if it has been launched by this script
-if [ $redis_launched_here -eq 1 ]
-then
-    echo "Stopping the Redis server..."
-    killall redis-server
-fi
+# if [ $redis_launched_here -eq 1 ]
+# then
+#     echo "Stopping the Redis server..."
+#     killall redis-server
+# fi
 
 exit ${failed}
