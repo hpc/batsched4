@@ -25,3 +25,13 @@ update_dependencies_cache:
   stage: update_dependencies_cache
   script:
     - ./ci/update-dependencies-cache.bash
+
+###############################################################################
+# Test stage
+###############################################################################
+test_test:
+  stage: test
+  script:
+    - ./ci/run-tests.bash
+  dependencies:
+    - build
