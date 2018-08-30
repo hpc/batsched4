@@ -11,7 +11,7 @@ def pytest_generate_tests(metafunc):
         platform_files = glob.glob('platforms/*.xml')
         platforms = [Platform(
             name=basename(platform_file).replace('.xml', ''),
-            filename=platform_file) for platform_file in platform_files]
+            filename=abspath(platform_file)) for platform_file in platform_files]
         metafunc.parametrize('platform', platforms)
 
     if 'workload' in metafunc.fixturenames:
@@ -19,7 +19,7 @@ def pytest_generate_tests(metafunc):
         # workloads = [Workload(
         #     name=basename(workload_file).replace('.json', ''),
         #     filename=workload_file) for workload_file in workload_files]
-        workloads = [Workload('mixed', 'workloads/mixed.json')]
+        workloads = [Workload('mixed', abspath('workloads/mixed.json'))]
         metafunc.parametrize('workload', workloads)
 
     if 'algo' in metafunc.fixturenames:

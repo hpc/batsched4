@@ -1,7 +1,0 @@
-batcmd: batsim -p ${TEST_ROOT}/platforms/energy128.xml -w ${TEST_ROOT}/workloads/mixed.json -e /tmp/batsched/filler-mixed/out
-output-dir: /tmp/batsched/filler-mixed
-schedcmd: batsched -v filler
-simulation-timeout: 30
-ready-timeout: 5
-success-timeout: 5
-failure-timeout: 0
