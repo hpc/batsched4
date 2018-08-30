@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-#include "machine_range.hpp"
+#include <intervalset.hpp>
 
 class AbstractProtocolWriter;
 class RedisStorage;
@@ -14,7 +14,7 @@ public:
     SchedulingDecision();
     ~SchedulingDecision();
 
-    void add_execute_job(const std::string &job_id, const MachineRange & machine_ids, double date,
+    void add_execute_job(const std::string &job_id, const IntervalSet & machine_ids, double date,
                          std::vector<int> executor_to_allocated_resource_mapping = {});
     void add_reject_job(const std::string &job_id, double date);
     void add_kill_job(const std::vector<std::string> & job_ids, double date);
@@ -41,7 +41,7 @@ public:
                             const std::string & profile_json_description,
                             double date);
 
-    void add_set_resource_state(MachineRange machines, int new_state, double date);
+    void add_set_resource_state(IntervalSet machines, int new_state, double date);
 
     void add_set_job_metadata(const std::string & job_id,
                               const std::string & metadata,

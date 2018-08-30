@@ -35,12 +35,12 @@ public:
      * @param[out] machines_to_sedate The machines that can be sedated for being idle for too long (output parameter)
      */
     static void select_idle_machines_to_sedate(Rational current_date,
-                                               const MachineRange & idle_machines,
-                                               const MachineRange & machines_awake_soon,
+                                               const IntervalSet & idle_machines,
+                                               const IntervalSet & machines_awake_soon,
                                                const Job * priority_job,
                                                const std::map<int, Rational> idle_machines_start_date,
                                                Rational minimum_idle_time_to_sedate,
-                                               MachineRange & machines_to_sedate,
+                                               IntervalSet & machines_to_sedate,
                                                bool take_priority_job_into_account = true);
 
     /**
@@ -56,10 +56,10 @@ public:
     static void select_idle_machines_to_awaken(const Queue *queue,
                                                const Schedule &schedule,
                                                ResourceSelector * priority_job_selector,
-                                               const MachineRange &idle_machines,
+                                               const IntervalSet &idle_machines,
                                                AwakeningPolicy policy,
                                                int maximum_nb_machines_to_awaken,
-                                               MachineRange &machines_to_awaken,
+                                               IntervalSet &machines_to_awaken,
                                                bool take_priority_job_into_account = true);
 
     /**
@@ -73,8 +73,8 @@ public:
      */
     static void update_idle_states(Rational current_date,
                                    const Schedule & schedule,
-                                   const MachineRange & all_machines,
-                                   MachineRange & idle_machines,
+                                   const IntervalSet & all_machines,
+                                   IntervalSet & idle_machines,
                                    std::map<int,Rational> & machines_idle_start_date);
 
 protected:

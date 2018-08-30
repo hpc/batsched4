@@ -6,7 +6,7 @@
 
 #include "exact_numbers.hpp"
 #include "data_storage.hpp"
-#include "machine_range.hpp"
+#include <intervalset.hpp>
 
 struct JobAlloc;
 
@@ -29,7 +29,7 @@ struct JobAlloc
   bool started_in_first_slice;
   bool has_been_inserted = true;
   const Job * job;
-  MachineRange used_machines;
+  IntervalSet used_machines;
 };
 
 

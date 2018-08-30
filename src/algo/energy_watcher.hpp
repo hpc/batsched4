@@ -21,7 +21,7 @@ public:
     void execute_job_if_whole_machine_is_idle(double date);
 
 private:
-    MachineRange _machines;
+    IntervalSet _machines;
     bool _is_machine_busy = false;
     double _previous_energy = -1;
 };

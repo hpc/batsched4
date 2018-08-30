@@ -65,7 +65,7 @@ void ISchedulingAlgorithm::on_job_killed(double date, const std::vector<string> 
                                  job_ids.end());
 }
 
-void ISchedulingAlgorithm::on_machine_state_changed(double date, MachineRange machines, int new_state)
+void ISchedulingAlgorithm::on_machine_state_changed(double date, IntervalSet machines, int new_state)
 {
     (void) date;
 
@@ -75,13 +75,13 @@ void ISchedulingAlgorithm::on_machine_state_changed(double date, MachineRange ma
         _machines_whose_pstate_changed_recently[new_state] += machines;
 }
 
-void ISchedulingAlgorithm::on_failure(double date, MachineRange machines)
+void ISchedulingAlgorithm::on_failure(double date, IntervalSet machines)
 {
     (void) date;
     _recent_failstate_changes.push_back(Failure(date, machines, true));
 }
 
-void ISchedulingAlgorithm::on_failure_end(double date, MachineRange machines)
+void ISchedulingAlgorithm::on_failure_end(double date, IntervalSet machines)
 {
     (void) date;
     _recent_failstate_changes.push_back(Failure(date, machines, false));
@@ -106,7 +106,7 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
     _jobs_whose_waiting_time_estimation_has_been_requested_recently.push_back(job_id);
 }
 
-ISchedulingAlgorithm::Failure::Failure(double date, MachineRange machines, bool failed) :
+ISchedulingAlgorithm::Failure::Failure(double date, IntervalSet machines, bool failed) :
     date(date),
     machines(machines),
     failed(failed)

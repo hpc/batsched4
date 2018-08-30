@@ -401,7 +401,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "RESOURCE_STATE_CHANGED")
             {
-                MachineRange resources = MachineRange::from_string_hyphen(event_data["resources"].GetString(), " ");
+                IntervalSet resources = IntervalSet::from_string_hyphen(event_data["resources"].GetString(), " ");
                 string new_state = event_data["state"].GetString();
                 algo->on_machine_state_changed(current_date, resources, std::stoi(new_state));
             }

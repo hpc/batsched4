@@ -104,9 +104,9 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
     // Let's compute global informations about the current online schedule
     // *******************************************************************
     const Schedule::TimeSlice & online_first_slice = *_schedule.begin();
-    MachineRange sleeping_machines = compute_sleeping_machines(online_first_slice);
-    MachineRange awakenable_sleeping_machines = compute_potentially_awaken_machines(online_first_slice);
-    const MachineRange & available_machines = online_first_slice.available_machines;
+    IntervalSet sleeping_machines = compute_sleeping_machines(online_first_slice);
+    IntervalSet awakenable_sleeping_machines = compute_potentially_awaken_machines(online_first_slice);
+    const IntervalSet & available_machines = online_first_slice.available_machines;
 
     // ****************************************************************
     // Let's first compute the schedule in which all nodes are awakened
@@ -119,7 +119,7 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
         for (auto machine_it = sleeping_machines.elements_begin(); machine_it != sleeping_machines.elements_end(); ++machine_it)
         {
             int machine_id = *machine_it;
-            Rational wake_up_moment = find_earliest_moment_to_awaken_machines(awakened_schedule, MachineRange(machine_id));
+            Rational wake_up_moment = find_earliest_moment_to_awaken_machines(awakened_schedule, IntervalSet(machine_id));
             awaken_machine(awakened_schedule, machine_id, wake_up_moment);
         }
     }
@@ -166,7 +166,7 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
     if (should_sedate_machines)
     {
          // Sleeping machines are not available since they compute "fake" jobs
-        MachineRange sedatable_machines = available_machines;
+        IntervalSet sedatable_machines = available_machines;
 
         int nb_to_sedate_min = 1; // Online schedule is nb_to_sedate = 0
         int nb_to_sedate_max = sedatable_machines.size();
@@ -182,7 +182,7 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
             // Select machines to sedate
             int nb_to_sedate = (nb_to_sedate_min + nb_to_sedate_max) / 2;
 
-            MachineRange machines_to_sedate;
+            IntervalSet machines_to_sedate;
             _selector->select_resources_to_sedate(nb_to_sedate, available_machines, sedatable_machines, machines_to_sedate);
 
             // Create the schedule with the desired sedated machines
@@ -244,7 +244,7 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
         {
             // Select machines to awaken
             int nb_to_awaken = (nb_to_awaken_min + nb_to_awaken_max) / 2;
-            MachineRange machines_to_awaken;
+            IntervalSet machines_to_awaken;
             _selector->select_resources_to_awaken(nb_to_awaken, available_machines, awakenable_sleeping_machines, machines_to_awaken);
 
             // Create the schedule with the desired awakened machines
@@ -253,7 +253,7 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
             for (auto machine_it = machines_to_awaken.elements_begin(); machine_it != machines_to_awaken.elements_end(); ++machine_it)
             {
                 int machine_id = *machine_it;
-                Rational wake_up_date = find_earliest_moment_to_awaken_machines(schedule, MachineRange(machine_id));
+                Rational wake_up_date = find_earliest_moment_to_awaken_machines(schedule, IntervalSet(machine_id));
                 awaken_machine(schedule, machine_id, wake_up_date);
             }
 

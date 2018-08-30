@@ -30,12 +30,12 @@ void EnergyBackfillingIdleSleeper::on_monitoring_stage(double date)
 }
 
 void EnergyBackfillingIdleSleeper::select_idle_machines_to_sedate(Rational current_date,
-                                                                  const MachineRange &idle_machines,
-                                                                  const MachineRange &machines_awake_soon,
+                                                                  const IntervalSet &idle_machines,
+                                                                  const IntervalSet &machines_awake_soon,
                                                                   const Job *priority_job,
                                                                   const std::map<int, Rational> idle_machines_start_date,
                                                                   Rational minimum_idle_time_to_sedate,
-                                                                  MachineRange &machines_to_sedate,
+                                                                  IntervalSet &machines_to_sedate,
                                                                   bool take_priority_job_into_account)
 {
     int nb_awake_soon = machines_awake_soon.size();
@@ -45,7 +45,7 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_sedate(Rational curre
         nb_needed_for_priority_job = priority_job->nb_requested_resources;
 
     Rational sedate_thresh = current_date - minimum_idle_time_to_sedate;
-    MachineRange sedatable_idle_machines;
+    IntervalSet sedatable_idle_machines;
 
     for (auto machine_it = idle_machines.elements_begin();
          machine_it != idle_machines.elements_end();
@@ -69,10 +69,10 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_sedate(Rational curre
 void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *queue,
                                                                   const Schedule &schedule,
                                                                   ResourceSelector * priority_job_selector,
-                                                                  const MachineRange &idle_machines,
+                                                                  const IntervalSet &idle_machines,
                                                                   AwakeningPolicy policy,
                                                                   int maximum_nb_machines_to_awaken,
-                                                                  MachineRange &machines_to_awaken,
+                                                                  IntervalSet &machines_to_awaken,
                                                                   bool take_priority_job_into_account)
 {
     PPK_ASSERT_ERROR(maximum_nb_machines_to_awaken >= 0);
@@ -89,21 +89,21 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *q
     Schedule schedule_copy = schedule;
 
     // Let's try to backfill some jobs into the awakenable machines, and wake them up if needed.
-    MachineRange awakable_machines = compute_potentially_awaken_machines(*schedule_copy.begin());
+    IntervalSet awakable_machines = compute_potentially_awaken_machines(*schedule_copy.begin());
 
     if (awakable_machines.size() > (unsigned int)maximum_nb_machines_to_awaken)
         awakable_machines = awakable_machines.left(maximum_nb_machines_to_awaken);
 
-    MachineRange usable_machines = idle_machines + awakable_machines;
-    MachineRange usable_idle_machines = idle_machines;
+    IntervalSet usable_machines = idle_machines + awakable_machines;
+    IntervalSet usable_idle_machines = idle_machines;
 
     // Let's find the priority job and related stuff to avoid penalizing the priority job
 
     const Job * priority_job;
     bool priority_job_needs_awakenings;
     Schedule::JobAlloc priority_job_alloc;
-    MachineRange priority_job_reserved_machines;
-    MachineRange machines_that_can_be_used_by_the_priority_job;
+    IntervalSet priority_job_reserved_machines;
+    IntervalSet machines_that_can_be_used_by_the_priority_job;
     compute_priority_job_and_related_stuff(schedule_copy, queue, priority_job,
                                            priority_job_selector,
                                            priority_job_needs_awakenings,
@@ -124,7 +124,7 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *q
         const Job * job = (*job_it)->job;
         if (job->nb_requested_resources <= (int)usable_machines.size())
         {
-            MachineRange machines_to_use_for_this_job;
+            IntervalSet machines_to_use_for_this_job;
 
             if (usable_idle_machines.size() > 0)
             {
@@ -134,7 +134,7 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *q
             }
 
             machines_to_use_for_this_job += usable_machines.left(job->nb_requested_resources - (int)machines_to_use_for_this_job.size());
-            MachineRange machines_to_awaken_for_this_job = (awakable_machines & machines_to_use_for_this_job);
+            IntervalSet machines_to_awaken_for_this_job = (awakable_machines & machines_to_use_for_this_job);
 
             usable_machines -= machines_to_use_for_this_job;
             awakable_machines -= machines_to_awaken_for_this_job;
@@ -149,8 +149,8 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *q
 
 void EnergyBackfillingIdleSleeper::update_idle_states(Rational current_date,
                                                       const Schedule & schedule,
-                                                      const MachineRange & all_machines,
-                                                      MachineRange & idle_machines,
+                                                      const IntervalSet & all_machines,
+                                                      IntervalSet & idle_machines,
                                                       map<int,Rational> & machines_idle_start_date)
 {
     PPK_ASSERT_ERROR(schedule.nb_slices() > 0);
@@ -158,7 +158,7 @@ void EnergyBackfillingIdleSleeper::update_idle_states(Rational current_date,
 
     const Schedule::TimeSlice & slice = *schedule.begin();
 
-    MachineRange machines_newly_available = (slice.available_machines & (all_machines - idle_machines));
+    IntervalSet machines_newly_available = (slice.available_machines & (all_machines - idle_machines));
 
     for (auto machine_it = machines_newly_available.elements_begin();
          machine_it != machines_newly_available.elements_end();
@@ -168,7 +168,7 @@ void EnergyBackfillingIdleSleeper::update_idle_states(Rational current_date,
         machines_idle_start_date[machine_id] = current_date;
     }
 
-    MachineRange machines_newly_busy = ((all_machines - slice.available_machines) & idle_machines);
+    IntervalSet machines_newly_busy = ((all_machines - slice.available_machines) & idle_machines);
 
     for (auto machine_it = machines_newly_busy.elements_begin();
          machine_it != machines_newly_busy.elements_end();
@@ -178,12 +178,12 @@ void EnergyBackfillingIdleSleeper::update_idle_states(Rational current_date,
         machines_idle_start_date[machine_id] = schedule.infinite_horizon();
     }
 
-    PPK_ASSERT_ERROR((machines_newly_available & machines_newly_busy) == MachineRange::empty_range(),
+    PPK_ASSERT_ERROR((machines_newly_available & machines_newly_busy) == IntervalSet::empty_interval_set(),
                      "machines_newly_available=%s. machines_newly_busy=%s",
                      machines_newly_available.to_string_brackets().c_str(),
                      machines_newly_busy.to_string_brackets().c_str());
 
-    PPK_ASSERT_ERROR((machines_newly_available & idle_machines) == MachineRange::empty_range(),
+    PPK_ASSERT_ERROR((machines_newly_available & idle_machines) == IntervalSet::empty_interval_set(),
                      "machines_newly_available=%s. _idle_machines=%s",
                      machines_newly_available.to_string_brackets().c_str(),
                      idle_machines.to_string_brackets().c_str());
@@ -200,10 +200,10 @@ void EnergyBackfillingIdleSleeper::update_idle_states(Rational current_date,
 void EnergyBackfillingIdleSleeper::make_idle_sleep_decisions(double date)
 {
     const Job * priority_job = _queue->first_job_or_nullptr();
-    MachineRange machines_awake_soon = (_awake_machines + _switching_on_machines - _switching_off_machines)
+    IntervalSet machines_awake_soon = (_awake_machines + _switching_on_machines - _switching_off_machines)
                                        + _machines_to_awaken - _machines_to_sedate;
 
-    MachineRange machines_to_sedate;
+    IntervalSet machines_to_sedate;
     select_idle_machines_to_sedate(date, _idle_machines, machines_awake_soon,
                                    priority_job, _machines_idle_start_date,
                                    _needed_amount_of_idle_time_to_be_sedated,
@@ -214,7 +214,7 @@ void EnergyBackfillingIdleSleeper::make_idle_sleep_decisions(double date)
         _machines_to_sedate += machines_to_sedate;
         _nb_machines_sedated_for_being_idle += machines_to_sedate.size();
 
-        MachineRange machines_sedated_this_turn, machines_awakened_this_turn;
+        IntervalSet machines_sedated_this_turn, machines_awakened_this_turn;
         handle_queued_switches(_inertial_schedule, _machines_to_sedate, _machines_to_awaken,
                                machines_sedated_this_turn, machines_awakened_this_turn);
 
@@ -230,7 +230,7 @@ void EnergyBackfillingIdleSleeper::make_idle_sleep_decisions(double date)
         _machines_sedated_since_last_monitoring_stage_inertia = machines_sedated_this_turn;
         _machines_awakened_since_last_monitoring_stage_inertia = machines_awakened_this_turn;
 
-        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == MachineRange::empty_range());
+        PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
         make_decisions_of_schedule(_inertial_schedule, false);
     }

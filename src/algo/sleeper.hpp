@@ -24,13 +24,13 @@ public:
 
 
 private:
-    MachineRange all_machines;
+    IntervalSet all_machines;
 
-    MachineRange available_machines;
-    MachineRange computing_machines;
-    MachineRange sleeping_machines;
-    MachineRange machines_being_switched_on;
-    MachineRange machines_being_switched_off;
+    IntervalSet available_machines;
+    IntervalSet computing_machines;
+    IntervalSet sleeping_machines;
+    IntervalSet machines_being_switched_on;
+    IntervalSet machines_being_switched_off;
 
     std::string job_being_computed = "";
 

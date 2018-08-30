@@ -24,7 +24,7 @@ void Random::on_simulation_start(double date, const rapidjson::Value & batsim_co
 {
     (void) date;
 
-    machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     PPK_ASSERT_ERROR(machines.size() == (unsigned int) _nb_machines);
 
     // TODO: print warning if time sharing is disabled

@@ -33,7 +33,7 @@ void Sleeper::on_simulation_start(double date, const rapidjson::Value &batsim_co
     (void) date;
     (void) batsim_config;
 
-    all_machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    all_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     available_machines = all_machines;
 }
 
@@ -76,7 +76,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
     for (auto mit : _machines_whose_pstate_changed_recently)
     {
         const int & new_pstate = mit.first;
-        const MachineRange & machines = mit.second;
+        const IntervalSet & machines = mit.second;
 
         PPK_ASSERT_ERROR(new_pstate == compute_pstate || new_pstate == sleep_pstate);
 
@@ -118,7 +118,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
             if ((int)available_machines.size() >= job->nb_requested_resources)
             {
                 // The job can be executed right now
-                MachineRange alloc = available_machines.left(job->nb_requested_resources);
+                IntervalSet alloc = available_machines.left(job->nb_requested_resources);
                 _decision->add_execute_job(job->id, alloc, date);
 
                 // Let's update machine states
@@ -150,7 +150,7 @@ void Sleeper::make_decisions(double date, SortableJobOrder::UpdateInformation *u
                     if (nb_machines_to_order_to_wake_up > 0)
                     {
                         // Decision
-                        MachineRange machines_to_order_to_wake_up = sleeping_machines.left(nb_machines_to_order_to_wake_up);
+                        IntervalSet machines_to_order_to_wake_up = sleeping_machines.left(nb_machines_to_order_to_wake_up);
                         _decision->add_set_resource_state(machines_to_order_to_wake_up, compute_pstate, date);
 
                         // Machines state update

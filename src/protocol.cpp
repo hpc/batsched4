@@ -192,7 +192,7 @@ void JsonProtocolWriter::append_submit_profile(const string &workload_name,
 }
 
 void JsonProtocolWriter::append_execute_job(const string &job_id,
-                                            const MachineRange &allocated_resources,
+                                            const IntervalSet &allocated_resources,
                                             double date,
                                             const vector<int> & executor_to_allocated_resource_mapping)
 {
@@ -290,7 +290,7 @@ void JsonProtocolWriter::append_kill_job(const vector<string> &job_ids,
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_set_resource_state(MachineRange resources,
+void JsonProtocolWriter::append_set_resource_state(IntervalSet resources,
                                                    const string &new_state,
                                                    double date)
 {

@@ -23,7 +23,7 @@ void Sequencer::on_simulation_start(double date, const rapidjson::Value &batsim_
     (void) date;
     (void) batsim_config;
 
-    _machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    _machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     PPK_ASSERT_ERROR(_machines.size() == (unsigned int) _nb_machines);
 }
 

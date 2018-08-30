@@ -8,7 +8,7 @@
 #include <map>
 
 #include "../locality.hpp"
-#include "../machine_range.hpp"
+#include <intervalset.hpp>
 
 class Workload;
 class SchedulingDecision;
@@ -34,8 +34,8 @@ protected:
     void submit_delay_job(double delay, double date);
 
 private:
-    MachineRange available_machines;
-    std::map<std::string, MachineRange> current_allocations;
+    IntervalSet available_machines;
+    std::map<std::string, IntervalSet> current_allocations;
     int nb_submitted_jobs = 0; //!< The number of jobs submitted from this algorithm
     int nb_jobs_to_submit = 10; //!< The number of jobs to submit
     bool increase_jobs_duration = true; //!< Whether the duration of the submitted jobs increases or not. If false, the same profile will be used by all the submitted jobs.

@@ -5,7 +5,7 @@
 #include "json_workload.hpp"
 #include "pempek_assert.hpp"
 
-bool BasicResourceSelector::fit(const Job *job, const MachineRange &available, MachineRange &allocated)
+bool BasicResourceSelector::fit(const Job *job, const IntervalSet &available, IntervalSet &allocated)
 {
     if (job->nb_requested_resources <= (int) available.size())
     {
@@ -17,7 +17,7 @@ bool BasicResourceSelector::fit(const Job *job, const MachineRange &available, M
     return false;
 }
 
-void BasicResourceSelector::select_resources_to_sedate(int nb_resources, const MachineRange &available, const MachineRange &potentially_sedated, MachineRange &to_sedate)
+void BasicResourceSelector::select_resources_to_sedate(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_sedated, IntervalSet &to_sedate)
 {
     (void) available;
     PPK_ASSERT_ERROR(nb_resources <= (int)potentially_sedated.size());
@@ -26,7 +26,7 @@ void BasicResourceSelector::select_resources_to_sedate(int nb_resources, const M
     PPK_ASSERT_ERROR(nb_resources == (int)to_sedate.size());
 }
 
-void BasicResourceSelector::select_resources_to_awaken(int nb_resources, const MachineRange &available, const MachineRange &potentially_awaken, MachineRange &to_awaken)
+void BasicResourceSelector::select_resources_to_awaken(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_awaken, IntervalSet &to_awaken)
 {
     (void) available;
     PPK_ASSERT_ERROR(nb_resources <= (int)potentially_awaken.size());
@@ -35,14 +35,14 @@ void BasicResourceSelector::select_resources_to_awaken(int nb_resources, const M
     PPK_ASSERT_ERROR(nb_resources == (int)to_awaken.size());
 }
 
-void BasicResourceSelector::select_resources_to_awaken_to_make_job_fit(const Job *job, const MachineRange &available, const MachineRange &potentially_awaken, MachineRange &to_awaken)
+void BasicResourceSelector::select_resources_to_awaken_to_make_job_fit(const Job *job, const IntervalSet &available, const IntervalSet &potentially_awaken, IntervalSet &to_awaken)
 {
     select_resources_to_awaken(job->nb_requested_resources - available.size(), available, potentially_awaken, to_awaken);
-    MachineRange u;
+    IntervalSet u;
     PPK_ASSERT_ERROR(fit(job, (available + to_awaken), u));
 }
 
-bool ContiguousResourceSelector::fit(const Job *job, const MachineRange &available, MachineRange &allocated)
+bool ContiguousResourceSelector::fit(const Job *job, const IntervalSet &available, IntervalSet &allocated)
 {
     for (auto it = available.intervals_begin(); it != available.intervals_end(); ++it)
     {
@@ -60,7 +60,7 @@ bool ContiguousResourceSelector::fit(const Job *job, const MachineRange &availab
     return false;
 }
 
-void ContiguousResourceSelector::select_resources_to_sedate(int nb_resources, const MachineRange &available, const MachineRange &potentially_sedated, MachineRange &to_sedate)
+void ContiguousResourceSelector::select_resources_to_sedate(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_sedated, IntervalSet &to_sedate)
 {
     (void) available;
     PPK_ASSERT_ERROR(nb_resources <= (int)potentially_sedated.size());
@@ -69,7 +69,7 @@ void ContiguousResourceSelector::select_resources_to_sedate(int nb_resources, co
     PPK_ASSERT_ERROR(nb_resources == (int)to_sedate.size());
 }
 
-void ContiguousResourceSelector::select_resources_to_awaken(int nb_resources, const MachineRange &available, const MachineRange &potentially_awaken, MachineRange &to_awaken)
+void ContiguousResourceSelector::select_resources_to_awaken(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_awaken, IntervalSet &to_awaken)
 {
     (void) available;
     PPK_ASSERT_ERROR(nb_resources <= (int)potentially_awaken.size());
@@ -78,24 +78,24 @@ void ContiguousResourceSelector::select_resources_to_awaken(int nb_resources, co
     PPK_ASSERT_ERROR(nb_resources == (int)to_awaken.size());
 }
 
-void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(const Job *job, const MachineRange &available, const MachineRange &potentially_awaken, MachineRange &to_awaken)
+void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(const Job *job, const IntervalSet &available, const IntervalSet &potentially_awaken, IntervalSet &to_awaken)
 {
     // The union of the available and potentially_awaken ranges are not necessarily the full machine and we should keep it in mind.
     // Since we want the job to be allocated on a contiguous range, let's only work on the biggest interval of the union of
     // available and potentially_awaken.
 
-    MachineRange fully_awaken_range = available + potentially_awaken;
-    MachineRange work_range = *fully_awaken_range.biggest_interval();
+    IntervalSet fully_awaken_range = available + potentially_awaken;
+    IntervalSet work_range = *fully_awaken_range.biggest_interval();
 
     // Let's make sure the job can fit in the work range
     PPK_ASSERT_ERROR(job->nb_requested_resources <= (int)work_range.size());
 
     // If the job can already fit the machine, there is nothing to do
-    MachineRange u;
+    IntervalSet u;
     if (!fit(job, available, u))
     {
         // Let's find which machines are already available and which ones can potentially be awaken inside the work_range
-        MachineRange work_range_available = work_range & available;
+        IntervalSet work_range_available = work_range & available;
 
         // This heuristic increases the size of the biggest available hole until the job can fit in it
         auto left_interval_it = work_range_available.biggest_interval();
@@ -166,7 +166,7 @@ void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(cons
                 if (hole_size + right_potential_awaken >= job->nb_requested_resources)
                 {
                     int nb_machines_to_awaken = job->nb_requested_resources - hole_size;
-                    MachineRange machines_to_awaken = MachineRange::ClosedInterval(right_interval_it->upper() + 1, right_interval_it->upper() + 1 + nb_machines_to_awaken);
+                    IntervalSet machines_to_awaken = IntervalSet::ClosedInterval(right_interval_it->upper() + 1, right_interval_it->upper() + 1 + nb_machines_to_awaken);
                     PPK_ASSERT_ERROR(machines_to_awaken == nb_machines_to_awaken);
                     to_awaken += machines_to_awaken;
 
@@ -176,7 +176,7 @@ void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(cons
                 }
                 else
                 {
-                    MachineRange machines_to_awaken = MachineRange::ClosedInterval(right_interval_it->upper() + 1, right_next_interval_it->lower() - 1);
+                    IntervalSet machines_to_awaken = IntervalSet::ClosedInterval(right_interval_it->upper() + 1, right_next_interval_it->lower() - 1);
                     PPK_ASSERT_ERROR(machines_to_awaken.size() > 0);
                     to_awaken += machines_to_awaken;
 
@@ -190,7 +190,7 @@ void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(cons
                 if (hole_size + left_potential_awaken >= job->nb_requested_resources)
                 {
                     int nb_machines_to_awaken = job->nb_requested_resources - hole_size;
-                    MachineRange machines_to_awaken = MachineRange::ClosedInterval(left_next_interval_it->upper() + 1, left_next_interval_it->upper() + 1 + nb_machines_to_awaken);
+                    IntervalSet machines_to_awaken = IntervalSet::ClosedInterval(left_next_interval_it->upper() + 1, left_next_interval_it->upper() + 1 + nb_machines_to_awaken);
                     PPK_ASSERT_ERROR(machines_to_awaken == nb_machines_to_awaken);
                     to_awaken += machines_to_awaken;
 
@@ -200,7 +200,7 @@ void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(cons
                 }
                 else
                 {
-                    MachineRange machines_to_awaken = MachineRange::ClosedInterval(left_next_interval_it->upper() + 1, left_interval_it->lower() - 1);
+                    IntervalSet machines_to_awaken = IntervalSet::ClosedInterval(left_next_interval_it->upper() + 1, left_interval_it->lower() - 1);
                     PPK_ASSERT_ERROR(machines_to_awaken.size() > 0);
                     to_awaken += machines_to_awaken;
 
@@ -216,9 +216,9 @@ void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(cons
     return;
 }
 
-bool LimitedRangeResourceSelector::fit(const Job *job, const MachineRange &available, MachineRange &allocated)
+bool LimitedRangeResourceSelector::fit(const Job *job, const IntervalSet &available, IntervalSet &allocated)
 {
-    MachineRange limited_available = available;
+    IntervalSet limited_available = available;
     limited_available &= _limited_range;
 
     if (job->nb_requested_resources <= (int) limited_available.size())
@@ -231,7 +231,7 @@ bool LimitedRangeResourceSelector::fit(const Job *job, const MachineRange &avail
     return false;
 }
 
-void LimitedRangeResourceSelector::select_resources_to_sedate(int nb_resources, const MachineRange &available, const MachineRange &potentially_sedated, MachineRange &to_sedate)
+void LimitedRangeResourceSelector::select_resources_to_sedate(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_sedated, IntervalSet &to_sedate)
 {
     (void) nb_resources;
     (void) available;
@@ -241,7 +241,7 @@ void LimitedRangeResourceSelector::select_resources_to_sedate(int nb_resources, 
     PPK_ASSERT_ERROR(false, "The LimitedRangeResourceSelector is not meant to be used to select resources to sedate");
 }
 
-void LimitedRangeResourceSelector::select_resources_to_awaken(int nb_resources, const MachineRange &available, const MachineRange &potentially_awaken, MachineRange &to_awaken)
+void LimitedRangeResourceSelector::select_resources_to_awaken(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_awaken, IntervalSet &to_awaken)
 {
     (void) nb_resources;
     (void) available;
@@ -251,7 +251,7 @@ void LimitedRangeResourceSelector::select_resources_to_awaken(int nb_resources, 
     PPK_ASSERT_ERROR(false, "The LimitedRangeResourceSelector is not meant to be used to select resources to awaken");
 }
 
-void LimitedRangeResourceSelector::select_resources_to_awaken_to_make_job_fit(const Job *job, const MachineRange &available, const MachineRange &potentially_awaken, MachineRange &to_awaken)
+void LimitedRangeResourceSelector::select_resources_to_awaken_to_make_job_fit(const Job *job, const IntervalSet &available, const IntervalSet &potentially_awaken, IntervalSet &to_awaken)
 {
     (void) job;
     (void) available;

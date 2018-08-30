@@ -30,6 +30,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Boost 1.48 REQUIRED COMPONENTS regex locale)
 include_directories(${Boost_INCLUDE_DIR})
 
+## Intervalset
+find_package(intervalset REQUIRED)
+include_directories(${INTERVALSET_INCLUDE_DIR})
+
 ## GMP
 find_package(GMP REQUIRED)
 include_directories(${GMP_INCLUDE_DIR})
@@ -64,6 +68,7 @@ add_executable(batsched ${batsched_SRC})
 target_link_libraries(batsched ${GMP_LIBRARIES}
                       ${Boost_REGEX_LIBRARY_DEBUG}
                       ${Boost_LOCALE_LIBRARY_DEBUG}
+                      ${INTERVALSET_LIBRARY}
                       ${REDOX_LIBRARY}
                       ${LIBEV_LIBRARY}
                       ${HIREDIS_LIBRARY}

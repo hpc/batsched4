@@ -88,7 +88,7 @@ public:
 
     virtual void on_simulation_end(double date);
 
-    virtual void on_machine_state_changed(double date, MachineRange machines, int newState);
+    virtual void on_machine_state_changed(double date, IntervalSet machines, int newState);
 
     virtual void on_requested_call(double date);
 
@@ -113,7 +113,7 @@ protected:
      * @return The earliest sedating decision date
      */
     Rational sedate_machines_at_the_furthest_moment(Schedule & schedule,
-                                                    const MachineRange & machines_to_sedate) const;
+                                                    const IntervalSet & machines_to_sedate) const;
     void sedate_machine(Schedule & schedule,
                         int machine_id,
                         std::list<Schedule::TimeSlice>::iterator time_slice,
@@ -143,10 +143,10 @@ protected:
      * @param[in] time_slice The time slice
      * @return The machines that can be awaked inside the given time slice
      */
-    static MachineRange compute_potentially_awaken_machines(const Schedule::TimeSlice & time_slice);
-    static MachineRange compute_sleeping_machines(const Schedule::TimeSlice & time_slice);
+    static IntervalSet compute_potentially_awaken_machines(const Schedule::TimeSlice & time_slice);
+    static IntervalSet compute_sleeping_machines(const Schedule::TimeSlice & time_slice);
 
-    Rational find_earliest_moment_to_awaken_machines(Schedule & schedule, const MachineRange & machines_to_awaken) const;
+    Rational find_earliest_moment_to_awaken_machines(Schedule & schedule, const IntervalSet & machines_to_awaken) const;
 
     Rational estimate_energy_of_schedule(const Schedule & schedule, Rational horizon) const;
 
@@ -167,11 +167,11 @@ protected:
 
     std::map<int, MachineInformation*> _machine_informations;
 
-    MachineRange _all_machines; //!< All the machines that can be used for computing jobs
-    MachineRange _switching_on_machines; //!< The machines currently being switched ON
-    MachineRange _switching_off_machines; //!< The machines currently being switched OFF
-    MachineRange _asleep_machines; //!< The machines currently in a sleepy state. They cannot be used to compute jobs now. This is the union of _wakable_asleep_machines and _non_wakable_asleep_machines
-    MachineRange _wakable_asleep_machines; //!< Subset of _asleep_machines. Those machines have been sleeping for enough time, they can be awakened.
-    MachineRange _non_wakable_asleep_machines; //!< Subset of _asleep_machines. Those machines have NOT been sleeping for enough time, they cannot be awakened yet.
-    MachineRange _awake_machines; //!< The machines currently in a computation pstate. They can represent the machines which compute jobs, or idle machines.
+    IntervalSet _all_machines; //!< All the machines that can be used for computing jobs
+    IntervalSet _switching_on_machines; //!< The machines currently being switched ON
+    IntervalSet _switching_off_machines; //!< The machines currently being switched OFF
+    IntervalSet _asleep_machines; //!< The machines currently in a sleepy state. They cannot be used to compute jobs now. This is the union of _wakable_asleep_machines and _non_wakable_asleep_machines
+    IntervalSet _wakable_asleep_machines; //!< Subset of _asleep_machines. Those machines have been sleeping for enough time, they can be awakened.
+    IntervalSet _non_wakable_asleep_machines; //!< Subset of _asleep_machines. Those machines have NOT been sleeping for enough time, they cannot be awakened yet.
+    IntervalSet _awake_machines; //!< The machines currently in a computation pstate. They can represent the machines which compute jobs, or idle machines.
 };

@@ -49,7 +49,7 @@ void Filler::on_simulation_start(double date, const rapidjson::Value & batsim_co
     (void) date;
     (void) batsim_config;
 
-    available_machines.insert(MachineRange::ClosedInterval(0, _nb_machines - 1));
+    available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     PPK_ASSERT_ERROR(available_machines.size() == (unsigned int) _nb_machines);
 }
 
@@ -100,7 +100,7 @@ void Filler::fill(double date)
         const Job * job = (*job_it)->job;
 
         // If it fits I sits (http://knowyourmeme.com/memes/if-it-fits-i-sits)
-        MachineRange used_machines;
+        IntervalSet used_machines;
 
         if (_selector->fit(job, available_machines, used_machines))
         {

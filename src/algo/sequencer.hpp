@@ -3,7 +3,7 @@
 #include "../isalgorithm.hpp"
 
 #include "../locality.hpp"
-#include "../machine_range.hpp"
+#include <intervalset.hpp>
 
 class Workload;
 class SchedulingDecision;
@@ -25,6 +25,6 @@ public:
                                 SortableJobOrder::CompareInformation * compare_info);
 
 private:
-    MachineRange _machines;
+    IntervalSet _machines;
     bool _isJobRunning = false;
 };

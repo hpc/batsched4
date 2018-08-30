@@ -70,20 +70,20 @@ public:
      * @param[in] machines The machines involved in the power state alteration
      * @param[in] new_state The new power state of the machines: The state they are in, after the alteration
      */
-    virtual void on_machine_state_changed(double date, MachineRange machines, int new_state);
+    virtual void on_machine_state_changed(double date, IntervalSet machines, int new_state);
 
     /**
      * @brief This function is called when some machines failed
      * @param[in] date The date at which the machines failed
      * @param[in] machines The machines which failed
      */
-    virtual void on_failure(double date, MachineRange machines);
+    virtual void on_failure(double date, IntervalSet machines);
     /**
      * @brief This function is called when some machines are no longer in a failure state
      * @param[in] date The date at which the machines have been fixed
      * @param[in] machines The machines which have been fixed
      */
-    virtual void on_failure_end(double date, MachineRange machines);
+    virtual void on_failure_end(double date, IntervalSet machines);
 
     /**
      * @brief This function is called when a NOP message is received
@@ -146,10 +146,10 @@ protected:
 
     struct Failure
     {
-        Failure(double date, MachineRange machines, bool failed);
+        Failure(double date, IntervalSet machines, bool failed);
 
         double date;
-        MachineRange machines;
+        IntervalSet machines;
         bool failed;
     };
 
@@ -158,7 +158,7 @@ protected:
     std::vector<std::string> _jobs_ended_recently;
     std::vector<std::string> _jobs_killed_recently;
     std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently;
-    std::map<int, MachineRange> _machines_whose_pstate_changed_recently;
+    std::map<int, IntervalSet> _machines_whose_pstate_changed_recently;
     std::vector<Failure> _recent_failstate_changes;
     bool _nopped_recently;
     bool _consumed_joules_updated_recently;
