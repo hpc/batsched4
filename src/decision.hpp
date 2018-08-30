@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-#include "machine_range.hpp"
+#include <intervalset.hpp>
 
 class AbstractProtocolWriter;
 class RedisStorage;

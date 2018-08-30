@@ -3,7 +3,7 @@
 #include "../isalgorithm.hpp"
 
 #include "../locality.hpp"
-#include "../machine_range.hpp"
+#include <intervalset.hpp>
 
 class Workload;
 class SchedulingDecision;

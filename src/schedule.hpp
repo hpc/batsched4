@@ -6,7 +6,7 @@
 #include "exact_numbers.hpp"
 #include "locality.hpp"
 #include "json_workload.hpp"
-#include "machine_range.hpp"
+#include <intervalset.hpp>
 
 class Schedule
 {

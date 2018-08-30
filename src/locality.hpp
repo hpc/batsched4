@@ -1,6 +1,6 @@
 #pragma once
 
-#include "machine_range.hpp"
+#include <intervalset.hpp>
 struct Job;
 
 class ResourceSelector

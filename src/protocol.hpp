@@ -7,7 +7,7 @@
 
 #include <rapidjson/document.h>
 
-#include "machine_range.hpp"
+#include <intervalset.hpp>
 
 struct BatsimContext;
 

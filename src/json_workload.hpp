@@ -6,7 +6,7 @@
 
 #include "exact_numbers.hpp"
 #include "data_storage.hpp"
-#include "machine_range.hpp"
+#include <intervalset.hpp>
 
 struct JobAlloc;
 
