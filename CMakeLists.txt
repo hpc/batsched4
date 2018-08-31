@@ -10,6 +10,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 # Options
 option(enable_warnings "Enable compilation warnings" ON)
 option(treat_warnings_as_errors "Treat compilation warnings as compilation errors" OFF)
+option(do_coverage "Compile in coverage mode" OFF)
 
 # Build type
 # Set a default build type if none was specified
@@ -24,6 +25,15 @@ endif()
 # Let's enable C++11
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Coverage
+if (do_coverage)
+    set(coverage_cxxflags "-g -O0 -fprofile-arcs -ftest-coverage")
+    set(coverage_ldflags "-lgcov --coverage")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${coverage_cxxflags}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${coverage_ldflags}")
+endif()
 
 # Dependencies
 ## Boost

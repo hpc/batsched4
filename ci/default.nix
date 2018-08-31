@@ -23,6 +23,7 @@ let
     });
     batsim_dev = kapack.batsim_dev;
     pytest = pkgs.python36Packages.pytest;
+    gcovr = kapack.gcovr;
 
     # Packages defined in this tree
     batsched_local = callPackage ./local.nix {};
