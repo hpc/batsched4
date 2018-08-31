@@ -78,6 +78,7 @@ target_link_libraries(batsched ${GMP_LIBRARIES}
                       ${Boost_LOCALE_LIBRARY_DEBUG}
                       ${INTERVALSET_LIBRARY}
                       Threads::Threads
+                      ${CMAKE_DL_LIBS}
                       ${REDOX_LIBRARY}
                       ${LIBEV_LIBRARY}
                       ${HIREDIS_LIBRARY}
