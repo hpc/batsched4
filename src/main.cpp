@@ -237,7 +237,7 @@ int main(int argc, char ** argv)
             printf("Invalid variant options: Not a JSON object. variant_options='%s'\n", variant_options.c_str());
             return 1;
         }
-        printf("variant_options = '%s'\n", variant_options.c_str());
+        LOG_F(INFO, "variant_options = '%s'", variant_options.c_str());
 
         // Scheduling variant
         if (scheduling_variant == "filler")
