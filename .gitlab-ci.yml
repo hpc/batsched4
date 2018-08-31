@@ -8,6 +8,7 @@ stages:
   - update_dependencies_cache
   - test
   - coverage
+  - deploy
 
 ###############################################################################
 # Build stage
@@ -60,3 +61,22 @@ coverage:
   artifacts:
     paths:
       - /builds/batsim/batsched/cover
+
+###############################################################################
+# Deploy stage
+###############################################################################
+deploy_coverage:
+  stage: deploy
+  script:
+      # Pushes Batsim's code doc (doxygen) onto the gforge website.
+      # SSH setup (do NOT run these commands on your machine)
+      - eval $(ssh-agent -s)
+      - ssh-add <(echo "$SSH_PRIVATE_KEY")
+      - mkdir -p ~/.ssh
+      - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" >> ~/.ssh/config'
+      # Finally push the code documentation on the gforge website
+      - rsync -rlgoDz --delete cover/html/ mpoquet@scm.gforge.inria.fr:/home/groups/batsim/htdocs/batsched/coverage
+  dependencies:
+    - coverage
+  only:
+    - master
