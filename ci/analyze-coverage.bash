@@ -1,6 +1,6 @@
 #!/usr/bin/env nix-shell
 #! nix-shell . -i bash -A test_deps_pinned
-set -eu
+set -eux
 
 echo "Prepare directories"
 rm -rf ./cover
@@ -10,7 +10,7 @@ cd ./cover/tmp
 echo "Call gcov"
 gcov_files=$(find ../../build -name '*.gcda')
 for gcov_file in ${gcov_files[@]}; do
-    gcov ${gcov_file} 1>/dev/null 2>&1
+    gcov ${gcov_file}
 done
 
 echo "Only keep interesting files"
@@ -18,7 +18,7 @@ interesting_sources=$(find ../../src -name '*.?pp' | sort | grep -v 'pempek_asse
 set +e
 for interesting_source in ${interesting_sources[@]}; do
     interesting_file="./$(basename ${interesting_source}).gcov"
-    cp -f ${interesting_file} ../ 2>/dev/null
+    cp -f ${interesting_file} ../
 done
 set -e
 
