@@ -29,7 +29,7 @@ void JsonProtocolWriter::append_query_consumed_energy(double date)
       }
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -110,7 +110,7 @@ void JsonProtocolWriter::append_submit_job(const string &job_id,
       }
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -165,7 +165,7 @@ void JsonProtocolWriter::append_submit_profile(const string &workload_name,
       }
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -206,7 +206,7 @@ void JsonProtocolWriter::append_execute_job(const string &job_id,
       }
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -246,7 +246,7 @@ void JsonProtocolWriter::append_reject_job(const string &job_id,
       "data": { "job_id": "w12!45" }
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -270,7 +270,7 @@ void JsonProtocolWriter::append_kill_job(const vector<string> &job_ids,
       "data": {"job_ids": ["w0!1", "w0!2"]}
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -300,7 +300,7 @@ void JsonProtocolWriter::append_set_resource_state(IntervalSet resources,
       "data": {"resources": "1 2 3-5", "state": "42"}
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -329,7 +329,7 @@ void JsonProtocolWriter::append_set_job_metadata(const string & job_id,
       }
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -354,7 +354,7 @@ void JsonProtocolWriter::append_call_me_later(double future_date,
       "data": {"timestamp": 25.5}
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -377,7 +377,7 @@ void JsonProtocolWriter::append_scheduler_finished_submitting_jobs(double date)
       "data": { "type": "submission_finished" }
     } */
 
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
@@ -404,8 +404,8 @@ void JsonProtocolWriter::clear()
 
 string JsonProtocolWriter::generate_current_message(double date)
 {
-    PPK_ASSERT(date >= _last_date, "Date inconsistency");
-    PPK_ASSERT(_events.IsArray(),
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
+    PPK_ASSERT_ERROR(_events.IsArray(),
                "Successive calls to JsonProtocolWriter::generate_current_message without calling "
                "the clear() method is not supported");
 

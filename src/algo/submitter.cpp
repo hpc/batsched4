@@ -1,5 +1,7 @@
 #include "submitter.hpp"
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 using namespace std;
@@ -47,11 +49,12 @@ Submitter::Submitter(Workload *workload, SchedulingDecision *decision, Queue *qu
         set_job_metadata = (*variant_options)["set_job_metadata"].GetBool();
     }
 
-    printf("nb_jobs_to_submit: %d\n", nb_jobs_to_submit);
-    printf("increase_jobs_duration: %d\n", increase_jobs_duration);
-    printf("send_profile_if_already_sent: %d\n", send_profile_if_already_sent);
-    printf("send_profiles_in_separate_event: %d\n", send_profiles_in_separate_event);
-    printf("set_job_metadata: %d\n", set_job_metadata);
+    LOG_SCOPE_FUNCTION(INFO);
+    LOG_F(INFO, "nb_jobs_to_submit: %d", nb_jobs_to_submit);
+    LOG_F(INFO, "increase_jobs_duration: %d", increase_jobs_duration);
+    LOG_F(INFO, "send_profile_if_already_sent: %d", send_profile_if_already_sent);
+    LOG_F(INFO, "send_profiles_in_separate_event: %d", send_profiles_in_separate_event);
+    LOG_F(INFO, "set_job_metadata: %d", set_job_metadata);
 }
 
 Submitter::~Submitter()

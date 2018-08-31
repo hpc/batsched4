@@ -4,6 +4,8 @@
 #include <fstream>
 #include <stdio.h>
 
+#include <loguru.hpp>
+
 #include "pempek_assert.hpp"
 
 using namespace std;
@@ -19,7 +21,7 @@ Schedule::Schedule(int nb_machines, Rational initial_time)
     slice.length = slice.end - slice.begin;
     slice.available_machines.insert(IntervalSet::ClosedInterval(0, nb_machines - 1));
     slice.nb_available_machines = nb_machines;
-    PPK_ASSERT(slice.available_machines.size() == (unsigned int)nb_machines);
+    PPK_ASSERT_ERROR(slice.available_machines.size() == (unsigned int)nb_machines);
 
     _profile.push_back(slice);
 
@@ -144,8 +146,9 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
 {
     if (_debug)
     {
-        printf("Adding job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
-            job->nb_requested_resources, (double)job->walltime, _output_number, to_string().c_str());
+        LOG_F(1, "Adding job '%s' (size=%d, walltime=%g). Output number %d. %s",
+            job->id.c_str(), job->nb_requested_resources, (double)job->walltime,
+            _output_number, to_string().c_str());
         output_to_svg();
     }
 
@@ -198,7 +201,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
 
                     if (_debug)
                     {
-                        printf("Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
+                        LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
                             job->nb_requested_resources, (double)job->walltime, _output_number, to_string().c_str());
                         output_to_svg();
                     }
@@ -263,7 +266,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
 
                             if (_debug)
                             {
-                                printf("Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
+                                LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
                                     job->nb_requested_resources, (double)job->walltime, _output_number,
                                     to_string().c_str());
                                 output_to_svg();
@@ -292,7 +295,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time(
 {
     if (_debug)
     {
-        printf("Adding job '%s' (size=%d, walltime=%g) after date %g. Output number %d. %s", job->id.c_str(),
+        LOG_F(1, "Adding job '%s' (size=%d, walltime=%g) after date %g. Output number %d. %s", job->id.c_str(),
             job->nb_requested_resources, (double)job->walltime, (double)date, _output_number, to_string().c_str());
         output_to_svg();
     }
@@ -808,8 +811,6 @@ string Schedule::to_svg() const
             Rational rect_width = rect_x1 - rect_x0;
             string rect_color = _colors[job->unique_number % (int)_colors.size()];
 
-            // printf("Writing rects for job %d\n", job_id);
-
             // Let's find where the job has been allocated
             PPK_ASSERT_ERROR(slice_it != _profile.begin());
             auto previous_slice_it = slice_it;
@@ -825,9 +826,6 @@ string Schedule::to_svg() const
                 Rational rect_y1 = ((it->upper() + Rational(1)) * machine_height)
                     - (space_between_machines_ratio * machine_height) - y0;
                 Rational rect_height = rect_y1 - rect_y0;
-
-                /*printf("rect_y0=%g, rect_y1=%g, rect_height=%g\n",
-                       (double)rect_y0, (double)rect_y1, (double)rect_height);*/
 
                 snprintf(buf, buf_size,
                     "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:black; stroke-width=%g; "
@@ -923,7 +921,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
 
     if (_debug)
     {
-        printf("Removing job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
+        LOG_F(1, "Removing job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
         output_to_svg();
     }
 
@@ -1015,7 +1013,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
 
             if (_debug)
             {
-                printf("Removed job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
+                LOG_F(1, "Removed job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
                 output_to_svg();
             }
 

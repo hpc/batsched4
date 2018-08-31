@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning][semver].
 
 [//]: =========================================================================
 ## [Unreleased]
+### Added
+- CLI: logging verbosity can now be set with `--verbosity`.
+
 ### Changed
 - Dependencies: added [intervalset](https://framagit.org/batsim/intervalset).
 

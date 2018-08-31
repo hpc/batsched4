@@ -34,6 +34,14 @@ include_directories(${Boost_INCLUDE_DIR})
 find_package(intervalset REQUIRED)
 include_directories(${INTERVALSET_INCLUDE_DIR})
 
+## loguru
+find_package(loguru REQUIRED)
+include_directories(${LOGURU_INCLUDE_DIR})
+
+## pthread (for loguru)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 ## GMP
 find_package(GMP REQUIRED)
 include_directories(${GMP_INCLUDE_DIR})
@@ -69,6 +77,7 @@ target_link_libraries(batsched ${GMP_LIBRARIES}
                       ${Boost_REGEX_LIBRARY_DEBUG}
                       ${Boost_LOCALE_LIBRARY_DEBUG}
                       ${INTERVALSET_LIBRARY}
+                      Threads::Threads
                       ${REDOX_LIBRARY}
                       ${LIBEV_LIBRARY}
                       ${HIREDIS_LIBRARY}

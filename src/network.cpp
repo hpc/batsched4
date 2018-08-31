@@ -9,6 +9,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <loguru.hpp>
+
 #include "pempek_assert.hpp"
 
 using namespace std;
@@ -33,8 +35,7 @@ void Network::write(const string &content)
     // Let's make sure the sent message is in UTF-8
     string msg_utf8 = boost::locale::conv::to_utf<char>(content, "UTF-8");
 
-    printf("Sending '%s'\n", msg_utf8.c_str());
-    fflush(stdout);
+    LOG_F(INFO, "Sending '%s'", msg_utf8.c_str());
     _socket->send(msg_utf8.data(), msg_utf8.size());
 }
 
@@ -49,6 +50,5 @@ void Network::read(string &received_content)
     string received_utf8 = boost::locale::conv::from_utf(received_content, "UTF-8");
     received_content = received_utf8;
 
-    printf("Received '%s'\n", received_content.c_str());
-    fflush(stdout);
+    LOG_F(INFO, "Received '%s'", received_content.c_str());
 }

@@ -1,6 +1,6 @@
 #include "energy_bf_dicho.hpp"
 
-#include <iostream>
+#include <loguru.hpp>
 
 #include "../pempek_assert.hpp"
 
@@ -26,8 +26,6 @@ EnergyBackfillingDichotomy::EnergyBackfillingDichotomy(Workload *workload, Sched
 
     if (variant_options->HasMember("comparison_type"))
     {
-        cout << "Comparison type found in options!" << endl;
-
         PPK_ASSERT_ERROR((*variant_options)["comparison_type"].IsString(),
                          "Invalid options JSON object: Member 'comparison_type' should be a string");
         string comp_type = (*variant_options)["comparison_type"].GetString();
@@ -161,7 +159,7 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
     // Let's do a dichotomy on the number of machines to awaken/sedate to find the best solution
     // *****************************************************************************************
 
-    cout << "should_sedate_machines " << should_sedate_machines << endl;
+    LOG_F(INFO, "should_sedate_machines=%d", should_sedate_machines);
 
     if (should_sedate_machines)
     {
@@ -207,9 +205,9 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
                 Rational best_sched_energy = estimate_energy_of_schedule(best_schedule, comparison_horizon);
                 Rational sched_energy = estimate_energy_of_schedule(schedule, comparison_horizon);
 
-                cout << "Current schedule respects the mean slowdown constraint. "
-                     << "(best_energy, curr_energy) : (" << (double) best_sched_energy
-                     << ", " << (double)sched_energy << ")" << endl;
+                LOG_F(INFO, "Current schedule respects the mean slowdown constraint. "
+                     "(best_energy, curr_energy) : (%g, %g)",
+                     (double)best_sched_energy, (double)sched_energy);
 
                 // Let's update the best solution if needed
                 if ((sched_energy < best_sched_energy) ||
@@ -269,9 +267,9 @@ void EnergyBackfillingDichotomy::make_decisions(double date,
                 Rational best_sched_energy = estimate_energy_of_schedule(best_schedule, comparison_horizon);
                 Rational sched_energy = estimate_energy_of_schedule(schedule, comparison_horizon);
 
-                cout << "Current schedule respects the mean slowdown constraint. "
-                     << "(best_energy, curr_energy) : (" << (double) best_sched_energy
-                     << ", " << (double)sched_energy << ")" << endl;
+                LOG_F(INFO, "Current schedule respects the mean slowdown constraint. "
+                     "(best_energy, curr_energy) : (%g, %g)",
+                     (double)best_sched_energy, (double)sched_energy);
 
                 // Let's update the best solution if needed
                 if ((sched_energy < best_sched_energy) ||

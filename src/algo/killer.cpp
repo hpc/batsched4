@@ -1,5 +1,7 @@
 #include "killer.hpp"
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 using namespace std;
@@ -32,8 +34,9 @@ Killer::Killer(Workload *workload,
                          delay_before_kill);
     }
 
-    printf("nb_kills_per_job: %d\n", nb_kills_per_job);
-    printf("delay_before_kill: %g\n", delay_before_kill);
+    LOG_SCOPE_FUNCTION(INFO);
+    LOG_F(INFO, "nb_kills_per_job: %d", nb_kills_per_job);
+    LOG_F(INFO, "delay_before_kill: %g", delay_before_kill);
 }
 
 Killer::~Killer()
@@ -59,7 +62,7 @@ void Killer::make_decisions(double date,
                             SortableJobOrder::UpdateInformation *update_info,
                             SortableJobOrder::CompareInformation *compare_info)
 {
-    printf("Date: %g. Available machines: %s\n", date, available_machines.to_string_brackets().c_str());
+    LOG_F(1, "Date: %g. Available machines: %s", date, available_machines.to_string_brackets().c_str());
 
     // Let's update available machines
     for (const string & ended_job_id : _jobs_ended_recently)
@@ -70,7 +73,7 @@ void Killer::make_decisions(double date,
         current_allocations.erase(ended_job_id);
     }
 
-    printf("Date: %g. Available machines: %s\n", date, available_machines.to_string_brackets().c_str());
+    LOG_F(1, "Date: %g. Available machines: %s", date, available_machines.to_string_brackets().c_str());
 
     // Let's handle recently released jobs
     for (const string & new_job_id : _jobs_released_recently)
@@ -114,5 +117,5 @@ void Killer::make_decisions(double date,
         }
     }
 
-    printf("Date: %g. Available machines: %s\n", date, available_machines.to_string_brackets().c_str());
+    LOG_F(1, "Date: %g. Available machines: %s", date, available_machines.to_string_brackets().c_str());
 }

@@ -1,5 +1,7 @@
 #include "filler.hpp"
 
+#include <loguru.hpp>
+
 #include "../json_workload.hpp"
 #include "../decision.hpp"
 #include "../pempek_assert.hpp"
@@ -34,9 +36,10 @@ Filler::Filler(Workload *workload, SchedulingDecision * decision, Queue * queue,
         set_job_metadata = (*variant_options)["set_job_metadata"].GetBool();
     }
 
-    printf("custom_mapping: %s\n", custom_mapping?"true":"false");
-    printf("fraction_of_machines_to_use: %g\n", fraction_of_machines_to_use);
-    printf("set_job_metadata: %d\n", set_job_metadata);
+    LOG_SCOPE_FUNCTION(INFO);
+    LOG_F(INFO, "custom_mapping: %s", custom_mapping?"true":"false");
+    LOG_F(INFO, "fraction_of_machines_to_use: %g", fraction_of_machines_to_use);
+    LOG_F(INFO, "set_job_metadata: %d", set_job_metadata);
 }
 
 Filler::~Filler()
@@ -92,7 +95,7 @@ void Filler::make_decisions(double date,
 void Filler::fill(double date)
 {
     if (_debug)
-        printf("fill, availableMachines=%s\n", available_machines.to_string_hyphen().c_str());
+        LOG_F(1, "fill, availableMachines=%s", available_machines.to_string_hyphen().c_str());
 
     int nb_available = available_machines.size();
     for (auto job_it = _queue->begin(); job_it != _queue->end() && nb_available > 0; )

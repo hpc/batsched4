@@ -8,6 +8,8 @@
 
 #include <stdexcept>
 
+#include <loguru.hpp>
+
 Crasher::CrashType Crasher::crash_type_from_string(const std::string &str)
 {
     if (str == "segmentation_fault") return CrashType::SEGMENTATION_FAULT;
@@ -85,11 +87,12 @@ Crasher::Crasher(Workload *workload,
         _crash_type = crash_type_from_string(crash_type_str);
     }
 
-    printf("crash_on_start: %d\n", _crash_on_start);
-    printf("crash_on_end: %d\n", _crash_on_end);
-    printf("crash_on_decision_call: %d\n", _crash_on_decision_call);
-    printf("crash_on_decision_call_number: %d\n", _crash_on_decision_call_number);
-    printf("crash_type: %s\n", crash_type_to_string(_crash_type).c_str());
+    LOG_SCOPE_FUNCTION(INFO);
+    LOG_F(INFO, "crash_on_start: %d", _crash_on_start);
+    LOG_F(INFO, "crash_on_end: %d", _crash_on_end);
+    LOG_F(INFO, "crash_on_decision_call: %d", _crash_on_decision_call);
+    LOG_F(INFO, "crash_on_decision_call_number: %d", _crash_on_decision_call_number);
+    LOG_F(INFO, "crash_type: %s", crash_type_to_string(_crash_type).c_str());
 }
 
 Crasher::~Crasher()

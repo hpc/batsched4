@@ -1,5 +1,7 @@
 #include "easy_bf.hpp"
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 using namespace std;
@@ -139,7 +141,7 @@ void EasyBackfilling::sort_queue_while_handling_priority_job(const Job * priorit
                                                              SortableJobOrder::CompareInformation * compare_info)
 {
     if (_debug)
-        printf("sort_queue_while_handling_priority_job beginning, %s\n", _schedule.to_string().c_str());
+        LOG_F(1, "sort_queue_while_handling_priority_job beginning, %s", _schedule.to_string().c_str());
 
     // Let's sort the queue
     _queue->sort_queue(update_info, compare_info);
@@ -174,5 +176,5 @@ void EasyBackfilling::sort_queue_while_handling_priority_job(const Job * priorit
     }
 
     if (_debug)
-        printf("sort_queue_while_handling_priority_job ending, %s\n", _schedule.to_string().c_str());
+        LOG_F(1, "sort_queue_while_handling_priority_job ending, %s", _schedule.to_string().c_str());
 }
