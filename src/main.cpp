@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <vector>
-#include <iostream>
 #include <fstream>
 #include <set>
 
@@ -298,11 +297,11 @@ int main(int argc, char ** argv)
 
         if (what == "Connection lost")
         {
-            cout << what << endl;
+            LOG_F(ERROR, "%s", what);
         }
         else
         {
-            cout << "Error: " << e.what() << endl;
+            LOG_F(ERROR, "%s", what);
 
             delete queue;
             delete order;

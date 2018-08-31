@@ -77,7 +77,7 @@ void EnergyBackfillingMonitoringPeriod::on_requested_call(double date)
 
 void EnergyBackfillingMonitoringPeriod::on_monitoring_stage(double date)
 {
-    cout << "EnergyBackfillingMonitoringPeriod: Monitoring stage at date=" << date << endl;
+    LOG_F(INFO, "EnergyBackfillingMonitoringPeriod: Monitoring stage at date=%g", date);
 }
 
 Rational EnergyBackfillingMonitoringPeriod::period() const

@@ -1,7 +1,5 @@
 #include "energy_bf.hpp"
 
-#include <iostream>
-
 #include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
 

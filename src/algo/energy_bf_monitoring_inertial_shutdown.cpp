@@ -1,8 +1,6 @@
 #include "energy_bf_monitoring_inertial_shutdown.hpp"
 #include "easy_bf_plot_liquid_load_horizon.hpp"
 
-#include <iostream>
-
 #include <boost/regex.hpp>
 
 #include <loguru.hpp>

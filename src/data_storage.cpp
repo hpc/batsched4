@@ -66,7 +66,6 @@ std::string RedisStorage::get(const std::string & key)
 string RedisStorage::get_job_json_string(const string &job_id)
 {
     string job_key = "job_" + job_id;
-    //cout << "job_key = \"" + build_key(job_key) + "\"" << endl;
     return _redox.get(build_key(job_key));
 }
 
