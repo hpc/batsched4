@@ -34,7 +34,7 @@ update_dependencies_cache:
 test_pinned_batsim:
   stage: test
   script:
-    - nix-shell ./ci -A test_deps_pinned --command 'bash ./ci/run-tests.bash'
+    - nix-shell ./ci -A test_pinned --command 'bash ./ci/run-tests.bash'
   dependencies:
     - build
   artifacts:
@@ -44,7 +44,7 @@ test_pinned_batsim:
 test_dev_batsim:
   stage: test
   script:
-    - nix-shell ./ci -A test_deps_dev --command 'bash ./ci/run-tests.bash'
+    - nix-shell ./ci -A test_dev --command 'bash ./ci/run-tests.bash'
   dependencies:
     - build
 
