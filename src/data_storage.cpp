@@ -2,6 +2,8 @@
 
 #include <boost/locale.hpp>
 
+#include <loguru.hpp>
+
 #include "pempek_assert.hpp"
 
 using namespace std;
@@ -86,11 +88,11 @@ bool RedisStorage::set(const std::string &key, const std::string &value)
     bool ret = _redox.set(real_key, real_value);
     if (ret)
     {
-        printf("Set: '%s'='%s'", real_key.c_str(), real_value.c_str());
+        LOG_F(1, "Redis: Set '%s'='%s'", real_key.c_str(), real_value.c_str());
         PPK_ASSERT_ERROR(get(key) == value, "Batsim <-> Redis communications are inconsistent!");
     }
     else
-       printf("Couldn't set: '%s'='%s'", real_key.c_str(), real_value.c_str());
+       LOG_F(WARNING, "Redis: Couldn't set: '%s'='%s'", real_key.c_str(), real_value.c_str());
 
     return ret;
 }
