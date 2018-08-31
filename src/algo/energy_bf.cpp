@@ -186,7 +186,6 @@ void EnergyBackfilling::on_machine_state_changed(double date, IntervalSet machin
     if (_debug)
     {
         LOG_F(1, "on_machine_state_changed beginning, schedule : %s", _schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     // Let's update the current schedule to take the machine state change into account
@@ -277,7 +276,6 @@ void EnergyBackfilling::on_machine_state_changed(double date, IntervalSet machin
     if (_debug)
     {
         LOG_F(1, "on_machine_state_changed, before sleep jobs translation. %s", _schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     // Let's translate to the left (-> present) the sleep jobs that comes from newly asleep machines
@@ -302,7 +300,6 @@ void EnergyBackfilling::on_machine_state_changed(double date, IntervalSet machin
     if (_debug)
     {
         LOG_F(1, "on_machine_state_changed before update_first_slice, schedule : %s", _schedule.to_string().c_str());
-        fflush(stdout);
     }
 }
 
@@ -491,7 +488,6 @@ void EnergyBackfilling::make_decisions(double date,
     if (_debug)
     {
         LOG_F(1, "Schedule before put_jobs_into_schedule: %s", current_schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     put_jobs_into_schedule(current_schedule);
@@ -499,7 +495,6 @@ void EnergyBackfilling::make_decisions(double date,
     if (_debug)
     {
         LOG_F(1, "Schedule before sedate_machines_at_the_furthest_moment: %s", current_schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     sedate_machines_at_the_furthest_moment(current_schedule, _awake_machines);
@@ -819,7 +814,6 @@ void EnergyBackfilling::put_jobs_into_schedule(Schedule &schedule) const
             {
                 LOG_F(1, "schedule before job insertion: %s", schedule.to_string().c_str());
                 LOG_F(1, "job : (id='%s', walltime=%g)", job->id.c_str(), (double) job->walltime);
-                fflush(stdout);
             }
 
             // Let's finally insert the job
@@ -828,7 +822,6 @@ void EnergyBackfilling::put_jobs_into_schedule(Schedule &schedule) const
             if (_debug)
             {
                 LOG_F(1, "schedule after job insertion: %s", schedule.to_string().c_str());
-                fflush(stdout);
             }
 
             // Let's make sure the machine awakening was not useless
@@ -869,9 +862,7 @@ Rational EnergyBackfilling::sedate_machines_at_the_furthest_moment(Schedule &sch
         if (_debug)
         {
             LOG_F(1, "Schedule : %s", schedule.to_string().c_str());
-            fflush(stdout);
             LOG_F(1, "Current time slice : %s", time_slice_it->to_string().c_str());
-            fflush(stdout);
         }
 
 
@@ -957,7 +948,6 @@ void EnergyBackfilling::sedate_machine(Schedule &schedule,
         LOG_F(1, "\n-----\n");
         LOG_F(1, "Machine to sedate: %d", machine_id);
         LOG_F(1, "Schedule before switch_off_alloc : %s", schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     // Let's add the switch OFF job into the schedule
@@ -966,7 +956,6 @@ void EnergyBackfilling::sedate_machine(Schedule &schedule,
     if (_debug)
     {
         LOG_F(1, "Schedule after switch_off_alloc : %s", schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     if (insert_in_slice)
@@ -998,7 +987,6 @@ void EnergyBackfilling::sedate_machine_without_switch(Schedule &schedule,
         if (_debug)
         {
             LOG_F(1, "Schedule after ensured_sleep_alloc : %s", schedule.to_string().c_str());
-            fflush(stdout);
         }
 
         PPK_ASSERT_ERROR(ensured_sleep_alloc.begin == when_it_should_start,
@@ -1018,7 +1006,6 @@ void EnergyBackfilling::sedate_machine_without_switch(Schedule &schedule,
     if (_debug)
     {
         LOG_F(1, "Schedule after potential_sleep_alloc : %s", schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     PPK_ASSERT_ERROR(potential_sleep_alloc.begin == when_ensured_sleep_job_finishes);
@@ -1047,7 +1034,6 @@ void EnergyBackfilling::awaken_machine(Schedule &schedule, int machine_id, Ratio
                "potential_sleep_maximum_length = %f\n%s",
                (double) potential_sleep_maximum_length,
                schedule.to_string().c_str());
-        fflush(stdout);
     }
 
     if (potential_sleep_maximum_length > 0)
@@ -1062,7 +1048,6 @@ void EnergyBackfilling::awaken_machine(Schedule &schedule, int machine_id, Ratio
             LOG_F(1, "EnergyBackfilling::awaken_machine.\n"
                    "The potential job has been inserted back into the schedule.\n%s",
                    schedule.to_string().c_str());
-            fflush(stdout);
         }
     }
 
@@ -1074,7 +1059,6 @@ void EnergyBackfilling::awaken_machine(Schedule &schedule, int machine_id, Ratio
     {
         LOG_F(1, "EnergyBackfilling::awaken_machine after wake up\n%s",
                schedule.to_string().c_str());
-        fflush(stdout);
     }
 }
 

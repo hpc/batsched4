@@ -36,7 +36,6 @@ void Network::write(const string &content)
     string msg_utf8 = boost::locale::conv::to_utf<char>(content, "UTF-8");
 
     LOG_F(INFO, "Sending '%s'", msg_utf8.c_str());
-    fflush(stdout);
     _socket->send(msg_utf8.data(), msg_utf8.size());
 }
 
@@ -52,5 +51,4 @@ void Network::read(string &received_content)
     received_content = received_utf8;
 
     LOG_F(INFO, "Received '%s'", received_content.c_str());
-    fflush(stdout);
 }
