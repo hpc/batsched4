@@ -218,9 +218,14 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
 
     if (_inertial_shutdown_debug)
     {
-        printf("Date=%g. Beginning of make_decisions. Queue: %s.\n%s\n",
+        LOG_SCOPE_FUNCTION(1);
+        LOG_F(1, "Date=%g. Beginning of make_decisions. Queue: %s.\n%s",
                date, _queue->to_string().c_str(), _inertial_schedule.to_string().c_str());
         write_schedule_debug("_make_decisions_begin");
+    }
+    else
+    {
+        LOG_SCOPE_FUNCTION(INFO);
     }
 
     set<const Job *> allocated_jobs;
@@ -247,7 +252,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
             priority_job = job;
 
             if (_inertial_shutdown_debug)
-                printf("Date=%g. make_decisions, priority loop, trying to insert priority job '%s'.%s\n",
+                LOG_F(1, "Date=%g. make_decisions, priority loop, trying to insert priority job '%s'.%s",
                        date, priority_job->id.c_str(), _inertial_schedule.to_string().c_str());
 
             Schedule::JobAlloc alloc = _inertial_schedule.add_job_first_fit(priority_job, _selector, false);
@@ -291,7 +296,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                     // Let's first check whether this was caused by a decision made this turn, so we can cancel the decision before applying it.
                     // To do so, we'll first remove the fake jobs of the machines which have been switched OFF this turn, hopefully to create empty room
                     // for the priority job
-                    printf("In order to make priority job '%s' fit, canceling the switches OFF of machines %s\n",
+                    LOG_F(INFO, "In order to make priority job '%s' fit, canceling the switches OFF of machines %s",
                            priority_job->id.c_str(),
                            _machines_to_sedate.to_string_brackets().c_str());
 
@@ -336,8 +341,8 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                         PPK_ASSERT_ERROR(_nb_machines_sedated_by_inertia >= 0);
                         PPK_ASSERT_ERROR(_nb_machines_sedated_for_being_idle >= 0);
 
-                        printf("The priority job '%s' could be inserted by cancelling some switches OFF (%s). "
-                               "Let's reinsert a subpart of these switches off : %s\n",
+                        LOG_F(INFO, "The priority job '%s' could be inserted by cancelling some switches OFF (%s). "
+                               "Let's reinsert a subpart of these switches off : %s",
                                priority_job->id.c_str(),
                                disturbing_machines_switches_off.to_string_brackets().c_str(),
                                non_disturbing_machines_switches_off.to_string_brackets().c_str());
@@ -365,7 +370,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                     }
                     else
                     {
-                        printf("Cancelling some switches OFF was not enough... Some machines must be awakened.\n");
+                        LOG_F(INFO, "Cancelling some switches OFF was not enough... Some machines must be awakened.");
 
                         // Cancelling some switches OFF was not enough... Some machines must be awakened.
                         // Let's determine how many of them should be awakened.
@@ -374,13 +379,13 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
 
                         if (_inertial_shutdown_debug)
                         {
-                            printf("_awake_machines: %s\n", _awake_machines.to_string_brackets().c_str());
-                            printf("_switching_on_machines: %s\n", _switching_on_machines.to_string_brackets().c_str());
-                            printf("_switching_off_machines: %s\n", _switching_off_machines.to_string_brackets().c_str());
-                            printf("_machines_to_awaken: %s\n", _machines_to_awaken.to_string_brackets().c_str());
-                            printf("_machines_to_sedate: %s\n", _machines_to_sedate.to_string_brackets().c_str());
+                            LOG_F(1, "_awake_machines: %s", _awake_machines.to_string_brackets().c_str());
+                            LOG_F(1, "_switching_on_machines: %s", _switching_on_machines.to_string_brackets().c_str());
+                            LOG_F(1, "_switching_off_machines: %s", _switching_off_machines.to_string_brackets().c_str());
+                            LOG_F(1, "_machines_to_awaken: %s", _machines_to_awaken.to_string_brackets().c_str());
+                            LOG_F(1, "_machines_to_sedate: %s", _machines_to_sedate.to_string_brackets().c_str());
 
-                            printf("Awake machines in prediction schedule: %s (size=%d)\n",
+                            LOG_F(1, "Awake machines in prediction schedule: %s (size=%d)",
                                    machines_awake_in_the_prediction_schedule.to_string_brackets().c_str(),
                                    (int)machines_awake_in_the_prediction_schedule.size());
                         }
@@ -397,13 +402,12 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                                          _machines_to_awaken.to_string_brackets().c_str(),
                                          _inertial_schedule.to_string().c_str());
 
-                        printf("Date=%g. make_decisions. Would like to awaken %d machines to execute job '%s', "
-                               "which requests %d resources.\n",
+                        LOG_F(INFO, "Date=%g. make_decisions. Would like to awaken %d machines to execute job '%s', "
+                               "which requests %d resources.",
                                date, minimum_nb_machines_to_awaken, priority_job->id.c_str(),
                                priority_job->nb_requested_resources);
 
                         // Let's select which machines should be awakened
-                        //printf("make_decisions, select_machines_to_awaken call\n");
                         IntervalSet machines_to_awaken_to_make_priority_job_fit;
                         select_machines_to_awaken(minimum_nb_machines_to_awaken, _asleep_machines + _switching_off_machines,
                                                   machines_to_awaken_to_make_priority_job_fit);
@@ -501,16 +505,16 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                          _machines_to_sedate.to_string_brackets().c_str());
 
         if (machines_sedated_this_turn.size() > 0)
-            printf("Date=%g. Those machines should be put to sleep now: %s\n", date,
+            LOG_F(INFO, "Date=%g. Those machines should be put to sleep now: %s", date,
                    machines_sedated_this_turn.to_string_brackets().c_str());
 
         if (machines_awakened_this_turn.size() > 0)
-            printf("Date=%g. Those machines should be awakened now: %s\n", date,
+            LOG_F(INFO, "Date=%g. Those machines should be awakened now: %s", date,
                    machines_awakened_this_turn.to_string_brackets().c_str());
 
         if (_inertial_shutdown_debug)
         {
-            printf("Date=%g. After priority job loop. %s\n",
+            LOG_F(1, "Date=%g. After priority job loop. %s",
                    date, _inertial_schedule.to_string().c_str());
             write_schedule_debug("_make_decisions_after_priority_job_loop");
         }
@@ -545,7 +549,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
 
     if (_inertial_shutdown_debug)
     {
-        printf("Date=%g. End of make_decisions. %s\n", date, _inertial_schedule.to_string().c_str());
+        LOG_F(1, "Date=%g. End of make_decisions. %s", date, _inertial_schedule.to_string().c_str());
         write_schedule_debug("_make_decisions_end");
     }
 
@@ -606,7 +610,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                          machines_sedated_this_turn.to_string_brackets().c_str(),
                          IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
-        printf("Date=%g. Those machines should be awakened now (previously idle ones): %s\n",
+        LOG_F(INFO, "Date=%g. Those machines should be awakened now (previously idle ones): %s",
                date, machines_awakened_this_turn.to_string_brackets().c_str());
 
         _machines_to_awaken -= machines_awakened_this_turn;
@@ -670,14 +674,14 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                              machines_awakened_this_turn.to_string_brackets().c_str(),
                              IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
-            printf("Date=%g. Those machines should be put to sleep now for being idle: %s\n",
+            LOG_F(INFO, "Date=%g. Those machines should be put to sleep now for being idle: %s",
                        date, machines_sedated_this_turn.to_string_brackets().c_str());
 
             PPK_ASSERT_ERROR((_machines_to_awaken & _machines_to_sedate) == IntervalSet::empty_interval_set());
 
             if (_inertial_shutdown_debug)
             {
-                printf("Date=%g. Before make_decisions_of_schedule. %s\n",
+                LOG_F(1, "Date=%g. Before make_decisions_of_schedule. %s",
                        date, _inertial_schedule.to_string().c_str());
                 write_schedule_debug("_on_monitoring_before_make_decisions_of_schedule");
             }
@@ -732,6 +736,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                      _nb_machines_sedated_for_being_idle <= (int)_all_machines.size(),
                      "Invalid nb_machines_sedated_for_being_idle value: %d\n",
                      _nb_machines_sedated_for_being_idle);
+    LOG_SCOPE_FUNCTION(INFO);
 
     // Let's update the first slice of the schedule
     update_first_slice_taking_sleep_jobs_into_account(date);
@@ -779,7 +784,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     Rational soon_horizon = time_to_wake_up * 2 + date;
 
     if (_inertial_shutdown_debug)
-        printf("Date=%g. Begin of on_monitoring_stage.\n", date);
+        LOG_F(1, "Date=%g. Begin of on_monitoring_stage.", date);
 
     if (_machines_to_sedate.size() > 0)
     {
@@ -812,7 +817,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
 
     if (_inertial_shutdown_debug)
     {
-        printf("LLH computed. %s\n", _inertial_schedule.to_string().c_str());
+        LOG_F(1, "LLH computed. %s", _inertial_schedule.to_string().c_str());
         write_schedule_debug("_on_monitoring_after_llh");
     }
 
@@ -821,7 +826,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     bool priority_job_needs_awakenings = false;
 
     if (_inertial_shutdown_debug)
-        printf("Schedule without priority_job.%s\n", _inertial_schedule.to_string().c_str());
+        LOG_F(1, "Schedule without priority_job.%s", _inertial_schedule.to_string().c_str());
 
     compute_priority_job_and_related_stuff(_inertial_schedule, _queue, priority_job,
                                            _selector,
@@ -883,20 +888,18 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                 else
                     PPK_ASSERT_ERROR(false);
 
-
                 _inertial_number = min(max(nb_machines_to_awaken_by_inertia,1),
                                        (int)awakable_machines.size());
 
                 if (_inertial_number > 0)
                 {
-                    printf("Date=%g. on_monitoring_stage. Would like to awaken %d machines.\n",
+                    LOG_F(INFO, "Date=%g. on_monitoring_stage. Would like to awaken %d machines.",
                            date, _inertial_number);
 
                     IntervalSet machines_to_awaken;
-                    //printf("on_monitoring_stage, select_machines_to_awaken call\n");
                     select_machines_to_awaken(_inertial_number, awakable_machines, machines_to_awaken);
 
-                    printf("Date=%g. Decided to awaken machines %s\n", date, machines_to_awaken.to_string_brackets().c_str());
+                    LOG_F(INFO, "Date=%g. Decided to awaken machines %s", date, machines_to_awaken.to_string_brackets().c_str());
 
                     _machines_to_awaken += machines_to_awaken;
 
@@ -922,7 +925,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                 _last_decision = SEDATE_MACHINES;
                 _inertial_number = 0;
 
-                printf("Date=%g. Decided to do nothing now, but switching to sedate mode!\n", date);
+                LOG_F(INFO, "Date=%g. Decided to do nothing now, but switching to sedate mode!", date);
             }
         } // end if (_last_decision == AWAKEN_MACHINES)
         else // if (_last_decision == SEDATE_MACHINES)
@@ -932,7 +935,6 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                 // The LLH's integral is still decreasing, let's sedate more machines!
 
                 IntervalSet sedatable_machines = _awake_machines - _machines_to_sedate;
-                //printf("on_monitoring_stage, sedatable_machines1 = %s\n", sedatable_machines.to_string_brackets().c_str());
 
                 if (!_allow_future_switches)
                 {
@@ -941,15 +943,12 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                     const Schedule::TimeSlice & slice = *slice_it;
 
                     sedatable_machines -= (_all_machines - slice.available_machines);
-                    //printf("on_monitoring_stage, sedatable_machines2 = %s\n", sedatable_machines.to_string_brackets().c_str());
                 }
 
                 int nb_sedatable_machines = sedatable_machines.size();
 
                 if (priority_job != nullptr)
                     nb_sedatable_machines = max(0, (int)sedatable_machines.size() - (int)priority_job_reserved_machines.size());
-
-                //printf("on_monitoring_stage, sedatable_machines3 = %s\n", sedatable_machines.to_string_brackets().c_str());
 
                 int nb_machines_to_sedate_by_inertia = 0;
                 if (_alteration_type == PRODUCT)
@@ -982,16 +981,15 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                         PPK_ASSERT_ERROR(nb_new_machines_to_sedate >= 0);
                     }
 
-                    //printf("on_monitoring_stage select_machines_to_sedate call\n");
                     if (nb_new_machines_to_sedate > 0)
                         select_machines_to_sedate(_inertial_number, sedatable_machines,
                                                   machines_that_can_be_used_by_the_priority_job,
                                                   machines_to_sedate, priority_job);
 
-                    printf("Date=%g. Decided to sedate machines %s\n",
+                    LOG_F(INFO, "Date=%g. Decided to sedate machines %s",
                            date, machines_to_sedate.to_string_brackets().c_str());
                     if (nb_idle_machines_to_steal > 0)
-                        printf("... and to steal %d idle-sedated machines\n",
+                        LOG_F(INFO, "... and to steal %d idle-sedated machines",
                                nb_idle_machines_to_steal);
 
                     _nb_machines_sedated_by_inertia += machines_to_sedate.size() + nb_idle_machines_to_steal;
@@ -1008,7 +1006,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                 _last_decision = AWAKEN_MACHINES;
                 _inertial_number = 0;
 
-                printf("Date=%g. Decided to do nothing now, but switching to awakening mode!\n", date);
+                LOG_F(INFO, "Date=%g. Decided to do nothing now, but switching to awakening mode!", date);
             }
         }
     }
@@ -1020,7 +1018,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
 
         if (_inertial_shutdown_debug)
         {
-            printf("After decisions.%s\n", _inertial_schedule.to_string().c_str());
+            LOG_F(1, "After decisions.%s", _inertial_schedule.to_string().c_str());
         }
 
         PPK_ASSERT_ERROR(priority_job_alloc2.has_been_inserted &&
@@ -1042,10 +1040,10 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                            machines_sedated_this_turn, machines_awakened_this_turn);
 
     if (machines_sedated_this_turn.size() > 0)
-        printf("Date=%g. Those machines should be put to sleep now: %s\n",
+        LOG_F(INFO, "Date=%g. Those machines should be put to sleep now: %s",
                date, machines_sedated_this_turn.to_string_brackets().c_str());
     if (machines_awakened_this_turn.size() > 0)
-        printf("Date=%g. Those machines should be awakened now: %s\n",
+        LOG_F(INFO, "Date=%g. Those machines should be awakened now: %s",
                date, machines_awakened_this_turn.to_string_brackets().c_str());
 
     _machines_to_sedate -= machines_sedated_this_turn;
@@ -1113,7 +1111,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
                              machines_awakened_this_turn.to_string_brackets().c_str(),
                              IntervalSet::empty_interval_set().to_string_brackets().c_str());
 
-            printf("Date=%g. Those machines should be put to sleep now for being idle: %s\n",
+            LOG_F(INFO, "Date=%g. Those machines should be put to sleep now for being idle: %s",
                        date, machines_sedated_this_turn.to_string_brackets().c_str());
 
 
@@ -1121,7 +1119,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
 
             if (_inertial_shutdown_debug)
             {
-                printf("Date=%g. Before make_decisions_of_schedule. %s\n",
+                LOG_F(1, "Date=%g. Before make_decisions_of_schedule. %s",
                        date, _inertial_schedule.to_string().c_str());
                 write_schedule_debug("_on_monitoring_before_make_decisions_of_schedule");
             }
@@ -1135,7 +1133,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     }
 
     if (_inertial_shutdown_debug)
-        printf("Date=%g. End of on_monitoring_stage\n", date);
+        LOG_F(1, "Date=%g. End of on_monitoring_stage", date);
 
     // Now that the decisions have been made, let's compute the LLH again.
     llh = EasyBackfillingPlotLiquidLoadHorizon::compute_liquid_load_horizon(_inertial_schedule,
@@ -1312,11 +1310,11 @@ void EnergyBackfillingMonitoringInertialShutdown::handle_queued_switches(Schedul
 {
     if (_inertial_shutdown_debug)
     {
-        printf("handle_queued_switches, begin.\n"
+        LOG_F(1, "handle_queued_switches, begin.\n"
                "machines_to_awaken: %s\nmachines_to_sedate: %s\n"
                "_awake_machines: %s\n_asleep_machines: %s\n"
                "_wakable_asleep_machines: %s\n"
-               "_non_wakable_asleep_machines: %s\n%s\n",
+               "_non_wakable_asleep_machines: %s\n%s",
                machines_to_awaken.to_string_brackets().c_str(),
                machines_to_sedate.to_string_brackets().c_str(),
                _awake_machines.to_string_brackets().c_str(),
@@ -1339,8 +1337,8 @@ void EnergyBackfillingMonitoringInertialShutdown::handle_queued_switches(Schedul
 
     if (_inertial_shutdown_debug)
     {
-        printf("handle_queued_switches, after awakenings.\n"
-               "machines_to_sedate: %s\n%s\n",
+        LOG_F(1, "handle_queued_switches, after awakenings.\n"
+               "machines_to_sedate: %s\n%s",
                machines_to_sedate.to_string_brackets().c_str(),
                _inertial_schedule.to_string().c_str());
         write_schedule_debug("_handle_queued_switches_after_awakenings");
@@ -1350,12 +1348,6 @@ void EnergyBackfillingMonitoringInertialShutdown::handle_queued_switches(Schedul
     {
         int machine_id = *machine_it;
 
-        /*if (_inertial_shutdown_debug)
-        {
-            printf("Sedating machine %d. %s\n", machine_id, _inertial_schedule.to_string().c_str());
-            write_schedule_debug("_handle_queued_switches_sedating");
-        }*/
-
         Rational sedating_date = sedate_machines_at_the_furthest_moment(schedule, machine_id);
 
         if (sedating_date == schedule.first_slice_begin())
@@ -1364,9 +1356,9 @@ void EnergyBackfillingMonitoringInertialShutdown::handle_queued_switches(Schedul
 
     if (_inertial_shutdown_debug)
     {
-        printf("handle_queued_switches, end.\n"
+        LOG_F(1, "handle_queued_switches, end.\n"
                "machines_sedated_now = %s\n"
-               "machines_awakened_now = %s\n%s\n",
+               "machines_awakened_now = %s\n%s",
                machines_sedated_now.to_string_brackets().c_str(),
                machines_awakened_now.to_string_brackets().c_str(),
                _inertial_schedule.to_string().c_str());
@@ -1438,19 +1430,10 @@ void EnergyBackfillingMonitoringInertialShutdown::compute_priority_job_and_relat
         priority_job = queue->first_job();
         // To do so, let's insert the priority job into the schedule.
 
-        /*if (_inertial_shutdown_debug)
-            printf("Inserting the priority job '%s' again into the schedule\n", priority_job->id.c_str());*/
-
         if (schedule.contains_job(priority_job))
             schedule.remove_job(priority_job);
 
         first_insertion_alloc = schedule.add_job_first_fit(priority_job, priority_job_selector, false);
-
-        /*if (_inertial_shutdown_debug)
-        {
-            printf("Priority job: '%s'\n", priority_job->id.c_str());
-            printf("Before decisions.%s\n", schedule.to_string().c_str());
-        }*/
 
         if (!first_insertion_alloc.has_been_inserted)
         {
