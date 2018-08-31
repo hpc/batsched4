@@ -1,5 +1,7 @@
 #include "energy_watcher.hpp"
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 using namespace std;
@@ -53,7 +55,7 @@ void EnergyWatcher::make_decisions(double date,
                          "Energy consumption inconsistency: it should be non-decreasing. "
                          "Received %g but previous value is %g.",
                          _consumed_joules, _previous_energy);
-        printf("Updating consumed joules. Now=%g. Before=%g.\n",
+        LOG_F(INFO, "Updating consumed joules. Now=%g. Before=%g.",
                _consumed_joules, _previous_energy);
         _previous_energy = _consumed_joules;
     }

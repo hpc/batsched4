@@ -1,5 +1,7 @@
 #include "energy_bf_idle_sleeper.hpp"
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 using namespace std;
@@ -219,10 +221,10 @@ void EnergyBackfillingIdleSleeper::make_idle_sleep_decisions(double date)
                                machines_sedated_this_turn, machines_awakened_this_turn);
 
         if (machines_sedated_this_turn.size() > 0)
-            printf("Date=%g. Those machines should be put to sleep now: %s\n",
+            LOG_F(INFO, "Date=%g. Those machines should be put to sleep now: %s",
                    date, machines_sedated_this_turn.to_string_brackets().c_str());
         if (machines_awakened_this_turn.size() > 0)
-            printf("Date=%g. Those machines should be awakened now: %s\n",
+            LOG_F(INFO, "Date=%g. Those machines should be awakened now: %s",
                    date, machines_awakened_this_turn.to_string_brackets().c_str());
 
         _machines_to_sedate -= machines_sedated_this_turn;

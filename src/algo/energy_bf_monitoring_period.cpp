@@ -1,5 +1,7 @@
 #include "energy_bf_monitoring_period.hpp"
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 using namespace std;
@@ -33,7 +35,7 @@ void EnergyBackfillingMonitoringPeriod::on_simulation_end(double date)
     PPK_ASSERT_ERROR(_simulation_finished == false);
     _simulation_finished = true;
 
-    printf("EnergyBackfillingMonitoringPeriod: 'End of simulation' message received from Batsim. date=%g\n", date);
+    LOG_F(INFO, "EnergyBackfillingMonitoringPeriod: 'End of simulation' message received from Batsim. date=%g", date);
 }
 
 void EnergyBackfillingMonitoringPeriod::on_job_release(double date, const std::vector<string> &job_ids)
@@ -42,7 +44,7 @@ void EnergyBackfillingMonitoringPeriod::on_job_release(double date, const std::v
     {
         _next_monitoring_period_expected_date = date + _period_between_monitoring_stages;
 
-        printf("EnergyBackfillingMonitoringPeriod: First monitoring nop is expected to be at date=%g\n",
+        LOG_F(INFO, "EnergyBackfillingMonitoringPeriod: First monitoring nop is expected to be at date=%g",
                (double) _next_monitoring_period_expected_date);
 
         _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
@@ -56,7 +58,7 @@ void EnergyBackfillingMonitoringPeriod::on_job_release(double date, const std::v
 void EnergyBackfillingMonitoringPeriod::on_requested_call(double date)
 {
     EnergyBackfilling::on_requested_call(date);
-    printf("on_requested_call, date = %g\n", date);
+    LOG_F(INFO, "on_requested_call, date = %g", date);
 
     if (!_simulation_finished)
     {
@@ -68,7 +70,7 @@ void EnergyBackfillingMonitoringPeriod::on_requested_call(double date)
         _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
         _nb_nop_me_later_running++;
 
-        printf("EnergyBackfillingMonitoringPeriod: 'Chose to launch a nop_me_later at %g\n",
+        LOG_F(INFO, "EnergyBackfillingMonitoringPeriod: 'Chose to launch a nop_me_later at %g",
                (double)_next_monitoring_period_expected_date);
     }
 }
