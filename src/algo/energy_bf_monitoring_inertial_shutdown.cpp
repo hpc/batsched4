@@ -5,6 +5,8 @@
 
 #include <boost/regex.hpp>
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 #include "energy_bf_idle_sleeper.hpp"
 
@@ -89,16 +91,14 @@ EnergyBackfillingMonitoringInertialShutdown::EnergyBackfillingMonitoringInertial
                          "has an invalid value (%g)", _needed_amount_of_idle_time_to_be_sedated);
     }
 
-    printf("needed amount of idle time to be sedated: %g\n",
-           _needed_amount_of_idle_time_to_be_sedated);
-
     if (variant_options->HasMember("sedate_idle_on_classical_events"))
     {
         _sedate_idle_on_classical_events = (*variant_options)["sedate_idle_on_classical_events"].GetBool();
     }
 
-    printf("Sedate on classical events: %s\n",
-           _sedate_idle_on_classical_events ? "true" : "false");
+    LOG_SCOPE_FUNCTION(INFO);
+    LOG_F(INFO, "needed amount of idle time to be sedated: %g", _needed_amount_of_idle_time_to_be_sedated);
+    LOG_F(INFO, "Sedate on classical events: %s", _sedate_idle_on_classical_events ? "true" : "false");
 }
 
 void EnergyBackfillingMonitoringInertialShutdown::on_simulation_start(double date, const rapidjson::Value & batsim_config)

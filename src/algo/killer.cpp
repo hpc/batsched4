@@ -1,5 +1,7 @@
 #include "killer.hpp"
 
+#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 using namespace std;
@@ -32,8 +34,9 @@ Killer::Killer(Workload *workload,
                          delay_before_kill);
     }
 
-    printf("nb_kills_per_job: %d\n", nb_kills_per_job);
-    printf("delay_before_kill: %g\n", delay_before_kill);
+    LOG_SCOPE_FUNCTION(INFO);
+    LOG_F(INFO, "nb_kills_per_job: %d", nb_kills_per_job);
+    LOG_F(INFO, "delay_before_kill: %g", delay_before_kill);
 }
 
 Killer::~Killer()

@@ -10,6 +10,9 @@
 
 #include <rapidjson/document.h>
 
+#define LOGURU_IMPLEMENTATION 1
+#include <loguru.hpp>
+
 #include "external/taywee_args.hpp"
 
 #include "isalgorithm.hpp"
