@@ -34,6 +34,10 @@ include_directories(${Boost_INCLUDE_DIR})
 find_package(intervalset REQUIRED)
 include_directories(${INTERVALSET_INCLUDE_DIR})
 
+## loguru
+find_package(loguru REQUIRED)
+include_directories(${LOGURU_INCLUDE_DIR})
+
 ## GMP
 find_package(GMP REQUIRED)
 include_directories(${GMP_INCLUDE_DIR})
