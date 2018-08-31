@@ -36,7 +36,7 @@ test_pinned_batsim:
   stage: test
   script:
     - find /builds/batsim/batsched/build
-    - nix-shell ./ci -A test_deps_pinned --command './ci/run-tests.bash'
+    - nix-shell ./ci -A test_deps_pinned --command 'bash ./ci/run-tests.bash'
     - find /builds/batsim/batsched/build
   dependencies:
     - build
@@ -47,7 +47,7 @@ test_pinned_batsim:
 test_dev_batsim:
   stage: test
   script:
-    - nix-shell ./ci -A test_deps_dev --command './ci/run-tests.bash'
+    - nix-shell ./ci -A test_deps_dev --command 'bash ./ci/run-tests.bash'
   dependencies:
     - build
 
@@ -58,7 +58,7 @@ coverage:
   stage: coverage
   script:
     - find /builds/batsim/batsched/build
-    - nix-shell ./ci -A test_deps_pinned --command './ci/analyze-coverage.bash'
+    - nix-shell ./ci -A test_deps_pinned --command 'bash ./ci/analyze-coverage.bash'
   dependencies:
     - test_pinned_batsim
   artifacts:
