@@ -11,5 +11,6 @@ cd ./build
 cmake .. \
     -DCMAKE_BUILD_TYPE=Debug \
     -Denable_warnings=ON \
-    -Dtreat_warnings_as_errors=OFF
+    -Dtreat_warnings_as_errors=OFF \
+    -Ddo_coverage=ON
 make -j $(nproc)
