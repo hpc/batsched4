@@ -85,10 +85,12 @@ int main(int argc, char ** argv)
     const set<string> policies_set = {"basic", "contiguous"};
     const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown",
                                           "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
+    const set<string> verbosity_levels_set = {"debug", "info", "quiet", "silent"};
 
     const string variants_string = "{" + boost::algorithm::join(variants_set, ", ") + "}";
     const string policies_string = "{" + boost::algorithm::join(policies_set, ", ") + "}";
     const string queue_orders_string = "{" + boost::algorithm::join(queue_orders_set, ", ") + "}";
+    const string verbosity_levels_string = "{" + boost::algorithm::join(verbosity_levels_set, ", ") + "}";
 
     ISchedulingAlgorithm * algo = nullptr;
     ResourceSelector * selector = nullptr;
@@ -106,6 +108,7 @@ int main(int argc, char ** argv)
     args::ValueFlag<string> flag_variant_options(parser, "options", "Sets the scheduling variant options. Must be formatted as a JSON object.", {"variant_options"}, "{}");
     args::ValueFlag<string> flag_variant_options_filepath(parser, "options-filepath", "Sets the scheduling variant options as the content of the given filepath. Overrides the variant_options options.", {"variant_options_filepath"}, "");
     args::ValueFlag<string> flag_queue_order(parser, "order", "Sets the queue order. Available values are " + queue_orders_string, {'o', "queue_order"}, "fcfs");
+    args::ValueFlag<string> flag_verbosity_level(parser, "verbosity-level", "Sets the verbosity level. Available values are " + verbosity_levels_string, {"verbosity"}, "info");
     args::ValueFlag<bool> flag_call_make_decisions_on_single_nop(parser, "flag", "If set to true, make_decisions will be called after single NOP messages.", {"call_make_decisions_on_single_nop"}, true);
     args::Flag flag_version(parser, "version", "Shows batsched version", {"version"});
 
@@ -129,6 +132,12 @@ int main(int argc, char ** argv)
                                             % flag_scheduling_variant.Name()
                                             % flag_scheduling_variant.Get()
                                             % variants_string));
+
+        if (verbosity_levels_set.find(flag_verbosity_level.Get()) == verbosity_levels_set.end())
+            throw args::ValidationError(str(format("Invalid '%1%' value (%2%): Not in %3%")
+                                            % flag_verbosity_level.Name()
+                                            % flag_verbosity_level.Get()
+                                            % verbosity_levels_string));
     }
     catch(args::Help)
     {
@@ -164,11 +173,22 @@ int main(int argc, char ** argv)
     string queue_order = flag_queue_order.Get();
     string variant_options = flag_variant_options.Get();
     string variant_options_filepath = flag_variant_options_filepath.Get();
+    string verbosity_level = flag_verbosity_level.Get();
     double rjms_delay = flag_rjms_delay.Get();
     bool call_make_decisions_on_single_nop = flag_call_make_decisions_on_single_nop.Get();
 
     try
     {
+        // Logging configuration
+        if (verbosity_level == "debug")
+            loguru::g_stderr_verbosity = loguru::Verbosity_1;
+        else if (verbosity_level == "quiet")
+            loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
+        else if (verbosity_level == "silent")
+            loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
+        else
+            loguru::g_stderr_verbosity = loguru::Verbosity_INFO;
+
         // Workload creation
         Workload w;
         w.set_rjms_delay(rjms_delay);
