@@ -21,9 +21,9 @@ def pytest_generate_tests(metafunc):
             filename=abspath(workload_file)) for workload_file in workload_files]
         metafunc.parametrize('workload', workloads)
 
-    if 'algo' in metafunc.fixturenames:
+    if 'basic_algo_no_param' in metafunc.fixturenames:
         algos = [
             'filler',
             'easy_bf'
         ]
-        metafunc.parametrize('algo', algos)
+        metafunc.parametrize('basic_algo_no_param', algos)

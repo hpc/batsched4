@@ -1,34 +1,30 @@
 #!/usr/bin/env python3
-
 import itertools
 import glob
 import os
 import os.path
 import unittest
-import subprocess
-import shlex
 
-def test_instance(platform, workload, algo):
-    test_name = f'{algo}-{platform.name}-{workload.name}'
+from robin_helper import *
+
+def gen_test_vars(test_name):
     output_dir = os.path.abspath(f'test-out/{test_name}')
-
     robin_filename = os.path.abspath(f'test-instances/{test_name}.yaml')
-    robin_file_content = f'''output-dir: '{output_dir}'
-batcmd: batsim -p '{platform.filename}' -w '{workload.filename}' --energy -e '{output_dir}/out'
-schedcmd: batsched -v '{algo}'
-simulation-timeout: 30
-ready-timeout: 5
-success-timeout: 10
-failure-timeout: 0
-'''
+    return (output_dir, robin_filename)
 
-    if not os.path.exists(os.path.dirname(robin_filename)):
-        os.makedirs(os.path.dirname(robin_filename))
+def test_basic_algo_no_param(platform, workload, basic_algo_no_param):
+    test_name = f'{basic_algo_no_param}-{platform.name}-{workload.name}'
+    output_dir, robin_filename = gen_test_vars(test_name)
 
-    robin_file = open(robin_filename, "w")
-    robin_file.write(robin_file_content)
-    robin_file.close()
+    batcmd = gen_batsim_cmd(platform.filename, workload.filename, output_dir, "")
+    instance = RobinInstance(output_dir=output_dir,
+        batcmd=batcmd,
+        schedcmd=f"batsched -v '{basic_algo_no_param}'",
+        simulation_timeout=30, ready_timeout=5,
+        success_timeout=10, failure_timeout=0
+    )
 
-    ret = subprocess.run(['robin', robin_filename])
+    instance.to_file(robin_filename)
+    ret = run_robin(robin_filename)
     assert ret.returncode == 0
 
