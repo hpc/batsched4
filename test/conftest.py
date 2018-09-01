@@ -23,7 +23,13 @@ def pytest_generate_tests(metafunc):
 
     if 'basic_algo_no_param' in metafunc.fixturenames:
         algos = [
+            'conservative_bf',
+            'easy_bf',
+            'easy_bf_fast',
+            'fcfs_fast',
             'filler',
-            'easy_bf'
+            'rejecter',
+            'sequencer',
+            'waiting_time_estimator'
         ]
         metafunc.parametrize('basic_algo_no_param', algos)
