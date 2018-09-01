@@ -717,6 +717,31 @@ IntervalSet Schedule::available_machines_during_period(Rational begin, Rational 
     return available_machines;
 }
 
+std::list<Schedule::TimeSlice>::iterator Schedule::begin()
+{
+    return _profile.begin();
+}
+
+std::list<Schedule::TimeSlice>::iterator Schedule::end()
+{
+    return _profile.end();
+}
+
+std::list<Schedule::TimeSlice>::const_iterator Schedule::begin() const
+{
+    return _profile.cbegin();
+}
+
+std::list<Schedule::TimeSlice>::const_iterator Schedule::end() const
+{
+    return _profile.cend();
+}
+
+int Schedule::nb_slices() const
+{
+    return (int) _profile.size();
+}
+
 string Schedule::to_string() const
 {
     string res = "Schedule:\n";

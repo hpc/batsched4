@@ -421,3 +421,15 @@ string JsonProtocolWriter::generate_current_message(double date)
     // Returning the buffer as a string
     return string(buffer.GetString(), buffer.GetSize());
 }
+
+bool JsonProtocolWriter::is_empty()
+{
+    return _is_empty;
+}
+
+double JsonProtocolWriter::last_date()
+{
+    return _last_date;
+}
+
+AbstractProtocolWriter::~AbstractProtocolWriter() {}

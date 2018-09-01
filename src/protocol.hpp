@@ -20,7 +20,7 @@ public:
     /**
      * @brief Destructor
      */
-    virtual ~AbstractProtocolWriter() {}
+    virtual ~AbstractProtocolWriter();
 
     /**
      * @brief Appends a QUERY message to ask Batsim about the current platform energy consumption (since time 0).
@@ -300,13 +300,13 @@ public:
      * @brief Returns whether the Writer has content
      * @return Whether the Writer has content
      */
-    bool is_empty() { return _is_empty; }
+    bool is_empty();
 
     /**
      * @brief Returns the latest date that has been set in the events
      * @return The latest date that has been set in the events
      */
-    double last_date() { return _last_date; }
+    double last_date();
 
 private:
     bool _is_empty = true; //!< Stores whether events have been pushed into the writer since last clear.

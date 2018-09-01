@@ -28,6 +28,11 @@ const Job * Workload::operator[](string jobID) const
     return _jobs.at(jobID);
 }
 
+int Workload::nb_jobs() const
+{
+    return (int) _jobs.size();
+}
+
 void Workload::set_rjms_delay(Rational rjms_delay)
 {
     PPK_ASSERT_ERROR(rjms_delay >= 0);
@@ -149,4 +154,9 @@ Job *Workload::job_from_json_object(const Value &object)
         j->has_walltime = false;
 
     return j;
+}
+
+bool JobComparator::operator()(const Job *j1, const Job *j2) const
+{
+    return j1->id < j2->id;
 }

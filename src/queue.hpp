@@ -27,14 +27,14 @@ public:
 
     struct UpdateInformation
     {
-        UpdateInformation(Rational current_date) : current_date(current_date) {}
-        virtual ~UpdateInformation() {}
+        UpdateInformation(Rational current_date);
+        virtual ~UpdateInformation();
 
         Rational current_date;
     };
 
 public:
-    virtual ~SortableJobOrder() {}
+    virtual ~SortableJobOrder();
     virtual bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const = 0;
     virtual void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const = 0;
 };
@@ -42,7 +42,7 @@ public:
 class FCFSOrder : public SortableJobOrder
 {
 public:
-    ~FCFSOrder() {}
+    ~FCFSOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };
@@ -50,7 +50,7 @@ public:
 class LCFSOrder : public SortableJobOrder
 {
 public:
-    ~LCFSOrder() {}
+    ~LCFSOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };
@@ -58,8 +58,8 @@ public:
 class DescendingBoundedSlowdownOrder : public SortableJobOrder
 {
 public:
-    DescendingBoundedSlowdownOrder(Rational min_job_length) : _min_job_length(min_job_length) {}
-    ~DescendingBoundedSlowdownOrder() {}
+    DescendingBoundedSlowdownOrder(Rational min_job_length);
+    ~DescendingBoundedSlowdownOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 
@@ -70,7 +70,7 @@ private:
 class DescendingSlowdownOrder : public SortableJobOrder
 {
 public:
-    ~DescendingSlowdownOrder() {}
+    ~DescendingSlowdownOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };
@@ -78,7 +78,7 @@ public:
 class AscendingSizeOrder : public SortableJobOrder
 {
 public:
-    ~AscendingSizeOrder() {}
+    ~AscendingSizeOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };
@@ -86,7 +86,7 @@ public:
 class DescendingSizeOrder : public SortableJobOrder
 {
 public:
-    ~DescendingSizeOrder() {}
+    ~DescendingSizeOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };
@@ -94,7 +94,7 @@ public:
 class AscendingWalltimeOrder : public SortableJobOrder
 {
 public:
-    ~AscendingWalltimeOrder() {}
+    ~AscendingWalltimeOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };
@@ -102,7 +102,7 @@ public:
 class DescendingWalltimeOrder : public SortableJobOrder
 {
 public:
-    ~DescendingWalltimeOrder() {}
+    ~DescendingWalltimeOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };

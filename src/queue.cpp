@@ -8,6 +8,22 @@
 
 using namespace std;
 
+SortableJobOrder::UpdateInformation::UpdateInformation(Rational current_date) :
+    current_date(current_date)
+{
+
+}
+
+SortableJobOrder::UpdateInformation::~UpdateInformation()
+{
+
+}
+
+SortableJobOrder::~SortableJobOrder()
+{
+
+}
+
 void SortableJob::update_slowdown(Rational current_date)
 {
     slowdown = current_date - release_date;
@@ -18,6 +34,11 @@ void SortableJob::update_bounded_slowdown(Rational current_date, Rational execut
     bounded_slowdown = (current_date -  release_date) / execution_time_lower_bound;
 }
 
+
+FCFSOrder::~FCFSOrder()
+{
+
+}
 
 bool FCFSOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
@@ -36,6 +57,11 @@ void FCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInform
 }
 
 
+LCFSOrder::~LCFSOrder()
+{
+
+}
+
 bool LCFSOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
@@ -53,6 +79,17 @@ void LCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInform
 }
 
 
+DescendingBoundedSlowdownOrder::DescendingBoundedSlowdownOrder(Rational min_job_length) :
+    _min_job_length(min_job_length)
+{
+
+}
+
+DescendingBoundedSlowdownOrder::~DescendingBoundedSlowdownOrder()
+{
+
+}
+
 bool DescendingBoundedSlowdownOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
@@ -69,6 +106,11 @@ void DescendingBoundedSlowdownOrder::updateJob(SortableJob *job, const SortableJ
 }
 
 
+DescendingSlowdownOrder::~DescendingSlowdownOrder()
+{
+
+}
+
 bool DescendingSlowdownOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
@@ -84,6 +126,11 @@ void DescendingSlowdownOrder::updateJob(SortableJob *job, const SortableJobOrder
     job->update_slowdown(info->current_date);
 }
 
+
+AscendingSizeOrder::~AscendingSizeOrder()
+{
+
+}
 
 bool AscendingSizeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
@@ -102,6 +149,11 @@ void AscendingSizeOrder::updateJob(SortableJob *job, const SortableJobOrder::Upd
 }
 
 
+DescendingSizeOrder::~DescendingSizeOrder()
+{
+
+}
+
 bool DescendingSizeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
@@ -119,6 +171,11 @@ void DescendingSizeOrder::updateJob(SortableJob *job, const SortableJobOrder::Up
 }
 
 
+AscendingWalltimeOrder::~AscendingWalltimeOrder()
+{
+
+}
+
 bool AscendingWalltimeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
     (void) info;
@@ -135,6 +192,11 @@ void AscendingWalltimeOrder::updateJob(SortableJob *job, const SortableJobOrder:
     (void) info;
 }
 
+
+DescendingWalltimeOrder::~DescendingWalltimeOrder()
+{
+
+}
 
 bool DescendingWalltimeOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {

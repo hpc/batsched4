@@ -89,12 +89,12 @@ public:
 
     IntervalSet available_machines_during_period(Rational begin, Rational end) const;
 
-    std::list<TimeSlice>::iterator begin() { return _profile.begin(); }
-    std::list<TimeSlice>::iterator end() { return _profile.end(); }
-    std::list<TimeSlice>::const_iterator begin() const { return _profile.cbegin(); }
-    std::list<TimeSlice>::const_iterator end() const { return _profile.cend(); }
+    std::list<TimeSlice>::iterator begin();
+    std::list<TimeSlice>::iterator end();
+    std::list<TimeSlice>::const_iterator begin() const;
+    std::list<TimeSlice>::const_iterator end() const;
 
-    int nb_slices() const { return _profile.size(); }
+    int nb_slices() const;
 
     std::string to_string() const;
     std::string to_svg() const;

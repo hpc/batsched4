@@ -41,6 +41,11 @@ ISchedulingAlgorithm::ISchedulingAlgorithm(Workload *workload,
 
 }
 
+ISchedulingAlgorithm::~ISchedulingAlgorithm()
+{
+
+}
+
 void ISchedulingAlgorithm::on_job_release(double date, const vector<string> &job_ids)
 {
     (void) date;

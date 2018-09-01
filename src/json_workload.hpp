@@ -35,10 +35,7 @@ struct JobAlloc
 
 struct JobComparator
 {
-    bool operator()(const Job * j1, const Job * j2) const
-    {
-        return j1->id < j2->id;
-    }
+    bool operator()(const Job * j1, const Job * j2) const;
 };
 
 class Workload
@@ -48,7 +45,7 @@ public:
 
     Job * operator[] (std::string jobID);
     const Job * operator[] (std::string jobID) const;
-    int nb_jobs() const { return _jobs.size(); }
+    int nb_jobs() const;
 
     void set_rjms_delay(Rational rjms_delay);
 

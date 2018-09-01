@@ -31,7 +31,7 @@ public:
     /**
      * @brief Destroys a ISchedulingAlgorithm
      */
-    virtual ~ISchedulingAlgorithm() {}
+    virtual ~ISchedulingAlgorithm();
 
     /**
      * @brief This function is called when the simulation is about to begin

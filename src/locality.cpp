@@ -5,6 +5,27 @@
 #include "json_workload.hpp"
 #include "pempek_assert.hpp"
 
+
+ResourceSelector::ResourceSelector()
+{
+
+}
+
+ResourceSelector::~ResourceSelector()
+{
+
+}
+
+BasicResourceSelector::BasicResourceSelector()
+{
+
+}
+
+BasicResourceSelector::~BasicResourceSelector()
+{
+
+}
+
 bool BasicResourceSelector::fit(const Job *job, const IntervalSet &available, IntervalSet &allocated)
 {
     if (job->nb_requested_resources <= (int) available.size())
@@ -40,6 +61,16 @@ void BasicResourceSelector::select_resources_to_awaken_to_make_job_fit(const Job
     select_resources_to_awaken(job->nb_requested_resources - available.size(), available, potentially_awaken, to_awaken);
     IntervalSet u;
     PPK_ASSERT_ERROR(fit(job, (available + to_awaken), u));
+}
+
+ContiguousResourceSelector::ContiguousResourceSelector()
+{
+
+}
+
+ContiguousResourceSelector::~ContiguousResourceSelector()
+{
+
 }
 
 bool ContiguousResourceSelector::fit(const Job *job, const IntervalSet &available, IntervalSet &allocated)
@@ -214,6 +245,22 @@ void ContiguousResourceSelector::select_resources_to_awaken_to_make_job_fit(cons
     PPK_ASSERT_ERROR((to_awaken & potentially_awaken) == to_awaken);
     PPK_ASSERT_ERROR(fit(job, available & to_awaken, u));
     return;
+}
+
+LimitedRangeResourceSelector::LimitedRangeResourceSelector()
+{
+
+}
+
+LimitedRangeResourceSelector::LimitedRangeResourceSelector(const IntervalSet &limited_range) :
+    _limited_range(limited_range)
+{
+
+}
+
+LimitedRangeResourceSelector::~LimitedRangeResourceSelector()
+{
+
 }
 
 bool LimitedRangeResourceSelector::fit(const Job *job, const IntervalSet &available, IntervalSet &allocated)

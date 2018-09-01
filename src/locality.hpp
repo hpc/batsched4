@@ -6,8 +6,8 @@ struct Job;
 class ResourceSelector
 {
 public:
-    ResourceSelector() {}
-    virtual ~ResourceSelector() {}
+    ResourceSelector();
+    virtual ~ResourceSelector();
 
     virtual bool fit(const Job * job, const IntervalSet & available, IntervalSet & allocated) = 0;
     virtual void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate) = 0;
@@ -18,8 +18,8 @@ public:
 class BasicResourceSelector : public ResourceSelector
 {
 public:
-    BasicResourceSelector() {}
-    ~BasicResourceSelector() {}
+    BasicResourceSelector();
+    ~BasicResourceSelector();
 
     bool fit(const Job * job, const IntervalSet & available, IntervalSet & allocated);
     void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate);
@@ -30,8 +30,8 @@ public:
 class ContiguousResourceSelector : public ResourceSelector
 {
 public:
-    ContiguousResourceSelector() {}
-    ~ContiguousResourceSelector() {}
+    ContiguousResourceSelector();
+    ~ContiguousResourceSelector();
 
     bool fit(const Job * job, const IntervalSet & available, IntervalSet & allocated);
     void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate);
@@ -42,9 +42,9 @@ public:
 class LimitedRangeResourceSelector : public ResourceSelector
 {
 public:
-    LimitedRangeResourceSelector() {}
-    LimitedRangeResourceSelector(const IntervalSet & limited_range) : _limited_range(limited_range) {}
-    ~LimitedRangeResourceSelector() {}
+    LimitedRangeResourceSelector();
+    LimitedRangeResourceSelector(const IntervalSet & limited_range);
+    ~LimitedRangeResourceSelector();
 
     bool fit(const Job *job, const IntervalSet &available, IntervalSet &allocated);
     void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate);
