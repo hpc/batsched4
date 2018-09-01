@@ -26,17 +26,20 @@ failure-timeout: {self.failure_timeout}
 '''
 
     def to_file(self, filename):
-        # Create parent directory if needed
-        if not os.path.exists(os.path.dirname(filename)):
-            os.makedirs(os.path.dirname(filename))
-
-        # Write the file
-        robin_file = open(filename, "w")
-        robin_file.write(self.to_yaml())
-        robin_file.close()
+        create_dir_rec_if_needed(os.path.dirname(filename))
+        write_file(filename, self.to_yaml())
 
 def gen_batsim_cmd(platform, workload, output_dir, more_flags):
     return f"batsim -p '{platform}' -w '{workload}' -e '{output_dir}' {more_flags}"
+
+def write_file(filename, content):
+    file = open(filename, "w")
+    file.write(content)
+    file.close()
+
+def create_dir_rec_if_needed(dirname):
+    if not os.path.exists(dirname):
+            os.makedirs(dirname)
 
 def run_robin(filename):
     return subprocess.run(['robin', filename])
