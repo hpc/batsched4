@@ -42,3 +42,21 @@ def pytest_generate_tests(metafunc):
 
     if 'redis_enabled' in metafunc.fixturenames:
         metafunc.parametrize('redis_enabled', [True, False])
+
+    if 'monitoring_period' in metafunc.fixturenames:
+        metafunc.parametrize('monitoring_period', [600])
+
+    if 'inertial_function' in metafunc.fixturenames:
+        metafunc.parametrize('inertial_function', ['x2', 'p1'])
+
+    if 'idle_time_to_sedate' in metafunc.fixturenames:
+        metafunc.parametrize('idle_time_to_sedate', [0, 120])
+
+    if 'sedate_idle_on_classical_events' in metafunc.fixturenames:
+        metafunc.parametrize('sedate_idle_on_classical_events', [True, False])
+
+    if 'allow_future_switches' in metafunc.fixturenames:
+        metafunc.parametrize('allow_future_switches', [True])
+
+    if 'upper_llh_threshold' in metafunc.fixturenames:
+        metafunc.parametrize('upper_llh_threshold', [60])
