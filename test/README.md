@@ -1,6 +1,7 @@
 ### Running tests
 ```
-pytest
+make test
+# or pytest, but you must prepare your env, run redis...
 ```
 
 ### How it works?
