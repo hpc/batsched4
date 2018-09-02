@@ -304,10 +304,10 @@ void EnergyBackfilling::on_machine_state_changed(double date, IntervalSet machin
 void EnergyBackfilling::on_requested_call(double date)
 {
     (void) date;
-    PPK_ASSERT_ERROR(_nb_nop_me_later_running > 0,
-                     "Received a NOP message from Batsim while there "
-                     "was no running nop_me_later request.");
-    _nb_nop_me_later_running--;
+    PPK_ASSERT_ERROR(_nb_call_me_later_running > 0,
+                     "Received a REQUESTED_CALL message from Batsim while there "
+                     "was no running call_me_later request.");
+    _nb_call_me_later_running--;
 }
 
 void EnergyBackfilling::generate_machine_informations(int nb_machines)
@@ -501,7 +501,7 @@ void EnergyBackfilling::make_decisions(double date,
 }
 
 void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
-                                                   bool run_nop_me_later_on_nothing_to_do)
+                                                   bool run_call_me_later_on_nothing_to_do)
 {
     bool did_something = false;
 
@@ -602,15 +602,15 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
         did_something = true;
     }
 
-    if (run_nop_me_later_on_nothing_to_do)
+    if (run_call_me_later_on_nothing_to_do)
     {
-        if (!did_something && (_nb_jobs_completed < _workload->nb_jobs()) && (_nb_nop_me_later_running == 0))
+        if (!did_something && (_nb_jobs_completed < _workload->nb_jobs()) && (_nb_call_me_later_running == 0))
         {
             // To avoid Batsim's deadlock, we should tell it to wait that we are ready.
 
             PPK_ASSERT_ERROR(_schedule.nb_slices() >= 1);
             _decision->add_call_me_later((double) _schedule.begin()->end + 1, (double) _schedule.begin()->begin);
-            _nb_nop_me_later_running++;
+            _nb_call_me_later_running++;
         }
     }
 }

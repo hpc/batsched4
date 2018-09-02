@@ -86,8 +86,8 @@ public:
     virtual void on_failure_end(double date, IntervalSet machines);
 
     /**
-     * @brief This function is called when a NOP message is received
-     * @param[in] date The date at which the NOP message have been received
+     * @brief This function is called when a REQUESTED_CALL message is received
+     * @param[in] date The date at which the REQUESTED_CALL message have been received
      */
     virtual void on_requested_call(double date);
 

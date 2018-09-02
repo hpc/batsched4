@@ -100,7 +100,7 @@ protected:
     void generate_machine_informations(int nb_machines);
     void clear_machine_informations();
 
-    void make_decisions_of_schedule(const Schedule & schedule, bool run_nop_me_later_on_nothing_to_do = true);
+    void make_decisions_of_schedule(const Schedule & schedule, bool run_call_me_later_on_nothing_to_do = true);
 
     void update_first_slice_taking_sleep_jobs_into_account(Rational date);
 
@@ -160,7 +160,7 @@ protected:
     Schedule _schedule;
     bool _debug = false;
 
-    int _nb_nop_me_later_running = 0;
+    int _nb_call_me_later_running = 0;
 
     int _nb_jobs_submitted = 0;
     int _nb_jobs_completed = 0;
