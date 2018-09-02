@@ -10,7 +10,7 @@ r=$(ps faux | grep redis-server | grep -v grep | wc -l)
 if [ $r -eq 0 ]
 then
     echo "Running a Redis server..."
-    redis-server ../test/redis.conf >/dev/null &
+    redis-server>/dev/null &
     redis_launched_here=1
 
     while ! nc -z localhost 6379; do
