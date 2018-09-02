@@ -56,3 +56,28 @@ def test_easy_bf_plot_llh(platform, workload):
     instance.to_file(robin_filename)
     ret = run_robin(robin_filename)
     assert ret.returncode == 0
+
+def test_redis(platform, workload, one_basic_algo, redis_enabled):
+    test_name = f'{one_basic_algo}-{platform.name}-{workload.name}'
+    output_dir, robin_filename, batconf_filename, _ = init_instance(test_name)
+
+    batcmd = gen_batsim_cmd(platform.filename, workload.filename, output_dir,
+        f"--config-file '{batconf_filename}'")
+
+    batconf_content = {
+        "redis": {
+            "enabled": redis_enabled
+        }
+    }
+    write_file(batconf_filename, json.dumps(batconf_content))
+
+    instance = RobinInstance(output_dir=output_dir,
+        batcmd=batcmd,
+        schedcmd=f"batsched -v '{one_basic_algo}'",
+        simulation_timeout=30, ready_timeout=5,
+        success_timeout=10, failure_timeout=0
+    )
+
+    instance.to_file(robin_filename)
+    ret = run_robin(robin_filename)
+    assert ret.returncode == 0

@@ -33,3 +33,12 @@ def pytest_generate_tests(metafunc):
             'waiting_time_estimator'
         ]
         metafunc.parametrize('basic_algo_no_param', algos)
+
+    if 'one_basic_algo' in metafunc.fixturenames:
+        algos = [
+            'conservative_bf',
+        ]
+        metafunc.parametrize('one_basic_algo', algos)
+
+    if 'redis_enabled' in metafunc.fixturenames:
+        metafunc.parametrize('redis_enabled', [True, False])
