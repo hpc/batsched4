@@ -44,3 +44,12 @@ def create_dir_rec_if_needed(dirname):
 def run_robin(filename):
     return subprocess.run(['robin', filename])
 
+def init_instance(test_name):
+    output_dir = os.path.abspath(f'test-out/{test_name}')
+    robin_filename = os.path.abspath(f'test-instances/{test_name}.yaml')
+    batconf_filename = f'{output_dir}/batconf.json'
+    schedconf_filename = f'{output_dir}/schedconf.json'
+
+    create_dir_rec_if_needed(output_dir)
+
+    return (output_dir, robin_filename, batconf_filename, schedconf_filename)
