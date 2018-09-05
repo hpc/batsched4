@@ -1,3 +1,7 @@
+import json
+
+from helper import *
+
 def energy_model_instance():
     return {
         "power_sleep":9.75,
