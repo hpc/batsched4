@@ -6,7 +6,7 @@ import os
 import os.path
 import unittest
 
-from robin_helper import *
+from helper import *
 
 def init_instance(test_name):
     output_dir = os.path.abspath(f'test-out/{test_name}')
