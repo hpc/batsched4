@@ -23,7 +23,6 @@ void ISchedulingAlgorithm::clear_recent_data_structures()
     _jobs_killed_recently.clear();
     _jobs_whose_waiting_time_estimation_has_been_requested_recently.clear();
     _machines_whose_pstate_changed_recently.clear();
-    _recent_failstate_changes.clear();
     _nopped_recently = false;
     _consumed_joules_updated_recently = false;
     _consumed_joules = -1;
