@@ -84,6 +84,6 @@ deploy_coverage:
 deploy_batsim_dev_cachix:
   stage: deploy
   script:
-    - ./ci/update-batsim_dev-cache.bash
+    - ./ci/update-batsched_dev-cache.bash
   only:
     - master
