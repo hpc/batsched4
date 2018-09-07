@@ -104,11 +104,3 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
     (void) date;
     _jobs_whose_waiting_time_estimation_has_been_requested_recently.push_back(job_id);
 }
-
-ISchedulingAlgorithm::Failure::Failure(double date, IntervalSet machines, bool failed) :
-    date(date),
-    machines(machines),
-    failed(failed)
-{
-
-}

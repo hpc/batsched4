@@ -138,22 +138,12 @@ protected:
     RedisStorage * _redis = nullptr;
     bool _no_more_static_job_to_submit_received = false;
 
-    struct Failure
-    {
-        Failure(double date, IntervalSet machines, bool failed);
-
-        double date;
-        IntervalSet machines;
-        bool failed;
-    };
-
 protected:
     std::vector<std::string> _jobs_released_recently;
     std::vector<std::string> _jobs_ended_recently;
     std::vector<std::string> _jobs_killed_recently;
     std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently;
     std::map<int, IntervalSet> _machines_whose_pstate_changed_recently;
-    std::vector<Failure> _recent_failstate_changes;
     bool _nopped_recently;
     bool _consumed_joules_updated_recently;
     double _consumed_joules;
