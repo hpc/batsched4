@@ -12,7 +12,7 @@ let
 
     # Redefine some packages for clarity's sake
     batexpe = kapack.batexpe;
-    batsim_pinned = (kapack.batsim_dev.override {}).overrideAttrs (attrs: rec {
+    batsim_pinned = (kapack.batsim.override {simgrid = kapack.simgrid_dev_working; }).overrideAttrs (attrs: rec {
       name = "batsim-${version}";
       version = "2.0.0-pinned";
       src = pkgs.fetchgit {
@@ -21,7 +21,12 @@ let
         sha256 = "1j15yx25a6r63sgba51l6ph44c81s7vj3m5jfn186sq1pc2b40hg";
       };
     });
-    batsim_dev = kapack.batsim_dev;
+    batsim_dev = (kapack.batsim.override {simgrid = kapack.simgrid_dev_working; }).overrideAttrs (attrs: rec {
+      name = "batsim-${version}";
+      version = "3.0.0-dev";
+      src = fetchTarball "https://gitlab.inria.fr/batsim/batsim/repository/master/archive.tar.gz";
+    });
+
     pytest = pkgs.python36Packages.pytest;
     gcovr = kapack.gcovr;
 
