@@ -80,18 +80,6 @@ void ISchedulingAlgorithm::on_machine_state_changed(double date, IntervalSet mac
         _machines_whose_pstate_changed_recently[new_state] += machines;
 }
 
-void ISchedulingAlgorithm::on_failure(double date, IntervalSet machines)
-{
-    (void) date;
-    _recent_failstate_changes.push_back(Failure(date, machines, true));
-}
-
-void ISchedulingAlgorithm::on_failure_end(double date, IntervalSet machines)
-{
-    (void) date;
-    _recent_failstate_changes.push_back(Failure(date, machines, false));
-}
-
 void ISchedulingAlgorithm::on_requested_call(double date)
 {
     (void) date;

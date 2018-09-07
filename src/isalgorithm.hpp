@@ -73,19 +73,6 @@ public:
     virtual void on_machine_state_changed(double date, IntervalSet machines, int new_state);
 
     /**
-     * @brief This function is called when some machines failed
-     * @param[in] date The date at which the machines failed
-     * @param[in] machines The machines which failed
-     */
-    virtual void on_failure(double date, IntervalSet machines);
-    /**
-     * @brief This function is called when some machines are no longer in a failure state
-     * @param[in] date The date at which the machines have been fixed
-     * @param[in] machines The machines which have been fixed
-     */
-    virtual void on_failure_end(double date, IntervalSet machines);
-
-    /**
      * @brief This function is called when a REQUESTED_CALL message is received
      * @param[in] date The date at which the REQUESTED_CALL message have been received
      */
