@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#! nix-shell . -i bash -A test_pinned
+#! nix-shell . -i bash -A test_deps_pinned
 set -eu
 
 initial_dir=$(realpath .)
