@@ -381,7 +381,16 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 
             if (event_type == "SIMULATION_BEGINS")
             {
-                int nb_resources = event_data["nb_resources"].GetInt();
+                int nb_resources;
+                // DO this for retrocompatibility with batsim 2 API
+                if (event_data.HasMember("nb_compute_resources"))
+                {
+                    nb_resources = event_data["nb_compute_resources"].GetInt();
+                }
+                else
+                {
+                    nb_resources = event_data["nb_resources"].GetInt();
+                }
                 redis_enabled = event_data["config"]["redis"]["enabled"].GetBool();
 
                 if (redis_enabled)
