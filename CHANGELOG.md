@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning][semver].
 
 ### Changed
 - Dependencies: added [intervalset](https://framagit.org/batsim/intervalset).
+- Dependencies: added [loguru](https://github.com/emilk/loguru).
 
 [//]: =========================================================================
 ## [1.2.1] - 2018-07-03 - For [Batsim v2.0.0][Batsim v2.0.0]
