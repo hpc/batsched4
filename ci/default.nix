@@ -22,6 +22,7 @@ let
       };
     });
     batsim_dev = (kapack.batsim.override {simgrid = kapack.simgrid_dev_working; }).overrideAttrs (attrs: rec {
+      nativeBuildInputs = attrs.nativeBuildInputs ++ [kapack.intervalset];
       name = "batsim-${version}";
       version = "3.0.0-dev";
       src = fetchTarball "https://gitlab.inria.fr/batsim/batsim/repository/master/archive.tar.gz";
