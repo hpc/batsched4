@@ -87,6 +87,7 @@ target_link_libraries(batsched ${GMP_LIBRARIES}
                       ${Boost_REGEX_LIBRARY_DEBUG}
                       ${Boost_LOCALE_LIBRARY_DEBUG}
                       ${INTERVALSET_LIBRARY}
+                      ${LOGURU_LIBRARIES}
                       Threads::Threads
                       ${CMAKE_DL_LIBS}
                       ${REDOX_LIBRARY}
