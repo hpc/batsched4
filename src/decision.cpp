@@ -56,10 +56,10 @@ void SchedulingDecision::add_submit_job(const string & workload_name,
         _redis->set(job_key, job_json_description);
         _redis->set(profile_key, profile_json_description);
 
-        _proto_writer->append_submit_job(complete_job_id, date, "", "", send_profile);
+        _proto_writer->append_register_job(complete_job_id, date, "", "", send_profile);
     }
     else
-        _proto_writer->append_submit_job(complete_job_id, date,
+        _proto_writer->append_register_job(complete_job_id, date,
                                          job_json_description,
                                          profile_json_description,
                                          send_profile);
@@ -70,7 +70,7 @@ void SchedulingDecision::add_submit_profile(const string &workload_name,
                                             const string &profile_json_description,
                                             double date)
 {
-    _proto_writer->append_submit_profile(workload_name,
+    _proto_writer->append_register_profile(workload_name,
                                          profile_name,
                                          profile_json_description,
                                          date);

@@ -40,7 +40,7 @@ public:
 
     // Messages from the Scheduler to Batsim
     /**
-     * @brief Appends a SUBMIT_JOB event.
+     * @brief Appends a REGISTER_JOB event.
      * @details The job_description and profile_descriptions are either both given or both empty.
      *          If they are given, the job and profile information is sent within the protocol.
      *          Otherwise, it is sent by another channel (probably redis).
@@ -50,13 +50,13 @@ public:
      * @param[in] job_description The job description string. Can be empty.
      * @param[in] profile_description The profile description string. Can be empty.
      */
-    virtual void append_submit_job(const std::string & job_id,
+    virtual void append_register_job(const std::string & job_id,
                                    double date,
                                    const std::string & job_description = "",
                                    const std::string & profile_description = "",
                                    bool send_profile = true) = 0;
 
-    virtual void append_submit_profile(const std::string & workload_name,
+    virtual void append_register_profile(const std::string & workload_name,
                                       const std::string & profile_name,
                                       const std::string & profile_description,
                                       double date) = 0;
@@ -193,7 +193,7 @@ public:
 
     // Messages from the Scheduler to Batsim
     /**
-     * @brief Appends a SUBMIT_JOB event.
+     * @brief Appends a REGISTER_JOB event.
      * @details The job_description and profile_descriptions are either both given or both empty.
      *          If they are given, the job and profile information is sent within the protocol.
      *          Otherwise, it is sent by another channel (probably redis).
@@ -203,13 +203,13 @@ public:
      * @param[in] job_description The job description string. Can be empty.
      * @param[in] profile_description The profile description string. Can be empty.
      */
-    void append_submit_job(const std::string & job_id,
+    void append_register_job(const std::string & job_id,
                            double date,
                            const std::string & job_description = "",
                            const std::string & profile_description = "",
                            bool send_profile = true);
 
-    void append_submit_profile(const std::string & workload_name,
+    void append_register_profile(const std::string & workload_name,
                                           const std::string & profile_name,
                                           const std::string & profile_description,
                                           double date);

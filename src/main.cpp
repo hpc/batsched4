@@ -390,13 +390,13 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 {
                     nb_resources = event_data["nb_resources"].GetInt();
                 }
-                redis_enabled = event_data["config"]["redis"]["enabled"].GetBool();
+                redis_enabled = event_data["config"]["redis-enabled"].GetBool();
 
                 if (redis_enabled)
                 {
-                    string redis_hostname = event_data["config"]["redis"]["hostname"].GetString();
-                    int redis_port = event_data["config"]["redis"]["port"].GetInt();
-                    string redis_prefix = event_data["config"]["redis"]["prefix"].GetString();
+                    string redis_hostname = event_data["config"]["redis-hostname"].GetString();
+                    int redis_port = event_data["config"]["redis-port"].GetInt();
+                    string redis_prefix = event_data["config"]["redis-prefix"].GetString();
 
                     redis.connect_to_server(redis_hostname, redis_port, nullptr);
                     redis.set_instance_key_prefix(redis_prefix);

@@ -79,7 +79,7 @@ void JsonProtocolWriter::append_answer_estimate_waiting_time(const string &job_i
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_submit_job(const string &job_id,
+void JsonProtocolWriter::append_register_job(const string &job_id,
                                            double date,
                                            const string &job_description,
                                            const string &profile_description,
@@ -87,14 +87,14 @@ void JsonProtocolWriter::append_submit_job(const string &job_id,
 {
     /* Without redis: {
       "timestamp": 10.0,
-      "type": "SUBMIT_JOB",
+      "type": "REGISTER_JOB",
       "data": {
         "job_id": "w12!45",
       }
     }
     With redis: {
       "timestamp": 10.0,
-      "type": "SUBMIT_JOB",
+      "type": "REGISTER_JOB",
       "data": {
         "job_id": "dyn!my_new_job",
         "job":{
@@ -141,20 +141,20 @@ void JsonProtocolWriter::append_submit_job(const string &job_id,
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("SUBMIT_JOB"), _alloc);
+    event.AddMember("type", Value().SetString("REGISTER_JOB"), _alloc);
     event.AddMember("data", data, _alloc);
 
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_submit_profile(const string &workload_name,
+void JsonProtocolWriter::append_register_profile(const string &workload_name,
                                                const string &profile_name,
                                                const string &profile_description,
                                                double date)
 {
     /* {
       "timestamp": 10.0,
-      "type": "SUBMIT_PROFILE",
+      "type": "REGISTER_PROFILE",
       "data": {
         "workload_name": "dyn_wl1",
         "profile_name":  "delay_10s",
@@ -185,7 +185,7 @@ void JsonProtocolWriter::append_submit_profile(const string &workload_name,
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("SUBMIT_PROFILE"), _alloc);
+    event.AddMember("type", Value().SetString("REGISTER_PROFILE"), _alloc);
     event.AddMember("data", data, _alloc);
 
     _events.PushBack(event, _alloc);
@@ -374,7 +374,7 @@ void JsonProtocolWriter::append_scheduler_finished_submitting_jobs(double date)
     /* {
       "timestamp": 42.0,
       "type": "NOTIFY",
-      "data": { "type": "submission_finished" }
+      "data": { "type": "registration_finished" }
     } */
 
     PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
@@ -382,7 +382,7 @@ void JsonProtocolWriter::append_scheduler_finished_submitting_jobs(double date)
     _is_empty = false;
 
     Value data(rapidjson::kObjectType);
-    data.AddMember("type", Value().SetString("submission_finished", _alloc), _alloc);
+    data.AddMember("type", Value().SetString("registration_finished", _alloc), _alloc);
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);
