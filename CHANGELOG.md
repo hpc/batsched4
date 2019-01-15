@@ -1,8 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog][changelog]
-and this project adheres to [Semantic Versioning][semver].
+The format is based on [Keep a Changelog][changelog].
+Batsched adheres to [Semantic Versioning][semver] and its public API is the following.
+
+- Batched's command-line interface.
+- The format of Batsched's input files.
+- **Important note**: Changes in the Batsim protocol does not impact
+  Batsched's public API.
 
 [//]: =========================================================================
 ## [Unreleased]
