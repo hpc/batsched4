@@ -12,11 +12,11 @@ batsched should always work with this version.
 This is the up-to-date Batsim version.
 batsched should work with this version.
 
-## test_deps_(pinned|local)
+## test_deps_(pinned|dev)
 The list of packages needed to run tests.
 This is meant to be used as a shell, not meant to be installed.
 
-## test_(pinned|local)
+## test_(pinned|dev)
 A shell used to run tests. Essentially batsim_local + test_deps.
 Not meant to be installed either.
 
