@@ -14,17 +14,17 @@ let
     batexpe = kapack.batexpe;
     batsim_pinned = (kapack.batsim.override {simgrid = kapack.simgrid_dev_working; }).overrideAttrs (attrs: rec {
       name = "batsim-${version}";
-      version = "2.0.0-pinned";
+      version = "3.0.0-pinned";
       src = pkgs.fetchgit {
         url = "https://framagit.org/batsim/batsim.git";
-        rev = "117ce271e806e0492786b38e62145117722133d3";
-        sha256 = "1j15yx25a6r63sgba51l6ph44c81s7vj3m5jfn186sq1pc2b40hg";
+        rev = "12db5085210ac24d82657b21fafe0ca198dcf48d";
+        sha256 = "07b9npm5qvrzanp14rwp743dxsh7dwpvpywmlpxla5j4kxk665hc";
       };
     });
     batsim_dev = (kapack.batsim.override {simgrid = kapack.simgrid_dev_working; }).overrideAttrs (attrs: rec {
       nativeBuildInputs = attrs.nativeBuildInputs ++ [kapack.intervalset];
       name = "batsim-${version}";
-      version = "3.0.0-dev";
+      version = "3.1.0-dev";
       src = fetchTarball "https://gitlab.inria.fr/batsim/batsim/repository/master/archive.tar.gz";
     });
 
