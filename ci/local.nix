@@ -1,7 +1,7 @@
 { stdenv, batsched_dev }:
 
 (batsched_dev.override {}).overrideAttrs (attrs: rec {
-    name = "batsched-1.2.1-nix-ci";
+    name = "batsched-1.4.0-nix-ci";
     src = stdenv.lib.sourceByRegex ../. [
       "^src$"
       "^src/algo$"

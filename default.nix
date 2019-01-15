@@ -9,7 +9,7 @@ with kapack;
 with pkgs;
 
 (batsched_dev.override {}).overrideAttrs (attrs: rec {
-    name = "batsched-1.2.1-nix-local";
+    name = "batsched-1.4.0-nix-local";
     src = ../.;
     enableParallelBuilding = true;
     doCheck = false;

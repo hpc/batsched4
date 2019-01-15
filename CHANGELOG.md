@@ -11,6 +11,9 @@ Batsched adheres to [Semantic Versioning][semver] and its public API is the foll
 
 [//]: =========================================================================
 ## [Unreleased]
+
+[//]: =========================================================================
+## [1.3.0] - 2019-01-15 - For [Batsim v3.0.0][Batsim v3.0.0]
 ### Added
 - CLI: logging verbosity can now be set with `--verbosity`.
 
@@ -82,9 +85,11 @@ Initial release.
 [taywee/args]: https://github.com/Taywee/args
 [boost::po]: http://www.boost.org/doc/libs/1_66_0/doc/html/program_options.html
 
-[Batsim v2.0.0]: https://github.com/oar-team/batsim/blob/master/doc/changelog.md#200---2018-02-20
+[Batsim v2.0.0]: https://batsim.readthedocs.io/en/latest/changelog.html#v2-0-0
+[Batsim v3.0.0]: https://batsim.readthedocs.io/en/latest/changelog.html#v3-0-0
 
-[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.1...master
+[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.3.0...master
+[1.3.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.1...v1.3.0
 [1.2.1]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.0...v1.2.1
 [1.2.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.1.0...v1.2.0
 [1.1.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.0.0...v1.1.0
