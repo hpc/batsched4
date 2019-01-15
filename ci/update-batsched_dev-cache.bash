@@ -3,4 +3,4 @@
 set -eu
 
 # Build up-to-date batsched_dev package, push it on binary cache
-nix-build ${KAPACK:-~/kapack} -A batsched_dev | cachix push batsim
+nix-build ${KAPACK:-https://github.com/oar-team/kapack/archive/master.tar.gz} -A batsched_dev | cachix push batsim
