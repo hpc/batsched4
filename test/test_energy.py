@@ -24,7 +24,7 @@ def energy_model_instance():
 #     sedate_idle_on_classical_events):
 #     algo = 'energy_bf_monitoring_inertial'
 #     test_name = f'{algo}-{platform.name}-{workload.name}-{inertial_function}-{idle_time_to_sedate}-{sedate_idle_on_classical_events}'
-#     output_dir, robin_filename, _, schedconf_filename = init_instance(test_name)
+#     output_dir, robin_filename, schedconf_filename = init_instance(test_name)
 
 #     batcmd = gen_batsim_cmd(platform.filename, workload.filename, output_dir, "--energy")
 
@@ -55,7 +55,7 @@ def energy_model_instance():
 def test_sleeper(platform, workload):
     algo = 'sleeper'
     test_name = f'{algo}-{platform.name}-{workload.name}'
-    output_dir, robin_filename, _, schedconf_filename = init_instance(test_name)
+    output_dir, robin_filename, schedconf_filename = init_instance(test_name)
 
     batcmd = gen_batsim_cmd(platform.filename, workload.filename, output_dir, "--energy")
 

@@ -8,7 +8,7 @@ from helper import *
 
 def test_basic_algo_no_param(platform, workload, basic_algo_no_param):
     test_name = f'{basic_algo_no_param}-{platform.name}-{workload.name}'
-    output_dir, robin_filename, _, _ = init_instance(test_name)
+    output_dir, robin_filename, _ = init_instance(test_name)
 
     batcmd = gen_batsim_cmd(platform.filename, workload.filename, output_dir, "")
     instance = RobinInstance(output_dir=output_dir,
@@ -25,7 +25,7 @@ def test_basic_algo_no_param(platform, workload, basic_algo_no_param):
 def test_easy_bf_plot_llh(platform, workload):
     algo = 'easy_bf_plot_liquid_load_horizon'
     test_name = f'{algo}-{platform.name}-{workload.name}'
-    output_dir, robin_filename, _, schedconf_filename = init_instance(test_name)
+    output_dir, robin_filename, schedconf_filename = init_instance(test_name)
 
     batcmd = gen_batsim_cmd(platform.filename, workload.filename, output_dir, "--energy")
 
@@ -47,17 +47,14 @@ def test_easy_bf_plot_llh(platform, workload):
 
 def test_redis(platform, workload, one_basic_algo, redis_enabled):
     test_name = f'{one_basic_algo}-{platform.name}-{workload.name}-{redis_enabled}'
-    output_dir, robin_filename, batconf_filename, _ = init_instance(test_name)
+    output_dir, robin_filename, _ = init_instance(test_name)
+
+    batsim_extra_flags = ""
+    if redis_enabled:
+        batsim_extra_flags = "--enable-redis"
 
     batcmd = gen_batsim_cmd(platform.filename, workload.filename, output_dir,
-        f"--config-file '{batconf_filename}'")
-
-    batconf_content = {
-        "redis": {
-            "enabled": redis_enabled
-        }
-    }
-    write_file(batconf_filename, json.dumps(batconf_content))
+        batsim_extra_flags)
 
     instance = RobinInstance(output_dir=output_dir,
         batcmd=batcmd,
