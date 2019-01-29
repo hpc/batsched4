@@ -1343,3 +1343,31 @@ bool EnergyBackfilling::is_fake_job(const std::string & job_id)
 {
     return boost::starts_with(job_id, "fakejob_");
 }
+
+bool EnergyBackfilling::contains_any_fake_job(const Schedule &schedule)
+{
+    for (auto slice_it = schedule.begin(); slice_it != schedule.end(); ++slice_it)
+    {
+        for (auto mit : slice_it->allocated_jobs)
+        {
+            const Job * job = mit.first;
+            if (is_fake_job(job->id))
+                return true;
+        }
+    }
+    return false;
+}
+
+bool EnergyBackfilling::contains_any_nonfake_job(const Schedule &schedule)
+{
+    for (auto slice_it = schedule.begin(); slice_it != schedule.end(); ++slice_it)
+    {
+        for (auto mit : slice_it->allocated_jobs)
+        {
+            const Job * job = mit.first;
+            if (!is_fake_job(job->id))
+                return true;
+        }
+    }
+    return false;
+}

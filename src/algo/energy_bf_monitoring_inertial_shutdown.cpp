@@ -120,26 +120,34 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                      "Invalid nb_machines_sedated_for_being_idle value: %d\n",
                      _nb_machines_sedated_for_being_idle);
 
-    // Let's remove finished jobs from the schedule
-    for (const string & ended_job_id : _jobs_ended_recently)
+    if (!_jobs_ended_recently.empty())
     {
-        const Job * ended_job = (*_workload)[ended_job_id];
-        ++_nb_jobs_completed;
+        // Let's remove finished jobs from the schedule
+        for (const string & ended_job_id : _jobs_ended_recently)
+        {
+            const Job * ended_job = (*_workload)[ended_job_id];
+            ++_nb_jobs_completed;
 
-        PPK_ASSERT_ERROR(_schedule.contains_job(ended_job),
-                         "Invalid schedule: job '%s' just finished, "
-                         "but it not in the schedule...\n%s",
-                         ended_job_id.c_str(), _schedule.to_string().c_str());
-        PPK_ASSERT_ERROR(!_queue->contains_job(ended_job),
-                         "Job '%s' just ended, but it is still in the "
-                         "queue...\nQueue : %s",
-                         ended_job_id.c_str(),
-                         _queue->to_string().c_str());
+            PPK_ASSERT_ERROR(_schedule.contains_job(ended_job),
+                             "Invalid schedule: job '%s' just finished, "
+                             "but it not in the schedule...\n%s",
+                             ended_job_id.c_str(), _schedule.to_string().c_str());
+            PPK_ASSERT_ERROR(!_queue->contains_job(ended_job),
+                             "Job '%s' just ended, but it is still in the "
+                             "queue...\nQueue : %s",
+                             ended_job_id.c_str(),
+                             _queue->to_string().c_str());
 
-        // Let's remove the finished job from the schedule
-        _schedule.remove_job(ended_job);
+            // Let's remove the finished job from the schedule
+            _schedule.remove_job(ended_job);
+        }
+
+        // Stop sending CALL_ME_LATER if all jobs have been executed.
+        if (_no_more_static_job_to_submit_received &&
+            _queue->is_empty() &&
+            !EnergyBackfilling::contains_any_nonfake_job(_schedule))
+            _stop_sending_call_me_later = true;
     }
-
 
     // Let's update the first slice of the schedule
     update_first_slice_taking_sleep_jobs_into_account(date);

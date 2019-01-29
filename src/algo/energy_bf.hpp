@@ -156,6 +156,9 @@ protected:
     static bool is_potential_sleep_job(const std::string & job_id);
     static bool is_fake_job(const std::string & job_id);
 
+    static bool contains_any_fake_job(const Schedule & schedule);
+    static bool contains_any_nonfake_job(const Schedule & schedule);
+
 protected:
     Schedule _schedule;
     bool _debug = false;

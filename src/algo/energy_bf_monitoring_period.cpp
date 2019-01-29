@@ -65,13 +65,16 @@ void EnergyBackfillingMonitoringPeriod::on_requested_call(double date)
         // Let's execute on_monitoring_stage
         on_monitoring_stage(date);
 
-        // Let's request a call for the next monitoring stage
-        _next_monitoring_period_expected_date = date + _period_between_monitoring_stages;
-        _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
-        _nb_call_me_later_running++;
+        if (!_stop_sending_call_me_later)
+        {
+            // Let's request a call for the next monitoring stage
+            _next_monitoring_period_expected_date = date + _period_between_monitoring_stages;
+            _decision->add_call_me_later((double)(_next_monitoring_period_expected_date), date);
+            _nb_call_me_later_running++;
 
-        LOG_F(INFO, "EnergyBackfillingMonitoringPeriod: 'Chose to launch a call_me_later at %g",
-               (double)_next_monitoring_period_expected_date);
+            LOG_F(INFO, "EnergyBackfillingMonitoringPeriod: 'Chose to launch a call_me_later at %g",
+                   (double)_next_monitoring_period_expected_date);
+        }
     }
 }
 

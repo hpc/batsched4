@@ -29,6 +29,7 @@ public:
 
 protected:
     std::string _output_dir;
+    bool _stop_sending_call_me_later = false;
 
 private:
     bool _monitoring_period_launched = false;
