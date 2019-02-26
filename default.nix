@@ -8,7 +8,7 @@ with kapack;
 
 (batsched_dev.override {}).overrideAttrs (attrs: rec {
     name = "batsched-1.4.0-nix-local";
-    src = ../.;
+    src = ./.;
     enableParallelBuilding = true;
     doCheck = false;
     dontStrip = true;
