@@ -12,6 +12,10 @@ Batsched adheres to [Semantic Versioning][semver] and its public API is the foll
 [//]: =========================================================================
 ## [Unreleased]
 
+### Fixed
+- The `easy_bf_fast` did not try to backfill previously submitted jobs in many
+  events (when the priority job could not be executed).
+
 [//]: =========================================================================
 ## [1.3.0] - 2019-01-15 - For [Batsim v3.0.0][Batsim v3.0.0]
 ### Added

@@ -1,5 +1,7 @@
 #include "easy_bf_fast.hpp"
 
+//#include <loguru.hpp>
+
 #include "../pempek_assert.hpp"
 
 EasyBackfillingFast::EasyBackfillingFast(Workload *workload,
@@ -72,15 +74,17 @@ void EasyBackfillingFast::make_decisions(double date,
     {
         if (_priority_job != nullptr)
         {
+            Allocation alloc;
+            FinishedHorizonPoint point;
+
             if (_priority_job->nb_requested_resources <= _nb_available_machines)
             {
-                Allocation alloc;
+                //LOG_F(INFO, "Priority job fits!");
                 alloc.machines = _available_machines.left(
                     _priority_job->nb_requested_resources);
                 _decision->add_execute_job(_priority_job->id, alloc.machines,
                     date);
 
-                FinishedHorizonPoint point;
                 point.nb_released_machines = _priority_job->nb_requested_resources;
                 point.date = date + (double)_priority_job->walltime;
                 alloc.horizon_it = insert_horizon_point(point);
@@ -124,14 +128,16 @@ void EasyBackfillingFast::make_decisions(double date,
                         break;
                     }
                 }
+            }
 
-                // Continue traversal, backfilling jobs that does not hinder
-                // priority job.
+            // Backfill jobs that does not hinder priority job.
+            if (_nb_available_machines > 0)
+            {
                 for (auto job_it = _pending_jobs.begin();
                      job_it != _pending_jobs.end(); )
                 {
                     const Job * pending_job = *job_it;
-                    // Does the job can be executed now ?
+                    // Can the job be executed now ?
                     if (pending_job->nb_requested_resources <= _nb_available_machines &&
                         date + pending_job->walltime <= _priority_job->completion_time)
                     {
@@ -150,6 +156,10 @@ void EasyBackfillingFast::make_decisions(double date,
                         _nb_available_machines -= pending_job->nb_requested_resources;
                         _current_allocations[pending_job->id] = alloc;
                         job_it = _pending_jobs.erase(job_it);
+
+                        // Directly get out of the backfilling loop if all machines are busy.
+                        if (_nb_available_machines <= 0)
+                            break;
                     }
                     else
                     {
@@ -168,10 +178,12 @@ void EasyBackfillingFast::make_decisions(double date,
         // Can the job be executed right now?
         if (new_job->nb_requested_resources <= _nb_available_machines)
         {
+            //LOG_F(INFO, "There are enough available resources (%d) to execute job %s", _nb_available_machines, new_job->id.c_str());
             // Can it be executed now (without hindering priority job?)
             if (_priority_job == nullptr ||
                 date + new_job->walltime <= _priority_job->completion_time)
             {
+                //LOG_F(INFO, "Job %s can be started right away!", new_job->id.c_str());
                 // Yes, the job can be executed right away!
                 Allocation alloc;
 
@@ -192,6 +204,8 @@ void EasyBackfillingFast::make_decisions(double date,
             else
             {
                 // No, the job cannot be executed (hinders priority job.)
+                /*LOG_F(INFO, "Not enough time to execute job %s (walltime=%g, priority job expected starting time=%g)",
+                      new_job->id.c_str(), (double)new_job->walltime, _priority_job->completion_time);*/
                 _pending_jobs.push_back(new_job);
             }
         }
@@ -202,6 +216,8 @@ void EasyBackfillingFast::make_decisions(double date,
             // Is the job valid on this platform?
             if (new_job->nb_requested_resources > _nb_machines)
             {
+                /*LOG_F(INFO, "Rejecing job %s (required %d machines, while platform size is %d)",
+                      new_job->id.c_str(), new_job->nb_requested_resources, _nb_machines);*/
                 _decision->add_reject_job(new_job_id, date);
             }
             else
