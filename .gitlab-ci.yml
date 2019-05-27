@@ -4,60 +4,27 @@ variables:
   GIT_SUBMODULE_STRATEGY: none
 
 stages:
-  - build
-  - update_dependencies_cache
-  - test
-  - coverage
+  - big_stage
   - deploy
 
 ###############################################################################
-# Build stage
+# Do most tasks
 ###############################################################################
-build:
-  stage: build
+build_and_test:
+  stage: big_stage
   script:
-    - ./ci/build.bash
-  artifacts:
-    paths:
-      - /builds/batsim/batsched/build
-
-###############################################################################
-# Dependencies cache stage
-###############################################################################
-update_dependencies_cache:
-  stage: update_dependencies_cache
-  script:
-    - ./ci/update-dependencies-cache.bash
-
-###############################################################################
-# Test stage
-###############################################################################
-test_pinned_batsim:
-  stage: test
-  script:
-    - nix-shell ./ci -A test_pinned --command 'bash ./ci/run-tests.bash'
-  dependencies:
-    - build
-  artifacts:
-    paths:
-      - /builds/batsim/batsched/build
-
-test_dev_batsim:
-  stage: test
-  script:
-    - nix-shell ./ci -A test_dev --command 'bash ./ci/run-tests.bash'
-  dependencies:
-    - build
-
-###############################################################################
-# Coverage stage
-###############################################################################
-coverage:
-  stage: coverage
-  script:
-    - nix-shell ./ci -A test_deps_pinned --command 'bash ./ci/analyze-coverage.bash'
-  dependencies:
-    - test_pinned_batsim
+    # Build batsched
+    - nix-shell --pure ./release.nix -A batsched --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
+    - nix-build ./release.nix -A batsched
+    # Test against pinned batsim
+    - nix-shell --pure ./release.nix -A integration_tests --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
+    - nix-build ./release.nix -A integration_tests && cp -rL result ./integration_tests
+    # Test against up-to-date batsim
+    - nix-shell --pure ./release.nix -A integration_tests_batlatest --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
+    - nix-build ./release.nix -A integration_tests_batlatest && cp -rL result ./integration_tests_batlatest
+    # Fail job if tests failed
+    - if [[ "$(cat ./integration_tests/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against pinned batsim), aborting" ; exit 1 ; fi
+    - if [[ "$(cat ./integration_tests_batlatest/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against latest batsim), aborting" ; exit 1 ; fi
   artifacts:
     paths:
       - /builds/batsim/batsched/cover
@@ -68,6 +35,8 @@ coverage:
 deploy_coverage:
   stage: deploy
   script:
+      - echo "Disabled for now."
+      - exit 1
       # Pushes Batsim's code doc (doxygen) onto the gforge website.
       # SSH setup (do NOT run these commands on your machine)
       - eval $(ssh-agent -s)
@@ -77,13 +46,7 @@ deploy_coverage:
       # Finally push the code documentation on the gforge website
       - rsync -rlgoDz --delete cover/html/ mpoquet@scm.gforge.inria.fr:/home/groups/batsim/htdocs/batsched/coverage
   dependencies:
-    - coverage
+    - build_and_test
   only:
     - master
-
-deploy_batsched_dev_cachix:
-  stage: deploy
-  script:
-    - ./ci/update-batsched_dev-cache.bash
-  only:
-    - master
+  allow_failure: true
