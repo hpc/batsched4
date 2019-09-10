@@ -2,7 +2,6 @@
     (fetchTarball "https://github.com/oar-team/kapack/archive/master.tar.gz")
   {}
 , doCheck ? false
-, simgrid ? kapack.simgrid322_2
 , batsim ? kapack.batsim
 , batsim_dev ? kapack.batsim_dev
 , batexpe ? kapack.batexpe
@@ -14,7 +13,7 @@ let
   buildPythonPackage = pythonPackages.buildPythonPackage;
 
   jobs = rec {
-    # Batsim executable binary file.
+    # Batsched executable file (built from local sources)
     batsched = kapack.batsched.overrideAttrs (attr: rec {
       src = pkgs.lib.sourceByRegex ./. [
         "^src"
@@ -35,9 +34,10 @@ let
       dontStrip = true;
     });
 
-    # Batsim integration tests.
+    # Batsched integration tests.
     integration_tests = pkgs.stdenv.mkDerivation rec {
-      name = "batsched-integration-tests";
+      pname = "batsched-integration-tests";
+      version = toString builtins.currentTime; # Forces rebuild
       src = pkgs.lib.sourceByRegex ./. [
         "^test"
         "^test/.*\.py"
@@ -68,13 +68,14 @@ let
         mv ./report/* ./pytest_returncode $out/
       '';
     };
+    # Essentially the same as integration_tests, but with an up-to-date Batsim.
     integration_tests_batlatest = integration_tests.overrideAttrs (attr: rec {
       buildInputs = with pkgs.python37Packages; [
         batsim_dev batsched batexpe pkgs.redis
         pytest pytest_html pandas];
     });
 
-    # Batsim doxygen documentation.
+    # Batsched doxygen documentation.
     doxydoc = pkgs.stdenv.mkDerivation rec {
       name = "batsim-doxygen-documentation";
       src = pkgs.lib.sourceByRegex ./. [
@@ -101,7 +102,7 @@ let
       doCheck = true;
     };
 
-    # Dependencies not in nixpkgs as I write these lines.
+    # The following packages are not in Nixpkgs so they are defined here.
     pytest_metadata = buildPythonPackage {
       name = "pytest-metadata-1.8.0";
       doCheck = false;
