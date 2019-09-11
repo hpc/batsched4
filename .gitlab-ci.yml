@@ -15,38 +15,22 @@ build_and_test:
   script:
     # Build batsched
     - nix-shell --pure ./release.nix -A batsched --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
-    - nix-build ./release.nix -A batsched
+    - nix-build ./release.nix -A batsched && cp -rL result ./batsched
     # Test against pinned batsim
     - nix-shell --pure ./release.nix -A integration_tests --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
     - nix-build ./release.nix -A integration_tests && cp -rL result ./integration_tests
     # Test against up-to-date batsim
     - nix-shell --pure ./release.nix -A integration_tests_batlatest --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
-    - nix-build ./release.nix -A integration_tests_batlatest && cp -rL result ./integration_tests_batlatest
+    - nix-build ./release.nix -A integration_tests_batlatest && rm result
     # Fail job if tests failed
     - if [[ "$(cat ./integration_tests/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against pinned batsim), aborting" ; exit 1 ; fi
     - if [[ "$(cat ./integration_tests_batlatest/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against latest batsim), aborting" ; exit 1 ; fi
+    # Send coverage results to codecov.io
+    - nix-env -i gcc
+    - mkdir -p merged
+    - cp ./batsched/gcno/* ./integration_tests/gcda/* merged/
+    - bash <(curl -s https://codecov.io/bash)
   artifacts:
+    when: always
     paths:
-      - /builds/batsim/batsched/cover
-
-###############################################################################
-# Deploy stage
-###############################################################################
-deploy_coverage:
-  stage: deploy
-  script:
-      - echo "Disabled for now."
-      - exit 1
-      # Pushes Batsim's code doc (doxygen) onto the gforge website.
-      # SSH setup (do NOT run these commands on your machine)
-      - eval $(ssh-agent -s)
-      - echo "$SSH_PRIVATE_KEY" | tr -d ' ' | base64 --decode | ssh-add -
-      - mkdir -p ~/.ssh
-      - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" >> ~/.ssh/config'
-      # Finally push the code documentation on the gforge website
-      - rsync -rlgoDz --delete cover/html/ mpoquet@scm.gforge.inria.fr:/home/groups/batsim/htdocs/batsched/coverage
-  dependencies:
-    - build_and_test
-  only:
-    - master
-  allow_failure: true
+      - /builds/batsim/batsched/integration_tests
