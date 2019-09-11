@@ -1,5 +1,5 @@
 [![pipeline status](https://framagit.org/batsim/batsched/badges/master/pipeline.svg)](https://framagit.org/batsim/batsched/pipelines)
-[![coverage report](https://framagit.org/batsim/batsched/badges/master/coverage.svg)](http://batsim.gforge.inria.fr/batsched/coverage/)
+[![coverage](https://img.shields.io/codecov/c/github/oar-team/batsched.svg)](https://codecov.io/gh/oar-team/batsched)
 [![changelog](https://img.shields.io/badge/doc-changelog-blue.svg)](./CHANGELOG.md)
 
 **batsched** is a set of [Batsim]-compatible algorithms implemented in C++.
@@ -30,7 +30,7 @@ Here is a quick (and probably outdated) list:
 - redox (hiredis + libev)
 - [loguru]
 - [intervalset]
-- decent boost, gmp, rapidjson, openssl...
+- decent boost, gmp, rapidjson...
 
 [Batsim]: https://framagit.org/batsim/batsim/
 [intervalset]: https://framagit.org/batsim/intervalset
