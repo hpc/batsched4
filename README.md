@@ -23,7 +23,7 @@ make
 make install
 ```
 
-Up-to-date dependencies and versions are fully defined in [batsched's CI nix recipe](./default.nix).  
+Up-to-date dependencies and versions are fully defined in [batsched's CI nix recipe](./release.nix).  
 Here is a quick (and probably outdated) list:
 - decent clang/gcc and cmake
 - zmq (C and C++)
