@@ -22,12 +22,10 @@ let
         "^src/algo/.*\.?pp"
         "^src/external"
         "^src/external/.*\.?pp"
-        "^CMakeLists.txt"
-        "^cmake"
-        "^cmake/Modules"
-        "^cmake/Modules/.*\.cmake"
-        "^cmake/Modules/.*\.cmake\.in"
+        "^meson\.build"
       ];
+      nativeBuildInputs = with kapack; [pkgs.meson pkgs.ninja pkgs.pkgconfig
+        pkgs.boost gmp rapidjson intervalset loguru redox pkgs.cppzmq pkgs.zeromq];
       # Debug build, without any Nix stripping magic.
       mesonBuildType = "debug";
       hardeningDisable = [ "all" ];
