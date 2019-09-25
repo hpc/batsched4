@@ -43,14 +43,26 @@ void EasyBackfilling::make_decisions(double date,
         _schedule.remove_job((*_workload)[ended_job_id]);
 
     // Let's handle recently released jobs
+    std::vector<std::string> recently_queued_jobs;
     for (const string & new_job_id : _jobs_released_recently)
     {
         const Job * new_job = (*_workload)[new_job_id];
 
         if (new_job->nb_requested_resources > _nb_machines)
+        {
             _decision->add_reject_job(new_job_id, date);
+        }
+        else if (!new_job->has_walltime)
+        {
+            LOG_SCOPE_FUNCTION(INFO);
+            LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", new_job_id.c_str());
+            _decision->add_reject_job(new_job_id, date);
+        }
         else
+        {
             _queue->append_job(new_job, update_info);
+            recently_queued_jobs.push_back(new_job_id);
+        }
     }
 
     // Let's update the schedule's present
@@ -65,9 +77,9 @@ void EasyBackfilling::make_decisions(double date,
     {
         int nb_available_machines = _schedule.begin()->available_machines.size();
 
-        for (unsigned int i = 0; i < _jobs_released_recently.size() && nb_available_machines > 0; ++i)
+        for (unsigned int i = 0; i < recently_queued_jobs.size() && nb_available_machines > 0; ++i)
         {
-            const string & new_job_id = _jobs_released_recently[i];
+            const string & new_job_id = recently_queued_jobs[i];
             const Job * new_job = (*_workload)[new_job_id];
 
             // The job could have already been executed by sort_queue_while_handling_priority_job,

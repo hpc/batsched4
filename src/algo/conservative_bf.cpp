@@ -1,5 +1,7 @@
 #include "conservative_bf.hpp"
 
+#include <loguru.hpp>
+
 using namespace std;
 
 ConservativeBackfilling::ConservativeBackfilling(Workload *workload, SchedulingDecision *decision,
@@ -32,14 +34,26 @@ void ConservativeBackfilling::make_decisions(double date,
         _schedule.remove_job((*_workload)[ended_job_id]);
 
     // Let's handle recently released jobs
+    std::vector<std::string> recently_queued_jobs;
     for (const string & new_job_id : _jobs_released_recently)
     {
         const Job * new_job = (*_workload)[new_job_id];
 
         if (new_job->nb_requested_resources > _nb_machines)
+        {
             _decision->add_reject_job(new_job_id, date);
+        }
+        else if (!new_job->has_walltime)
+        {
+            LOG_SCOPE_FUNCTION(INFO);
+            LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", new_job_id.c_str());
+            _decision->add_reject_job(new_job_id, date);
+        }
         else
+        {
             _queue->append_job(new_job, update_info);
+            recently_queued_jobs.push_back(new_job_id);
+        }
     }
 
     // Let's update the schedule's present
@@ -51,7 +65,7 @@ void ConservativeBackfilling::make_decisions(double date,
     // If no resources have been released, we can just insert the new jobs into the schedule
     if (_jobs_ended_recently.empty())
     {
-        for (const string & new_job_id : _jobs_released_recently)
+        for (const string & new_job_id : recently_queued_jobs)
         {
             const Job * new_job = (*_workload)[new_job_id];
             Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
