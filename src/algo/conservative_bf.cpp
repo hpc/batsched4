@@ -108,8 +108,8 @@ void ConservativeBackfilling::make_decisions(double date,
     
     for (const std::string & job_id : _jobs_whose_waiting_time_estimation_has_been_requested_recently)
     {
-	const Job * new_job = (*_workload)[job_id];
-	double answer = _schedule.query_wait(new_job->nb_requested_resources, new_job->walltime, _selector);
-        _decision->add_answer_estimate_waiting_time(job_id, answer, date);
+        const Job * new_job = (*_workload)[job_id];
+        double answer = _schedule.query_wait(new_job->nb_requested_resources, new_job->walltime, _selector);
+            _decision->add_answer_estimate_waiting_time(job_id, answer, date);
     }
 }
