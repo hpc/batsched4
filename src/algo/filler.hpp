@@ -36,7 +36,8 @@ private:
     bool set_job_metadata = false; //! If set to true, metadata will be associated to jobs when they are started.
     bool custom_mapping = true;
 
-    IntervalSet available_machines;
+    IntervalSet available_machines; // Corresponds to classical availability: no job is running on those machines.
+    IntervalSet unavailable_machines; // This is NOT the complement of available_machines! This correspond to user-supplied events, that may overlap strangely with job executions as I write these lines.
     std::map<std::string, IntervalSet> current_allocations;
     bool _debug = true;
 };

@@ -68,12 +68,13 @@ void Filler::make_decisions(double date,
     // Let's update available machines
     for (const string & ended_job_id : _jobs_ended_recently)
     {
-        int nb_available_before = available_machines.size();
         available_machines.insert(current_allocations[ended_job_id]);
-        int nb_job_resources = ceil((*_workload)[ended_job_id]->nb_requested_resources * fraction_of_machines_to_use);
-        PPK_ASSERT_ERROR(nb_available_before + nb_job_resources == (int)available_machines.size());
         current_allocations.erase(ended_job_id);
     }
+
+    // Handle machine (un)availability from user events
+    unavailable_machines -= _machines_that_became_available_recently;
+    unavailable_machines += _machines_that_became_unavailable_recently;
 
     // Let's handle recently released jobs
     for (const string & new_job_id : _jobs_released_recently)
@@ -94,18 +95,19 @@ void Filler::make_decisions(double date,
 
 void Filler::fill(double date)
 {
+    IntervalSet usable_machines = available_machines - unavailable_machines;
     if (_debug)
-        LOG_F(1, "fill, availableMachines=%s", available_machines.to_string_hyphen().c_str());
+        LOG_F(1, "fill, usable_machines=%s", usable_machines.to_string_hyphen().c_str());
 
-    int nb_available = available_machines.size();
-    for (auto job_it = _queue->begin(); job_it != _queue->end() && nb_available > 0; )
+    int nb_usable = usable_machines.size();
+    for (auto job_it = _queue->begin(); job_it != _queue->end() && nb_usable > 0; )
     {
         const Job * job = (*job_it)->job;
 
         // If it fits I sits (http://knowyourmeme.com/memes/if-it-fits-i-sits)
         IntervalSet used_machines;
 
-        if (_selector->fit(job, available_machines, used_machines))
+        if (_selector->fit(job, usable_machines, used_machines))
         {
             // Fewer machines might be used that those selected by the fitting algorithm
             int nb_machines_to_allocate = ceil(fraction_of_machines_to_use * job->nb_requested_resources);
@@ -127,9 +129,9 @@ void Filler::fill(double date)
 
             current_allocations[job->id] = used_machines;
 
+            usable_machines.remove(used_machines);
             available_machines.remove(used_machines);
-            PPK_ASSERT_ERROR(nb_available - used_machines.size() == available_machines.size());
-            nb_available -= used_machines.size();
+            nb_usable -= used_machines.size();
 
             if (set_job_metadata)
                 _decision->add_set_job_metadata(job->id,
