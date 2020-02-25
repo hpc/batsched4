@@ -502,6 +502,20 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 {
                     algo->on_no_more_static_job_to_submit_received(current_date);
                 }
+                else if (notify_type == "no_more_external_event_to_occur")
+                {
+                    algo->on_no_more_external_event_to_occur(current_date);
+                }
+                else if (notify_type == "event_machine_available")
+                {
+                    IntervalSet resources = IntervalSet::from_string_hyphen(event_data["resources"].GetString(), " ");
+                    algo->on_machine_available_notify_event(current_date, resources);
+                }
+                else if (notify_type == "event_machine_unavailable")
+                {
+                    IntervalSet resources = IntervalSet::from_string_hyphen(event_data["resources"].GetString(), " ");
+                    algo->on_machine_unavailable_notify_event(current_date, resources);
+                }
                 else
                 {
                     throw runtime_error("Unknown NOTIFY type received. Type = " + notify_type);

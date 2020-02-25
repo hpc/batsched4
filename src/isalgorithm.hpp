@@ -85,11 +85,31 @@ public:
     virtual void on_no_more_static_job_to_submit_received(double date);
 
     /**
+     * @brief This function is called when the on_no_more_external_event_to_occur
+     *        notification is received
+     */
+    virtual void on_no_more_external_event_to_occur(double date);
+
+    /**
      * @brief This function is called when an ANSWER message about energy consumption is received
      * @param[in] date The date at which the ANSWER message has been received
      * @param[in] consumed_joules The number of joules consumed since time 0
      */
     virtual void on_answer_energy_consumption(double date, double consumed_joules);
+
+    /**
+     * @brief This function is called when a machine_available NOTIFY event is received.
+     * @param[in] date The date at which the NOTIFY event has been received.
+     * @param[in] machines The machines whose availability has changed.
+     */
+    virtual void on_machine_available_notify_event(double date, IntervalSet machines);
+
+    /**
+     * @brief This function is called when a machine_unavailable NOTIFY event is received.
+     * @param[in] date The date at which the NOTIFY event has been received.
+     * @param[in] machines The machines whose availability has changed.
+     */
+    virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);
 
     /**
      * @brief This function is called when a QUERY message about estimating waiting time of potential jobs is received.
@@ -137,6 +157,7 @@ protected:
     int _nb_machines = -1;
     RedisStorage * _redis = nullptr;
     bool _no_more_static_job_to_submit_received = false;
+    bool _no_more_external_event_to_occur_received = false;
 
 protected:
     std::vector<std::string> _jobs_released_recently;
@@ -144,6 +165,8 @@ protected:
     std::vector<std::string> _jobs_killed_recently;
     std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently;
     std::map<int, IntervalSet> _machines_whose_pstate_changed_recently;
+    IntervalSet _machines_that_became_available_recently;
+    IntervalSet _machines_that_became_unavailable_recently;
     bool _nopped_recently;
     bool _consumed_joules_updated_recently;
     double _consumed_joules;

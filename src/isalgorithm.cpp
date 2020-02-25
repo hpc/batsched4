@@ -23,6 +23,8 @@ void ISchedulingAlgorithm::clear_recent_data_structures()
     _jobs_killed_recently.clear();
     _jobs_whose_waiting_time_estimation_has_been_requested_recently.clear();
     _machines_whose_pstate_changed_recently.clear();
+    _machines_that_became_available_recently.clear();
+    _machines_that_became_unavailable_recently.clear();
     _nopped_recently = false;
     _consumed_joules_updated_recently = false;
     _consumed_joules = -1;
@@ -91,11 +93,29 @@ void ISchedulingAlgorithm::on_no_more_static_job_to_submit_received(double date)
     _no_more_static_job_to_submit_received = true;
 }
 
+void ISchedulingAlgorithm::on_no_more_external_event_to_occur(double date)
+{
+    (void) date;
+    _no_more_external_event_to_occur_received = true;
+}
+
 void ISchedulingAlgorithm::on_answer_energy_consumption(double date, double consumed_joules)
 {
     (void) date;
     _consumed_joules = consumed_joules;
     _consumed_joules_updated_recently = true;
+}
+
+void ISchedulingAlgorithm::on_machine_available_notify_event(double date, IntervalSet machines)
+{
+    (void) date;
+    _machines_that_became_available_recently += machines;
+}
+
+void ISchedulingAlgorithm::on_machine_unavailable_notify_event(double date, IntervalSet machines)
+{
+    (void) date;
+    _machines_that_became_unavailable_recently += machines;
 }
 
 void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const string &job_id)
