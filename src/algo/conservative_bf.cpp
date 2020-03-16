@@ -61,7 +61,7 @@ void ConservativeBackfilling::make_decisions(double date,
         else if (!new_job->has_walltime)
         {
             LOG_SCOPE_FUNCTION(INFO);
-            LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", new_job_id.c_str());
+            LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
             _decision->add_reject_job(new_job_id, date);
         }
         else
