@@ -101,6 +101,9 @@ public:
     void write_svg_to_file(const std::string & filename) const;
     void output_to_svg(const std::string & filename_prefix = "/tmp/schedule");
 
+    void dump_to_batsim_jobs_file(const std::string & filename) const;
+    void incremental_dump_as_batsim_jobs_file(const std::string & filename_prefix = "/tmp/schedule");
+
     int nb_machines() const;
 
 private:

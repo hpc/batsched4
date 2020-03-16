@@ -896,13 +896,103 @@ void Schedule::write_svg_to_file(const string &filename) const
 
 void Schedule::output_to_svg(const string &filename_prefix)
 {
-    const int bufsize = 128;
+    const int bufsize = 4096;
     char *buf = new char[bufsize];
 
     snprintf(buf, bufsize, "%s%06d.svg", filename_prefix.c_str(), _output_number);
     ++_output_number %= 10000000;
 
     write_svg_to_file(buf);
+
+    delete[] buf;
+}
+
+void Schedule::dump_to_batsim_jobs_file(const string &filename) const
+{
+    ofstream f(filename);
+    if (f.is_open())
+    {
+        f << "job_id,submission_time,requested_number_of_resources,requested_time,starting_time,finish_time,allocated_resources\n";
+
+        PPK_ASSERT_ERROR(_profile.size() > 0);
+
+        const int buf_size = 4096;
+        char *buf = new char[buf_size];
+
+        map<const Job *, Rational> jobs_starting_times;
+        set<const Job *> current_jobs;
+        for (auto mit : _profile.begin()->allocated_jobs)
+        {
+            const Job *allocated_job = mit.first;
+            current_jobs.insert(allocated_job);
+            jobs_starting_times[allocated_job] = _profile.begin()->begin;
+        }
+
+        // Let's traverse the profile to find the beginning of each job
+        for (auto slice_it = _profile.begin(); slice_it != _profile.end(); ++slice_it)
+        {
+            const TimeSlice &slice = *slice_it;
+            set<const Job *> allocated_jobs;
+            for (auto mit : slice.allocated_jobs)
+            {
+                const Job *job = mit.first;
+                allocated_jobs.insert(job);
+            }
+
+            set<const Job *> finished_jobs;
+            set_difference(current_jobs.begin(), current_jobs.end(), allocated_jobs.begin(), allocated_jobs.end(),
+                std::inserter(finished_jobs, finished_jobs.end()));
+
+            for (const Job *job : finished_jobs)
+            {
+                // Find where the job has been allocated
+                PPK_ASSERT_ERROR(slice_it != _profile.begin());
+                auto previous_slice_it = slice_it;
+                --previous_slice_it;
+                IntervalSet job_machines = previous_slice_it->allocated_jobs.at(job);
+
+                snprintf(buf, buf_size, "%s,%g,%d,%g,%g,%g,%s\n",
+                         job->id.c_str(),
+                         job->submission_time,
+                         job->nb_requested_resources,
+                         (double)job->walltime,
+                         (double)jobs_starting_times[job],
+                         (double)slice_it->begin,
+                         job_machines.to_string_hyphen(" ", "-").c_str());
+                f << buf;
+            }
+
+            set<const Job *> new_jobs;
+            set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
+                std::inserter(new_jobs, new_jobs.end()));
+
+            for (const Job *job : new_jobs)
+            {
+                jobs_starting_times[job] = slice.begin;
+            }
+
+            // Update current_jobs
+            for (const Job *job : finished_jobs)
+                current_jobs.erase(job);
+            for (const Job *job : new_jobs)
+                current_jobs.insert(job);
+        }
+
+        delete[] buf;
+    }
+
+    f.close();
+}
+
+void Schedule::incremental_dump_as_batsim_jobs_file(const string &filename_prefix)
+{
+    const int bufsize = 4096;
+    char *buf = new char[bufsize];
+
+    snprintf(buf, bufsize, "%s%06d.csv", filename_prefix.c_str(), _output_number);
+    _output_number = (_output_number + 1) % 10000000;
+
+    dump_to_batsim_jobs_file(buf);
 
     delete[] buf;
 }

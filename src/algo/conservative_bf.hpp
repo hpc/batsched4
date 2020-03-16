@@ -24,4 +24,6 @@ public:
 
 private:
     Schedule _schedule;
+    bool _dump_provisional_schedules = false;
+    std::string _dump_prefix = "/tmp/dump";
 };
