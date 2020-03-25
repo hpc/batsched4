@@ -54,6 +54,8 @@ src = [
     'src/algo/energy_watcher.hpp',
     'src/algo/fcfs_fast.cpp',
     'src/algo/fcfs_fast.hpp',
+    'src/algo/fcfs.cpp',
+    'src/algo/fcfs.hpp',
     'src/algo/filler.cpp',
     'src/algo/filler.hpp',
     'src/algo/killer2.cpp',
