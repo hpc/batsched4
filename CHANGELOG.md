@@ -11,6 +11,8 @@ Batsched adheres to [Semantic Versioning][semver] and its public API is the foll
 
 [//]: =========================================================================
 ## [Unreleased]
+- Add a new `fcfs` algorithm (copied from `fcfs_fast`) that takes into account
+  the resources selector given in parameter.
 
 ### Fixed
 - The `easy_bf_fast` did not try to backfill previously submitted jobs in many
