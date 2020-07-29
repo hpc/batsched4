@@ -4,7 +4,7 @@
 , doCheck ? false
 , doCoverage ? true
 , batsim ? kapack.batsim
-, batsim_dev ? kapack.batsim_dev
+, batsim-master ? kapack.batsim-master
 , batexpe ? kapack.batexpe
 }:
 
@@ -85,7 +85,7 @@ let
     # Essentially the same as integration_tests, but with an up-to-date Batsim.
     integration_tests_batlatest = integration_tests.overrideAttrs (attr: rec {
       buildInputs = with pkgs.python37Packages; [
-        batsim_dev batsched batexpe pkgs.redis
+        batsim-master batsched batexpe pkgs.redis
         pytest pytest_html pandas];
     });
 
