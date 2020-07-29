@@ -1,5 +1,5 @@
 { kapack ? import
-    (fetchTarball "https://github.com/oar-team/kapack/archive/master.tar.gz")
+    (fetchTarball "https://github.com/oar-team/nur-kapack/archive/master.tar.gz")
   {}
 , doCheck ? false
 , doCoverage ? true
@@ -12,7 +12,6 @@ let
   pkgs = kapack.pkgs;
   pythonPackages = pkgs.python37Packages;
   buildPythonPackage = pythonPackages.buildPythonPackage;
-  optionOnOff = option: "${if option then "on" else "off"}";
 
   jobs = rec {
     # Batsched executable file (built from local sources)
@@ -29,7 +28,7 @@ let
       mesonFlags = []
         ++ pkgs.lib.optional doCoverage [ "-Db_coverage=true" ];
       nativeBuildInputs = with kapack; [pkgs.meson pkgs.ninja pkgs.pkgconfig
-        pkgs.boost gmp rapidjson intervalset loguru redox pkgs.cppzmq pkgs.zeromq];
+        pkgs.boost pkgs.gmp pkgs.rapidjson intervalset loguru redox pkgs.cppzmq pkgs.zeromq];
       # Debug build, without any Nix stripping magic.
       mesonBuildType = "debug";
       hardeningDisable = [ "all" ];
@@ -117,7 +116,7 @@ let
       doCheck = true;
     };
 
-    # The following packages are not in Nixpkgs so they are defined here.
+    # Dependencies not in nixpkgs as I write these lines.
     pytest_metadata = buildPythonPackage {
       name = "pytest-metadata-1.8.0";
       doCheck = false;
