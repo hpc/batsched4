@@ -139,7 +139,7 @@ int main(int argc, char ** argv)
                                             % flag_verbosity_level.Get()
                                             % verbosity_levels_string));
     }
-    catch(args::Help)
+    catch(args::Help&)
     {
         parser.helpParams.addDefault = true;
         printf("%s", parser.Help().c_str());
@@ -150,12 +150,12 @@ int main(int argc, char ** argv)
         printf("%s", e.what());
         return 0;
     }
-    catch(args::ParseError e)
+    catch(args::ParseError & e)
     {
         printf("%s\n", e.what());
         return 1;
     }
-    catch(args::ValidationError e)
+    catch(args::ValidationError & e)
     {
         printf("%s\n", e.what());
         return 1;
