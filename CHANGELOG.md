@@ -11,7 +11,11 @@ Batsched adheres to [Semantic Versioning][semver] and its public API is the foll
 
 [//]: =========================================================================
 ## [Unreleased]
-- Add a new `fcfs` algorithm (copied from `fcfs_fast`) that takes into account
+
+[//]: =========================================================================
+## [1.4.0] - 2020-07-29 - For [Batsim v4.0.0][Batsim v4.0.0]
+### Added
+- New `fcfs` algorithm (copied from `fcfs_fast`) that takes into account
   the resources selector given in parameter.
 
 ### Fixed
@@ -93,8 +97,10 @@ Initial release.
 
 [Batsim v2.0.0]: https://batsim.readthedocs.io/en/latest/changelog.html#v2-0-0
 [Batsim v3.0.0]: https://batsim.readthedocs.io/en/latest/changelog.html#v3-0-0
+[Batsim v4.0.0]: https://batsim.readthedocs.io/en/latest/changelog.html#v4-0-0
 
-[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.3.0...master
+[Unreleased]: https://gitlab.inria.fr/batsim/batsched/compare/v1.4.0...master
+[1.4.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.3.0...v1.4.0
 [1.3.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.1...v1.3.0
 [1.2.1]: https://gitlab.inria.fr/batsim/batsched/compare/v1.2.0...v1.2.1
 [1.2.0]: https://gitlab.inria.fr/batsim/batsched/compare/v1.1.0...v1.2.0

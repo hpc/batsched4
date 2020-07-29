@@ -1,5 +1,5 @@
 project('batsched', 'cpp',
-    version: '1.3.0',
+    version: '1.4.0',
     license: 'free',
     default_options: ['cpp_std=c++11'],
     meson_version: '>=0.40.0'
