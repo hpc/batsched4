@@ -8,9 +8,9 @@
 ### For [Nix] users
 ``` bash
 # Up-to-date version
-nix-env -iA batsched_dev -f 'https://github.com/oar-team/kapack/archive/master.tar.gz'
+nix-env -iA batsched-master -f 'https://github.com/oar-team/nur-kapack/archive/master.tar.gz'
 # Latest release
-nix-env -iA batsched -f 'https://github.com/oar-team/kapack/archive/master.tar.gz'
+nix-env -iA batsched -f 'https://github.com/oar-team/nur-kapack/archive/master.tar.gz'
 ```
 
 ### Manually
