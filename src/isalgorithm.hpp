@@ -148,12 +148,12 @@ public:
     void clear_recent_data_structures();
 
 protected:
-    Workload * _workload;
-    SchedulingDecision * _decision;
-    Queue * _queue;
-    ResourceSelector * _selector;
-    double _rjms_delay;
-    rapidjson::Document * _variant_options;
+    Workload * _workload = nullptr;
+    SchedulingDecision * _decision = nullptr;
+    Queue * _queue = nullptr;
+    ResourceSelector * _selector = nullptr;
+    double _rjms_delay = 0.0;
+    rapidjson::Document * _variant_options = nullptr;
     int _nb_machines = -1;
     RedisStorage * _redis = nullptr;
     bool _no_more_static_job_to_submit_received = false;
@@ -167,7 +167,7 @@ protected:
     std::map<int, IntervalSet> _machines_whose_pstate_changed_recently;
     IntervalSet _machines_that_became_available_recently;
     IntervalSet _machines_that_became_unavailable_recently;
-    bool _nopped_recently;
-    bool _consumed_joules_updated_recently;
-    double _consumed_joules;
+    bool _nopped_recently = false;
+    bool _consumed_joules_updated_recently = false;
+    double _consumed_joules = 0.0;
 };
