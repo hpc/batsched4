@@ -136,12 +136,6 @@ public:
     void set_nb_machines(int nb_machines);
 
     /**
-     * @brief Allows to set the RedisStorage instance
-     * @param[in,out] redis The RedisStorage instance
-     */
-    void set_redis(RedisStorage * redis);
-
-    /**
      * @brief Clears data structures used to store what happened between two make_decisions calls
      * @details This function should be called between make_decisions calls!
      */
@@ -155,7 +149,6 @@ protected:
     double _rjms_delay = 0.0;
     rapidjson::Document * _variant_options = nullptr;
     int _nb_machines = -1;
-    RedisStorage * _redis = nullptr;
     bool _no_more_static_job_to_submit_received = false;
     bool _no_more_external_event_to_occur_received = false;
 

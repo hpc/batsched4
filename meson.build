@@ -10,7 +10,6 @@ boost_dep = dependency('boost',
     modules : ['locale', 'regex', 'system']
 )
 rapidjson_dep = dependency('RapidJSON')
-redox_dep = dependency('redox')
 libzmq_dep = dependency('libzmq')
 loguru_dep = dependency('loguru')
 intervalset_dep = dependency('intervalset')
@@ -19,7 +18,6 @@ gmpxx_dep = dependency('gmpxx')
 batsched_deps = [
     boost_dep,
     rapidjson_dep,
-    redox_dep,
     libzmq_dep,
     loguru_dep,
     intervalset_dep,
@@ -74,8 +72,6 @@ src = [
     'src/algo/submitter.hpp',
     'src/algo/wt_estimator.cpp',
     'src/algo/wt_estimator.hpp',
-    'src/data_storage.cpp',
-    'src/data_storage.hpp',
     'src/decision.cpp',
     'src/decision.hpp',
     'src/exact_numbers.hpp',

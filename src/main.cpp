@@ -18,7 +18,6 @@
 #include "network.hpp"
 #include "json_workload.hpp"
 #include "pempek_assert.hpp"
-#include "data_storage.hpp"
 
 #include "algo/conservative_bf.hpp"
 #include "algo/crasher.hpp"
@@ -349,11 +348,6 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 {
     bool simulation_finished = false;
 
-    // Redis creation
-    RedisStorage redis;
-    bool redis_enabled = false;
-    algo->set_redis(&redis);
-
     while (!simulation_finished)
     {
         string received_message;
@@ -393,19 +387,6 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 {
                     nb_resources = event_data["nb_resources"].GetInt();
                 }
-                redis_enabled = event_data["config"]["redis-enabled"].GetBool();
-
-                if (redis_enabled)
-                {
-                    string redis_hostname = event_data["config"]["redis-hostname"].GetString();
-                    int redis_port = event_data["config"]["redis-port"].GetInt();
-                    string redis_prefix = event_data["config"]["redis-prefix"].GetString();
-
-                    redis.connect_to_server(redis_hostname, redis_port, nullptr);
-                    redis.set_instance_key_prefix(redis_prefix);
-                }
-
-                d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
                 algo->on_simulation_start(current_date, event_data["config"]);
@@ -419,10 +400,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             {
                 string job_id = event_data["job_id"].GetString();
 
-                if (redis_enabled)
-                    workload.add_job_from_redis(redis, job_id, current_date);
-                else
-                    workload.add_job_from_json_object(event_data["job"], job_id, current_date);
+                workload.add_job_from_json_object(event_data["job"], job_id, current_date);
 
                 algo->on_job_release(current_date, {job_id});
             }

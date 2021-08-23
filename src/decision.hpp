@@ -6,7 +6,6 @@
 #include <intervalset.hpp>
 
 class AbstractProtocolWriter;
-class RedisStorage;
 
 class SchedulingDecision
 {
@@ -60,10 +59,6 @@ public:
     std::string content(double date);
     double last_date() const;
 
-    void set_redis(bool enabled, RedisStorage * redis);
-
 private:
     AbstractProtocolWriter * _proto_writer = nullptr;
-    bool _redis_enabled = false;
-    RedisStorage * _redis = nullptr;
 };

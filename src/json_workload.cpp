@@ -39,22 +39,6 @@ void Workload::set_rjms_delay(Rational rjms_delay)
     _rjms_delay = rjms_delay;
 }
 
-void Workload::add_job_from_redis(RedisStorage & storage, const string &job_id, double submission_time)
-{
-    string job_json_desc_str = storage.get_job_json_string(job_id);
-    PPK_ASSERT_ERROR(job_json_desc_str != "", "Cannot retrieve job '%s'", job_id.c_str());
-
-    Job * job = job_from_json_description_string(job_json_desc_str);
-    job->id = job_id;
-    job->submission_time = submission_time;
-
-    // Let's apply the RJMS delay on the job
-    job->walltime += _rjms_delay;
-
-    PPK_ASSERT_ERROR(_jobs.count(job_id) == 0, "Job '%s' already exists in the Workload", job_id.c_str());
-    _jobs[job_id] = job;
-}
-
 void Workload::add_job_from_json_object(const Value &object, const string & job_id, double submission_time)
 {
     Job * job = job_from_json_object(object);

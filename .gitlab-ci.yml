@@ -16,21 +16,21 @@ build_and_test:
     # Build batsched
     - nix-shell --pure ./release.nix -A batsched --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
     - nix-build ./release.nix -A batsched && cp -rL result ./batsched
-    # Test against pinned batsim
-    - nix-shell --pure ./release.nix -A integration_tests --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
-    - nix-build ./release.nix -A integration_tests && cp -rL result ./integration_tests
-    # Test against up-to-date batsim
-    - nix-shell --pure ./release.nix -A integration_tests_batlatest --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
-    - nix-build ./release.nix -A integration_tests_batlatest && rm result
-    # Fail job if tests failed
-    - if [[ "$(cat ./integration_tests/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against pinned batsim), aborting" ; exit 1 ; fi
-    - if [[ "$(cat ./integration_tests_batlatest/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against latest batsim), aborting" ; exit 1 ; fi
-    # Send coverage results to codecov.io
-    - nix-env -i gcc
-    - mkdir -p merged
-    - cp ./batsched/gcno/* ./integration_tests/gcda/* merged/
-    - bash <(curl -s https://codecov.io/bash)
-  artifacts:
-    when: always
-    paths:
-      - /builds/batsim/batsched/integration_tests
+#    # Test against pinned batsim
+#    - nix-shell --pure ./release.nix -A integration_tests --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
+#    - nix-build ./release.nix -A integration_tests && cp -rL result ./integration_tests
+#    # Test against up-to-date batsim
+#    - nix-shell --pure ./release.nix -A integration_tests_batlatest --command ${CI_PROJECT_DIR}/ci/list-store-paths-for-cachix.bash | cachix push batsim
+#    - nix-build ./release.nix -A integration_tests_batlatest && rm result
+#    # Fail job if tests failed
+#    - if [[ "$(cat ./integration_tests/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against pinned batsim), aborting" ; exit 1 ; fi
+#    - if [[ "$(cat ./integration_tests_batlatest/pytest_returncode)" -ne 0 ]] ; then echo "pytest returned non-zero (against latest batsim), aborting" ; exit 1 ; fi
+#    # Send coverage results to codecov.io
+#    - nix-env -i gcc
+#    - mkdir -p merged
+#    - cp ./batsched/gcno/* ./integration_tests/gcda/* merged/
+#    - bash <(curl -s https://codecov.io/bash)
+#  artifacts:
+#    when: always
+#    paths:
+#      - /builds/batsim/batsched/integration_tests
