@@ -8,7 +8,6 @@
 #include <rapidjson/document.h>
 
 #include <intervalset.hpp>
-#include "batsched_tools.hpp"
 
 struct BatsimContext;
 
@@ -121,7 +120,7 @@ public:
      *            Must be greater than date.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_call_me_later(batsched_tools::call_me_later_types forWhat,int id, double future_date,
+    virtual void append_call_me_later(double future_date,
                                       double date) = 0;
 
     /**
@@ -129,8 +128,6 @@ public:
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
     virtual void append_scheduler_finished_submitting_jobs(double date) = 0;
-
-    virtual void append_scheduler_continue_submitting_jobs(double date) = 0;
 
 
     // Management functions
@@ -276,7 +273,7 @@ public:
      *            Must be greater than date.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date,
+    void append_call_me_later(double future_date,
                               double date);
 
     /**
@@ -285,7 +282,6 @@ public:
      */
     void append_scheduler_finished_submitting_jobs(double date);
 
-    void append_scheduler_continue_submitting_jobs(double date);
     // Management functions
     /**
      * @brief Clears inner content. Should be called directly after generate_current_message.

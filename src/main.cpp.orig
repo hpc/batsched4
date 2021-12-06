@@ -1,9 +1,5 @@
 #include <stdio.h>
-#include <chrono>
-#include <thread>
-
 #include <vector>
-#include <unordered_map>
 #include <fstream>
 #include <set>
 
@@ -17,21 +13,13 @@
 
 #include "external/taywee_args.hpp"
 
-// Added to get profiles into batsched but we get the whole workload
-#include "external/batsched_workload.hpp"
-#include "external/batsched_job.hpp"
-#include "external/batsched_profile.hpp"
-
-
 #include "isalgorithm.hpp"
 #include "decision.hpp"
 #include "network.hpp"
 #include "json_workload.hpp"
 #include "pempek_assert.hpp"
 #include "data_storage.hpp"
-#include "batsched_tools.hpp"
 
-/*
 #include "algo/conservative_bf.hpp"
 #include "algo/crasher.hpp"
 #include "algo/easy_bf.hpp"
@@ -45,6 +33,7 @@
 #include "algo/energy_bf_machine_subpart_sleeper.hpp"
 #include "algo/energy_watcher.hpp"
 #include "algo/filler.hpp"
+#include "algo/fcfs.hpp"
 #include "algo/fcfs_fast.hpp"
 #include "algo/killer.hpp"
 #include "algo/killer2.hpp"
@@ -54,15 +43,9 @@
 #include "algo/sequencer.hpp"
 #include "algo/submitter.hpp"
 #include "algo/wt_estimator.hpp"
-*/
-
-#include "algo/fcfs_fast2.hpp"
-
 
 using namespace std;
 using namespace boost;
-
-namespace myB = myBatsched;
 
 namespace n = network;
 namespace r = rapidjson;
@@ -96,7 +79,7 @@ int main(int argc, char ** argv)
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
-                                      "energy_watcher", "fcfs_fast", "fcfs_fast2",
+                                      "energy_watcher", "fcfs", "fcfs_fast",
                                       "filler", "killer", "killer2", "random", "rejecter",
                                       "sequencer", "sleeper", "submitter", "waiting_time_estimator"};
     const set<string> policies_set = {"basic", "contiguous"};
@@ -117,7 +100,7 @@ int main(int argc, char ** argv)
     args::ArgumentParser parser("A Batsim-compatible scheduler in C++.");
     args::HelpFlag flag_help(parser, "help", "Display this help menu", {'h', "help"});
     args::CompletionFlag completion(parser, {"complete"});
-    
+
     args::ValueFlag<double> flag_rjms_delay(parser, "delay", "Sets the expected time that the RJMS takes to do some things like killing a job", {'d', "rjms_delay"}, 5.0);
     args::ValueFlag<string> flag_selection_policy(parser, "policy", "Sets the resource selection policy. Available values are " + policies_string, {'p', "policy"}, "basic");
     args::ValueFlag<string> flag_socket_endpoint(parser, "endpoint", "Sets the socket endpoint.", {'s', "socket-endpoint"}, "tcp://*:28000");
@@ -276,7 +259,7 @@ int main(int argc, char ** argv)
         LOG_F(1, "variant_options = '%s'", variant_options.c_str());
 
         // Scheduling variant
-        /*if (scheduling_variant == "filler")
+        if (scheduling_variant == "filler")
             algo = new Filler(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "conservative_bf")
             algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
@@ -306,10 +289,6 @@ int main(int argc, char ** argv)
             algo = new FCFS(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "fcfs_fast")
             algo = new FCFSFast(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
-        */
-        if (scheduling_variant == "fcfs_fast2")
-            algo = new FCFSFast2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
-        /*
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "killer2")
@@ -326,11 +305,11 @@ int main(int argc, char ** argv)
             algo = new Submitter(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "waiting_time_estimator")
             algo = new WaitingTimeEstimator(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
-        */
-        bool success = false;
+
+        // Network
         Network n;
         n.bind(socket_endpoint);
-           
+
         // Run the simulation
         run(n, algo, decision, w, call_make_decisions_on_single_nop);
     }
@@ -369,7 +348,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
          Workload & workload, bool call_make_decisions_on_single_nop)
 {
     bool simulation_finished = false;
-    myB::Workloads myWorkloads;
+
     // Redis creation
     RedisStorage redis;
     bool redis_enabled = false;
@@ -425,38 +404,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     redis.connect_to_server(redis_hostname, redis_port, nullptr);
                     redis.set_instance_key_prefix(redis_prefix);
                 }
-                //get the workloads
-                
-                
-                for (auto &member : event_data["workloads"].GetObject())
-                {
-                        std::string workload_name = member.name.GetString();
-                        std::string workload_filename = member.value.GetString();
-                        myB::Workload * myWorkload= myB::Workload::new_static_workload(workload_name,event_data["workloads"][workload_name.c_str()].GetString());
-                        myWorkload->_checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
-                        myWorkload->_compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
-                        myWorkload->_MTBF = event_data["config"]["MTBF"].GetDouble();
-                        myWorkload->_SMTBF = event_data["config"]["SMTBF"].GetDouble();
-                        myWorkload->_repair_time = event_data["config"]["repair_time"].GetDouble();
-                        r::Document myCopy;
-                        myCopy.CopyFrom(event_data,myCopy.GetAllocator());
-                        r::Value & temp = myCopy["jobs"];
-                        r::Value & job_json = temp[workload_name.c_str()];
-                        r::Value & temp2 = myCopy["profiles"];
-                        r::Value &profile_json = temp2[workload_name.c_str()];
-                        myWorkload->load_from_batsim(workload_filename,
-                                                     job_json,
-                                                     profile_json);
-                        myWorkloads.insert_workload(workload_name,myWorkload);
-                }
-                myWorkloads._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
-                myWorkloads._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
-                myWorkloads._MTBF = event_data["config"]["MTBF"].GetDouble();
-                myWorkloads._SMTBF = event_data["config"]["SMTBF"].GetDouble();
-                myWorkloads._repair_time = event_data["config"]["repair_time"].GetDouble();
-                myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
-                algo->set_workloads(&myWorkloads);
-            
+
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
@@ -495,12 +443,12 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 const r::Value & job_ids_map = event_data["job_progress"];
                 PPK_ASSERT_ERROR(job_ids_map.GetType() == r::kObjectType);
 
-                std::unordered_map<std::string,double> job_ids;
+                vector<string> job_ids;
 
                 for (auto itr = job_ids_map.MemberBegin(); itr != job_ids_map.MemberEnd(); ++itr)
                 {
                     string job_id = itr->name.GetString();
-                    job_ids.insert({job_id,itr->value["progress"].GetDouble()});
+                    job_ids.push_back(job_id);
                 }
 
                 algo->on_job_killed(current_date, job_ids);
@@ -508,7 +456,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             else if (event_type == "REQUESTED_CALL")
             {
                 requested_callback_received = true;
-                algo->on_requested_call(current_date,event_data["id"].GetInt(),(batsched_tools::call_me_later_types)event_data["forWhat"].GetInt());
+                algo->on_requested_call(current_date);
             }
             else if (event_type == "ANSWER")
             {
@@ -570,28 +518,6 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 {
                     IntervalSet resources = IntervalSet::from_string_hyphen(event_data["resources"].GetString(), " ");
                     algo->on_machine_unavailable_notify_event(current_date, resources);
-                }
-                else if (notify_type == "myKillJob")
-                {
-                    
-                        algo->on_myKillJob_notify_event(current_date);
-                    
-                }
-                else if (notify_type == "job_fault")
-                {
-                    LOG_F(INFO,"main.cpp notify_type==jobfault");
-                    std::string job = event_data["job"].GetString();
-                    algo->on_job_fault_notify_event(current_date,job);
-                }
-                else if (notify_type == "batsim_metadata")
-                {
-                    
-                    std::string json_desc = event_data["metadata"].GetString();
-                    LOG_F(INFO,"batsim_meta: %s",json_desc.c_str());
-                }
-                else if (notify_type == "test")
-                {
-                        LOG_F(INFO,"test %f",current_date);
                 }
                 else
                 {

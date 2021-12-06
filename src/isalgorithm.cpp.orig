@@ -1,7 +1,6 @@
 #include "isalgorithm.hpp"
 
 #include "pempek_assert.hpp"
-#include "batsched_tools.hpp"
 
 using namespace std;
 
@@ -64,12 +63,11 @@ void ISchedulingAlgorithm::on_job_end(double date, const vector<string> &job_ids
                                 job_ids.end());
 }
 
-
-
-void ISchedulingAlgorithm::on_job_killed(double date, const std::unordered_map<std::string,double> &job_ids)
+void ISchedulingAlgorithm::on_job_killed(double date, const std::vector<string> &job_ids)
 {
     (void) date;
-    _jobs_killed_recently.insert(job_ids.begin(),
+    _jobs_killed_recently.insert(_jobs_killed_recently.end(),
+                                 job_ids.begin(),
                                  job_ids.end());
 }
 
@@ -83,7 +81,7 @@ void ISchedulingAlgorithm::on_machine_state_changed(double date, IntervalSet mac
         _machines_whose_pstate_changed_recently[new_state] += machines;
 }
 
-void ISchedulingAlgorithm::on_requested_call(double date,int id, batsched_tools::call_me_later_types forWhat)
+void ISchedulingAlgorithm::on_requested_call(double date)
 {
     (void) date;
     _nopped_recently = true;
@@ -113,22 +111,13 @@ void ISchedulingAlgorithm::on_machine_available_notify_event(double date, Interv
     (void) date;
     _machines_that_became_available_recently += machines;
 }
-void ISchedulingAlgorithm::set_workloads(myBatsched::Workloads *w){
-    (void) w;
-}
 
 void ISchedulingAlgorithm::on_machine_unavailable_notify_event(double date, IntervalSet machines)
 {
     (void) date;
     _machines_that_became_unavailable_recently += machines;
 }
-void ISchedulingAlgorithm::on_job_fault_notify_event(double date, std::string job)  // ****************added
-{
-    (void) date;
-}
-void ISchedulingAlgorithm::on_myKillJob_notify_event(double date){
-    (void) date;
-}
+
 void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const string &job_id)
 {
     (void) date;
