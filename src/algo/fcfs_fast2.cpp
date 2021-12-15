@@ -459,13 +459,14 @@ void FCFSFast2::make_decisions(double date,
             }
         }
     }
-    if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
+    /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
     {
         
         _decision->add_scheduler_finished_submitting_jobs(date);
         _need_to_send_finished_submitting_jobs = false;
     }
-    else if (_jobs_killed_recently.empty() && _pending_jobs.empty() && _running_jobs.empty() &&
+    */
+    if (_jobs_killed_recently.empty() && _pending_jobs.empty() && _running_jobs.empty() &&
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
     {
         _decision->add_scheduler_finished_submitting_jobs(date);
