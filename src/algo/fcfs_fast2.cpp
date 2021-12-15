@@ -723,7 +723,7 @@ void FCFSFast2::handle_resubmission(double date)
                         LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
                         if (num_checkpoints_completed > 0)
                         {
-                            double cpu = profile_doc["cpu"].GetDouble()
+                            double cpu = profile_doc["cpu"].GetDouble();
                             double cpu_time = cpu / one_second;
                             cpu_time = cpu_time - progress_time + job_to_queue->read_time;
                             LOG_F(INFO,"REPAIR cpu_time: %f  readtime: %f",cpu_time,job_to_queue->read_time);
@@ -736,7 +736,7 @@ void FCFSFast2::handle_resubmission(double date)
                 }
         }
 
-        
+
         doc["subtime"]=date;
                 
         //check if resubmitted and get the next resubmission number
