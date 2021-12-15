@@ -78,6 +78,7 @@ std::string name; //!< The Workload name
     double _MTBF = -1.0;
     double _SMTBF = -1.0;
     double _repair_time = 0.0;
+    double _host_speed;
 
 };
 
@@ -194,6 +195,7 @@ public:
         double _SMTBF = -1.0;
         double _repair_time = 0.0;
         double _fixed_failures = -1.0;
+        double _host_speed;
 private:
     std::map<std::string, Workload*> _workloads; //!< Associates Workloads with their names
 

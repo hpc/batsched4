@@ -498,6 +498,8 @@ void FCFSFast2::handle_resubmission(double date)
         const std::string workload_str = killed_job.substr(0,start-1); 
         //get the workload
         myB::Workload * w0= (*_myWorkloads)[workload_str];
+        //get the conversion from seconds to cpu instructions
+        double one_second = w0->_host_speed;
         //get the job that was killed
         myB::JobPtr job_to_queue =(*(w0->jobs))[myB::JobIdentifier(killed_job)];
         //get the job identifier of the job that was killed
@@ -509,112 +511,232 @@ void FCFSFast2::handle_resubmission(double date)
         profile_doc.Parse(profile_jd.c_str());
         r::Document doc;
         doc.Parse(job_jd.c_str());
-        if (_checkpointing_on)
+        
+        if (job_to_queue->profile->type == myB::ProfileType::DELAY )
         {
-            double progress_time = 0;
-            if (progress > 0)
+            if (_checkpointing_on)
             {
-                
-                
-                progress_time =progress * profile_doc["delay"].GetDouble();
-                LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
-                
-                bool has_checkpointed = false;
-                std::string meta_str = "null";
-                int num_checkpoints_completed = 0;
-                r::Document meta_doc;
-                //check whether there is a checkpointed value and set has_checkpointed if so
-                if (doc.HasMember("metadata"))
+                double progress_time = 0;
+                if (progress > 0)
                 {
                     
-                    meta_str = doc["metadata"].GetString();
-                    std::replace(meta_str.begin(),meta_str.end(),'\'','\"');
-                    meta_doc.Parse(meta_str.c_str());
-                    if (meta_doc.HasMember("checkpointed"))
+                    
+                    progress_time =progress * profile_doc["delay"].GetDouble();
+                    LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+                    
+                    bool has_checkpointed = false;
+                    std::string meta_str = "null";
+                    int num_checkpoints_completed = 0;
+                    r::Document meta_doc;
+                    //check whether there is a checkpointed value and set has_checkpointed if so
+                    if (doc.HasMember("metadata"))
                     {
-                        has_checkpointed = meta_doc["checkpointed"].GetBool();
                         
-                    }
-                }
-                //if has checkpointed we need to alter how we check num_checkpoints_completed and progress time
-                if (has_checkpointed)
-                {
-                    
-                    //progress_time must be subtracted by read_time to see how many checkpoints we have gone through
-                    num_checkpoints_completed = floor((progress_time-job_to_queue->read_time)/(job_to_queue->checkpoint_time + job_to_queue->dump_time));
-                    if (meta_doc.HasMember("work_progress"))
-                    {
-                        double work = meta_doc["work_progress"].GetDouble();
-                        if (num_checkpoints_completed > 0)
-                            work += num_checkpoints_completed * job_to_queue->checkpoint_time;
-                        meta_doc["work_progress"] = work;
-                    }
-                    else if (num_checkpoints_completed > 0)
-                    {
-                        meta_doc.AddMember("work_progress",r::Value().SetDouble(num_checkpoints_completed * job_to_queue->checkpoint_time),meta_doc.GetAllocator());
-                    }
-                    if (meta_doc.HasMember("num_dumps"))
-                    {
-                            int num_dumps = meta_doc["num_dumps"].GetInt();
-                            if (num_checkpoints_completed > 0)
-                                num_dumps += num_checkpoints_completed;
-                            meta_doc["num_dumps"] = num_dumps;
+                        meta_str = doc["metadata"].GetString();
+                        std::replace(meta_str.begin(),meta_str.end(),'\'','\"');
+                        meta_doc.Parse(meta_str.c_str());
+                        if (meta_doc.HasMember("checkpointed"))
+                        {
+                            has_checkpointed = meta_doc["checkpointed"].GetBool();
                             
+                        }
                     }
-                    else if (num_checkpoints_completed > 0)
+                    //if has checkpointed we need to alter how we check num_checkpoints_completed and progress time
+                    if (has_checkpointed)
                     {
-                            meta_doc.AddMember("num_dumps",r::Value().SetInt(num_checkpoints_completed),meta_doc.GetAllocator());
                         
+                        //progress_time must be subtracted by read_time to see how many checkpoints we have gone through
+                        num_checkpoints_completed = floor((progress_time-job_to_queue->read_time)/(job_to_queue->checkpoint_interval + job_to_queue->dump_time));
+                        if (meta_doc.HasMember("work_progress"))
+                        {
+                            double work = meta_doc["work_progress"].GetDouble();
+                            if (num_checkpoints_completed > 0)
+                                work += num_checkpoints_completed * job_to_queue->checkpoint_interval;
+                            meta_doc["work_progress"] = work;
+                        }
+                        else if (num_checkpoints_completed > 0)
+                        {
+                            meta_doc.AddMember("work_progress",r::Value().SetDouble(num_checkpoints_completed * job_to_queue->checkpoint_interval),meta_doc.GetAllocator());
+                        }
+                        if (meta_doc.HasMember("num_dumps"))
+                        {
+                                int num_dumps = meta_doc["num_dumps"].GetInt();
+                                if (num_checkpoints_completed > 0)
+                                    num_dumps += num_checkpoints_completed;
+                                meta_doc["num_dumps"] = num_dumps;
+                                
+                        }
+                        else if (num_checkpoints_completed > 0)
+                        {
+                                meta_doc.AddMember("num_dumps",r::Value().SetInt(num_checkpoints_completed),meta_doc.GetAllocator());
+                            
+                        }
+                        std::string meta_str = to_json_desc(&meta_doc);
+                        doc["metadata"].SetString(meta_str.c_str(),doc.GetAllocator());
+                        // the progress_time needs to add back in the read_time
+                        progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time) + job_to_queue->read_time;
+                    
                     }
-                    std::string meta_str = to_json_desc(&meta_doc);
-                    doc["metadata"].SetString(meta_str.c_str(),doc.GetAllocator());
-                    // the progress_time needs to add back in the read_time
-                    progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_time + job_to_queue->dump_time) + job_to_queue->read_time;
-                 
-                }
-                else // there hasn't been any checkpoints in the past, do normal check on num_checkpoints_completed
-                {
-                    num_checkpoints_completed = floor(progress_time/(job_to_queue->checkpoint_time + job_to_queue->dump_time ));
-                    progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_time + job_to_queue->dump_time);
-                    
-                    
-                    //if a checkpoint has completed set the metadata to reflect this
+                    else // there hasn't been any checkpoints in the past, do normal check on num_checkpoints_completed
+                    {
+                        num_checkpoints_completed = floor(progress_time/(job_to_queue->checkpoint_interval + job_to_queue->dump_time ));
+                        progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time);
+                        
+                        
+                        //if a checkpoint has completed set the metadata to reflect this
+                        if (num_checkpoints_completed > 0)
+                        {
+                            meta_doc.SetObject();
+                            //if there was previous metadata make sure to include it
+                            if (meta_str!="null")
+                            {
+                                meta_doc.Parse(meta_str.c_str());
+                            }    
+                            r::Document::AllocatorType& myAlloc = meta_doc.GetAllocator();
+                            meta_doc.AddMember("checkpointed",r::Value().SetBool(true),myAlloc);
+                            meta_doc.AddMember("num_dumps",r::Value().SetInt(num_checkpoints_completed),meta_doc.GetAllocator());
+                            meta_doc.AddMember("work_progress",r::Value().SetDouble(num_checkpoints_completed * job_to_queue->checkpoint_interval),meta_doc.GetAllocator());
+                            std::string myString = to_json_desc(&meta_doc);
+                            r::Document::AllocatorType& myAlloc2 = doc.GetAllocator();
+                                                
+                            if (meta_str=="null")
+                                doc.AddMember("metadata",r::Value().SetString(myString.c_str(),myAlloc2),myAlloc2);
+                            else
+                                doc["metadata"].SetString(myString.c_str(),myAlloc2);
+                        }
+        
+                    }        
+                    //only if a new checkpoint has been reached does the delay time change
+                    LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
                     if (num_checkpoints_completed > 0)
                     {
-                        meta_doc.SetObject();
-                        //if there was previous metadata make sure to include it
-                        if (meta_str!="null")
-                        {
-                            meta_doc.Parse(meta_str.c_str());
-                        }    
-                        r::Document::AllocatorType& myAlloc = meta_doc.GetAllocator();
-                        meta_doc.AddMember("checkpointed",r::Value().SetBool(true),myAlloc);
-                        meta_doc.AddMember("num_dumps",r::Value().SetInt(num_checkpoints_completed),meta_doc.GetAllocator());
-                        meta_doc.AddMember("work_progress",r::Value().SetDouble(num_checkpoints_completed * job_to_queue->checkpoint_time),meta_doc.GetAllocator());
-                        std::string myString = to_json_desc(&meta_doc);
-                        r::Document::AllocatorType& myAlloc2 = doc.GetAllocator();
-                                               
-                        if (meta_str=="null")
-                            doc.AddMember("metadata",r::Value().SetString(myString.c_str(),myAlloc2),myAlloc2);
-                        else
-                            doc["metadata"].SetString(myString.c_str(),myAlloc2);
+                        
+                        double delay = profile_doc["delay"].GetDouble() - progress_time + job_to_queue->read_time;
+                        LOG_F(INFO,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
+                        profile_doc["delay"].SetDouble(delay);
+                        
+                        
                     }
-    
-                }        
-                 //only if a new checkpoint has been reached does the delay time change
-                LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
-                if (num_checkpoints_completed > 0)
-                {
-                    
-                    double delay = profile_doc["delay"].GetDouble() - progress_time + job_to_queue->read_time;
-                    LOG_F(INFO,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
-                    profile_doc["delay"].SetDouble(delay);
-                    
-                    
                 }
+            
             }
-           
+                                          
+                    
         }
+    
+        if (job_to_queue->profile->type == myB::ProfileType::PARALLEL_HOMOGENEOUS)
+        {
+            if (_checkpointing_on)
+                {
+                    double progress_time = 0;
+                    if (progress > 0)
+                    {
+                        
+                        
+                        progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
+                        LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+                        
+                        bool has_checkpointed = false;
+                        std::string meta_str = "null";
+                        int num_checkpoints_completed = 0;
+                        r::Document meta_doc;
+                        //check whether there is a checkpointed value and set has_checkpointed if so
+                        if (doc.HasMember("metadata"))
+                        {
+                            
+                            meta_str = doc["metadata"].GetString();
+                            std::replace(meta_str.begin(),meta_str.end(),'\'','\"');
+                            meta_doc.Parse(meta_str.c_str());
+                            if (meta_doc.HasMember("checkpointed"))
+                            {
+                                has_checkpointed = meta_doc["checkpointed"].GetBool();
+                                
+                            }
+                        }
+                        //if has checkpointed we need to alter how we check num_checkpoints_completed and progress time
+                        if (has_checkpointed)
+                        {
+                            
+                            //progress_time must be subtracted by read_time to see how many checkpoints we have gone through
+                            num_checkpoints_completed = floor((progress_time-job_to_queue->read_time)/(job_to_queue->checkpoint_interval + job_to_queue->dump_time));
+                            if (meta_doc.HasMember("work_progress"))
+                            {
+                                double work = meta_doc["work_progress"].GetDouble();
+                                if (num_checkpoints_completed > 0)
+                                    work += num_checkpoints_completed * job_to_queue->checkpoint_interval;
+                                work = work * one_second;
+                                meta_doc["work_progress"] = work;
+                            }
+                            else if (num_checkpoints_completed > 0)
+                            {
+                                meta_doc.AddMember("work_progress",r::Value().SetDouble(num_checkpoints_completed * job_to_queue->checkpoint_interval*one_second),meta_doc.GetAllocator());
+                            }
+                            if (meta_doc.HasMember("num_dumps"))
+                            {
+                                    int num_dumps = meta_doc["num_dumps"].GetInt();
+                                    if (num_checkpoints_completed > 0)
+                                        num_dumps += num_checkpoints_completed;
+                                    meta_doc["num_dumps"] = num_dumps;
+                                    
+                            }
+                            else if (num_checkpoints_completed > 0)
+                            {
+                                    meta_doc.AddMember("num_dumps",r::Value().SetInt(num_checkpoints_completed),meta_doc.GetAllocator());
+                                
+                            }
+                            std::string meta_str = to_json_desc(&meta_doc);
+                            doc["metadata"].SetString(meta_str.c_str(),doc.GetAllocator());
+                            // the progress_time needs to add back in the read_time
+                            progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time) + job_to_queue->read_time;
+                        
+                        }
+                        else // there hasn't been any checkpoints in the past, do normal check on num_checkpoints_completed
+                        {
+                            num_checkpoints_completed = floor(progress_time/(job_to_queue->checkpoint_interval + job_to_queue->dump_time ));
+                            progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time);
+                            
+                            
+                            //if a checkpoint has completed set the metadata to reflect this
+                            if (num_checkpoints_completed > 0)
+                            {
+                                meta_doc.SetObject();
+                                //if there was previous metadata make sure to include it
+                                if (meta_str!="null")
+                                {
+                                    meta_doc.Parse(meta_str.c_str());
+                                }    
+                                r::Document::AllocatorType& myAlloc = meta_doc.GetAllocator();
+                                meta_doc.AddMember("checkpointed",r::Value().SetBool(true),myAlloc);
+                                meta_doc.AddMember("num_dumps",r::Value().SetInt(num_checkpoints_completed),meta_doc.GetAllocator());
+                                meta_doc.AddMember("work_progress",r::Value().SetDouble(num_checkpoints_completed * job_to_queue->checkpoint_interval * one_second),meta_doc.GetAllocator());
+                                std::string myString = to_json_desc(&meta_doc);
+                                r::Document::AllocatorType& myAlloc2 = doc.GetAllocator();
+                                                    
+                                if (meta_str=="null")
+                                    doc.AddMember("metadata",r::Value().SetString(myString.c_str(),myAlloc2),myAlloc2);
+                                else
+                                    doc["metadata"].SetString(myString.c_str(),myAlloc2);
+                            }
+            
+                        }        
+                        //only if a new checkpoint has been reached does the delay time change
+                        LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
+                        if (num_checkpoints_completed > 0)
+                        {
+                            double cpu = profile_doc["cpu"].GetDouble()
+                            double cpu_time = cpu / one_second;
+                            cpu_time = cpu_time - progress_time + job_to_queue->read_time;
+                            LOG_F(INFO,"REPAIR cpu_time: %f  readtime: %f",cpu_time,job_to_queue->read_time);
+                            profile_doc["cpu"].SetDouble(cpu_time*one_second);
+                            
+                            
+                        }
+                    }
+                
+                }
+        }
+
+        
         doc["subtime"]=date;
                 
         //check if resubmitted and get the next resubmission number
@@ -633,8 +755,8 @@ void FCFSFast2::handle_resubmission(double date)
         std::string workload_name = workload_str;
         doc["profile"].SetString(profile_name.data(), profile_name.size(), doc.GetAllocator());
         doc["id"].SetString(job_id.data(),job_id.size(),doc.GetAllocator());
-         std::string error_prefix = "Invalid JSON job '" + killed_job + "'";
-         profile_jd = to_json_desc(&profile_doc);
+        std::string error_prefix = "Invalid JSON job '" + killed_job + "'";
+        profile_jd = to_json_desc(&profile_doc);
         myB::ProfilePtr p = myB::Profile::from_json(profile_name,profile_jd);
         w0->profiles->add_profile(p);
         myB::JobPtr j = myB::Job::from_json(doc,w0,error_prefix);
@@ -642,29 +764,30 @@ void FCFSFast2::handle_resubmission(double date)
         job_jd = to_json_desc(&doc);
         LOG_F(INFO,"workload: %s  job: %s, profile: %s",workload_name.c_str(),job_name.c_str(),profile_name.c_str());
         _decision->add_submit_profile(workload_name,
-                                      profile_name,
-                                      profile_jd,
-                                      date);
-                                      
+                                    profile_name,
+                                    profile_jd,
+                                    date);
+                                    
         _decision->add_submit_job(workload_name,
-                                      job_name,
-                                      profile_name,
-                                      job_jd,
-                                      profile_jd,
-                                      date,
-                                      true);
+                                    job_name,
+                                    profile_name,
+                                    job_jd,
+                                    profile_jd,
+                                    date,
+                                    true);
         if (doc.HasMember("metadata"))
         {
             std::string meta = doc["metadata"].GetString();
             //must replace double quotes with single quotes.  Remember to
             //replace single quotes with double quotes before parsing metadata
             std::replace( meta.begin(), meta.end(), '\"', '\'');
-           _decision->add_set_job_metadata(job_id,
+        _decision->add_set_job_metadata(job_id,
                                         meta,
                                         date);
         }                               
-                
-    }   
+    }            
+    
+       
 }
 /*(Document, Swap) {
     Document d1;

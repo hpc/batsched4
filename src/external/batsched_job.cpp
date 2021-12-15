@@ -241,7 +241,7 @@ JobPtr Job::from_json(const rapidjson::Value & json_desc,
         CHECK_F(json_desc["checkpoint"].IsNumber(), "%s: job %s has non double 'checkpoint' field",
                 error_prefix.c_str(),j->id.to_string().c_str()); */
         if (json_desc.HasMember("checkpoint") && json_desc["checkpoint"].IsNumber())
-            j->checkpoint_time=json_desc["checkpoint"].GetDouble();
+            j->checkpoint_interval=json_desc["checkpoint"].GetDouble();
         /*
         CHECK_F(json_desc.HasMember("dumptime"),"%s: job %s has no 'dumptime' field",
                 error_prefix.c_str(),j->id.to_string().c_str());
@@ -266,9 +266,9 @@ JobPtr Job::from_json(const rapidjson::Value & json_desc,
             double delay = data->delay;
             int subtract = 0;
             data->real_delay = delay;
-            if (std::fmod(delay,j->checkpoint_time) == 0)
+            if (std::fmod(delay,j->checkpoint_interval) == 0)
                 subtract = 1;
-            delay = (floor(delay / j->checkpoint_time) - subtract )* j->dump_time + delay;
+            delay = (floor(delay / j->checkpoint_interval) - subtract )* j->dump_time + delay;
             data->delay = delay;
             j->profile->data = data;
             profile_doc["delay"]=delay;

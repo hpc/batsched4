@@ -110,7 +110,7 @@ struct Job
         long double submission_time;
         long double walltime=-1;
         unsigned int requested_nb_res;
-        double checkpoint_time;
+        double checkpoint_interval;
         double dump_time;
         double read_time;
 public:

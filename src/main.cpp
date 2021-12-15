@@ -438,6 +438,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                         myWorkload->_MTBF = event_data["config"]["MTBF"].GetDouble();
                         myWorkload->_SMTBF = event_data["config"]["SMTBF"].GetDouble();
                         myWorkload->_repair_time = event_data["config"]["repair_time"].GetDouble();
+
                         r::Document myCopy;
                         myCopy.CopyFrom(event_data,myCopy.GetAllocator());
                         r::Value & temp = myCopy["jobs"];
@@ -455,6 +456,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 myWorkloads._SMTBF = event_data["config"]["SMTBF"].GetDouble();
                 myWorkloads._repair_time = event_data["config"]["repair_time"].GetDouble();
                 myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
+                myWorkloads._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                 algo->set_workloads(&myWorkloads);
             
                 d.set_redis(redis_enabled, &redis);

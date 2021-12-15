@@ -183,9 +183,9 @@ ProfilePtr Profile::from_json(const std::string & profile_name,
         
         CHECK_F(data->delay > 0, "%s: profile '%s' has a non-strictly-positive 'delay' field (%g)",
                    error_prefix.c_str(), profile_name.c_str(), data->delay);
-        LOG_F(INFO,"if profile_type 6");
+        
         profile->data = data;
-        LOG_F(INFO,"if profile_type 7");
+        
     }
     else if (profile_type == "parallel")
     {
@@ -274,6 +274,14 @@ ProfilePtr Profile::from_json(const std::string & profile_name,
         data->com = json_desc["com"].GetDouble();
         CHECK_F(data->com >= 0, "%s: profile '%s' has a non-positive 'com' field (%g)",
                    error_prefix.c_str(), profile_name.c_str(), data->com);
+
+        if (json_desc.HasMember("original_cpu")){
+            data->real_cpu = json_desc["original_cpu"].GetDouble();
+        }
+        else{
+            data->real_cpu = data->cpu;
+        }
+
 
         profile->data = data;
     }
