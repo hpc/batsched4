@@ -636,6 +636,7 @@ void FCFSFast2::handle_resubmission(double date)
                         
                         progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
                         LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+                        LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
                         
                         bool has_checkpointed = false;
                         std::string meta_str = "null";
