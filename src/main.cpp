@@ -448,6 +448,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                         myWorkload->load_from_batsim(workload_filename,
                                                      job_json,
                                                      profile_json);
+                        myWorkload->_host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                         myWorkloads.insert_workload(workload_name,myWorkload);
                 }
                 myWorkloads._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
