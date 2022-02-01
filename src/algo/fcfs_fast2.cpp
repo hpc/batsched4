@@ -37,10 +37,17 @@ FCFSFast2::~FCFSFast2()
 }
 
 void FCFSFast2::on_simulation_start(double date,
-    const rapidjson::Value &batsim_config)
+    const rapidjson::Value &batsim_event_data)
 {
     bool seedFailures = false;
     bool logBLog = false;
+    auto batsim_config = batsim_event_data["config"];
+    if (batsim_config.HasMember("share-packing"))
+        _share_packing = batsim_config["share-packing"].GetBool();
+
+    if (batsim_config.HasMember("core-percent"))
+        _core_percent = batsim_config["core-percent"].GetDouble();
+
     if (batsim_config.HasMember("output-folder")){
         _output_folder = batsim_config["output-folder"].GetString();
         _output_folder=_output_folder.substr(0,_output_folder.find_last_of("/"));
@@ -62,15 +69,35 @@ void FCFSFast2::on_simulation_start(double date,
     generator2.seed(seed);
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     _nb_available_machines = _nb_machines;
+    LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
-    _oldDate=date;
-    if (_myWorkloads->_fixed_failures != -1.0)
+    const rapidjson::Value& resources = batsim_event_data["compute_resources"];
+    for ( auto & itr : resources.GetArray())
     {
+	machine* a_machine = new machine();
+        if (itr.HasMember("id"))
+            a_machine->id = (itr)["id"].GetInt();
+        if (itr.HasMember("core_count"))
+        {
+            a_machine->core_count = (itr)["core_count"].GetInt();
+            a_machine->cores_available = int(a_machine->core_count * _core_percent);
+        }
+        if (itr.HasMember("speed"))
+            a_machine->speed = (itr)["speed"].GetDouble();
+        if (itr.HasMember("name"))
+            a_machine->name = (itr)["name"].GetString();
+        machines_by_int[a_machine->id] = a_machine;
+        machines_by_name[a_machine->name] = a_machine;
+        LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
+   }
+     _oldDate=date;
+     if (_myWorkloads->_fixed_failures != -1.0)
+     {
         if (unif_distribution == nullptr)
             unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
         double number = _myWorkloads->_fixed_failures;
         _decision->add_call_me_later(batsched_tools::FIXED_FAILURE,1,number+date,date);  
-    }
+     }
     if (_myWorkloads->_SMTBF != -1.0)
     {
         distribution = new std::exponential_distribution<double>(1.0/_myWorkloads->_SMTBF);
@@ -92,13 +119,9 @@ void FCFSFast2::on_simulation_start(double date,
         _decision->add_call_me_later(batsched_tools::MTBF,1,number+date,date);
     }
         
-}
-
-void FCFSFast2::on_simulation_end(double date)
-{
-    (void) date;
-}
-void FCFSFast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
+        
+    
+ void FCFSFast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
     LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
     _unavailable_machines+=machines;
     _available_machines-=machines;
@@ -179,8 +202,6 @@ void FCFSFast2::on_machine_down_for_repair(double date){
 }
 
 
-
-
 void FCFSFast2::on_machine_instant_down_up(double date){
     //get a random number of a machine to kill
     int number = unif_distribution->operator()(generator2);
@@ -189,17 +210,14 @@ void FCFSFast2::on_machine_instant_down_up(double date){
     BLOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
     //if there are no running jobs, then there are none to kill
     if (!_running_jobs.empty()){
-        for(auto key_value : _current_allocations)
-        {
-            if (!((key_value.second & machine).is_empty())){
-                _my_kill_jobs.insert(key_value.first);
-                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
-            }
-
-        }
+        for(auto key_value : _current_allocations)   
+	{
+		if (!((key_value.second & machine).is_empty())){
+                	_my_kill_jobs.insert(key_value.first);
+	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
+            	}
+	}
     }
-    
-    
 }
 void FCFSFast2::on_job_fault_notify_event(double date, std::string job){
     std::unordered_set<std::string>::const_iterator found = _running_jobs.find(job);
@@ -296,7 +314,9 @@ void FCFSFast2::make_decisions(double date,
 {
     (void) update_info;
     (void) compare_info;
-    
+    std::vector<int> mapping = {0};
+    if (_oldDate == -1)
+        _oldDate=date;
     // This algorithm is a fast version of FCFS without backfilling.
     // It is meant to be fast in the usual case, not to handle corner cases.
     // It is not meant to be easily readable or hackable ;).
@@ -306,26 +326,48 @@ void FCFSFast2::make_decisions(double date,
     // - only handles the basic resource selection policy
     // - only handles finite jobs (no switchoff)
     // - only handles time as floating-point (-> precision errors).
+
     
-        
-    
-    bool job_ended = false;
-    LOG_F(INFO,"DEBUG GANTT, avail machines %d",_nb_available_machines);
+
+
+    //*****************************************************************
     // Handle newly finished jobs
+    //*****************************************************************
+    bool job_ended = false;
     for (const std::string & ended_job_id : _jobs_ended_recently)
     {
         job_ended = true;
-        LOG_F(INFO,"job ended: %s %f",ended_job_id.c_str(),date);
-        
-        // Update data structures
-        
-        _available_machines.insert(_current_allocations[ended_job_id]-_unavailable_machines);
-        _nb_available_machines += (_current_allocations[ended_job_id]-_unavailable_machines).size();
-        LOG_F(INFO,"DEBUG GANTT2, avail machines %d, added: %d",_nb_available_machines,(_current_allocations[ended_job_id]-_unavailable_machines).size());
-        _current_allocations.erase(ended_job_id);
-        _running_jobs.erase(ended_job_id);
-        _my_kill_jobs.erase(ended_job_id);
+        Job * finished_job = (*_workload)[ended_job_id];
+        if (_share_packing && finished_job->nb_requested_resources == 1)
+        {
+                //first get the machine it was running on
+                int machine_number = (_current_allocations[ended_job_id])[0];
+                machine* current_machine = machines_by_int[machine_number];
+
+                //now increase cores_available on that machine
+                current_machine->cores_available += 1;
+                //if that increase means no jobs are running on that machine (all its cores are available) then put it back in the mix
+                if (current_machine->cores_available == int(current_machine->core_count * _core_percent))
+                {
+                    _available_core_machines -= _current_allocations[ended_job_id];
+                    _available_machines.insert(_current_allocations[ended_job_id]);
+                    _nb_available_machines += 1;
+                }
+                _current_allocations.erase(ended_job_id);
+                _running_jobs.erase(ended_job_id);
+        }
+            // was not a 1 resource job, do things normally
+        else{
+                _available_machines.insert(_current_allocations[ended_job_id]);
+                _nb_available_machines += finished_job->nb_requested_resources;
+                _current_allocations.erase(ended_job_id);
+                _running_jobs.erase(ended_job_id);
+                _my_kill_jobs.erase(ended_job_id);
+        }
     }
+    
+
+    
     
     //Handle new jobs to kill
    
@@ -345,26 +387,73 @@ void FCFSFast2::make_decisions(double date,
     
     
     
-    if (!(_machines_that_became_available_recently.is_empty()))
+    
+    if (!(_machines_that_became_available_recently.is_empty()) && !(_pending_jobs.is_empty()))
     {
         for (auto job_it = _pending_jobs.begin();
              job_it != _pending_jobs.end(); )
         {
             Job * pending_job = *job_it;
-            if (pending_job->nb_requested_resources <= _nb_available_machines)
+            std:string pending_job_id = pending_job->id.job_name();
+            if (_share_packing && pending_job->nb_requested_resources==1)
+            {
+                 bool found = false;
+                //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
+                for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
+                {
+                    //is this machine able to handle another job?
+                    machine* current_machine = machines_by_int[*it];
+                    if (current_machine->cores_available >= 1)
+                    {                                
+                            //it is able to handle another job, execute a job on it and subtract from cores_available
+                            IntervalSet machines = *it;
+                            
+                            _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+                            //update data structures
+                            current_machine->cores_available -=1;
+                            _current_allocations[pending_job_id] = machines;
+                            _running_jobs.insert(pending_job_id);
+                            _pending_jobs.erase(job_it);
+                            found = true;
+                    }
+                    if (found == true)
+                        break; 
+                }  
+                // there were no available core machines to put it on, try to put on a new core machine
+                if (found == false && _nb_available_machines > 0)
+                {
+                    
+                    //first get a machine
+                    IntervalSet machines = _available_machines.left(1);
+                    
+                    _decision->add_execute_job(SEQUENTIAL,pending_job_id,machines,date,mapping);
+
+                    //update data structures
+                    machine* current_machine = machines_by_int[machines[0]];
+                    current_machine->cores_available -= 1;
+                    _available_core_machines += machines;
+                    _available_machines -= machines;
+                    _nb_available_machines -= 1;
+                    _current_allocations[pending_job_id] = machines;
+                    _running_jobs.insert(pending_job_id);
+                    _pending_jobs.erase(job_it);
+
+                } 
+            }
+            else if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
-                _decision->add_execute_job(pending_job->id,
+                _decision->add_execute_job(pending_job->id.job_name(),
                     machines, date);
                 
 
                 // Update data structures
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
-                 _current_allocations[pending_job->id] = machines;
+                 _current_allocations[pending_job_id] = machines;
                 job_it = _pending_jobs.erase(job_it);
-                _running_jobs.insert(pending_job->id);
+                _running_jobs.insert(pending_job->id.job_name());
                 
             }
             else
@@ -384,25 +473,70 @@ void FCFSFast2::make_decisions(double date,
              job_it != _pending_jobs.end(); )
         {
             Job * pending_job = *job_it;
-            if (pending_job->nb_requested_resources <= _nb_available_machines)
+            std:string pending_job_id = pending_job->id.job_name();
+            if (_share_packing && pending_job->nb_requested_resources==1)
+            {
+                 bool found = false;
+                //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
+                for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
+                {
+                    //is this machine able to handle another job?
+                    machine* current_machine = machines_by_int[*it];
+                    if (current_machine->cores_available >= 1)
+                    {                                
+                            //it is able to handle another job, execute a job on it and subtract from cores_available
+                            IntervalSet machines = *it;
+                            
+                            _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+                            //update data structures
+                            current_machine->cores_available -=1;
+                            _current_allocations[pending_job_id] = machines;
+                            _running_jobs.insert(pending_job_id);
+                            _pending_jobs.erase(job_it);
+                            found = true;
+                    }
+                    if (found == true)
+                        break; 
+                }  
+                // there were no available core machines to put it on, try to put on a new core machine
+                if (found == false && _nb_available_machines > 0)
+                {
+                    
+                    //first get a machine
+                    IntervalSet machines = _available_machines.left(1);
+                    
+                    _decision->add_execute_job(SEQUENTIAL,pending_job_id,machines,date,mapping);
+
+                    //update data structures
+                    machine* current_machine = machines_by_int[machines[0]];
+                    current_machine->cores_available -= 1;
+                    _available_core_machines += machines;
+                    _available_machines -= machines;
+                    _nb_available_machines -= 1;
+                    _current_allocations[pending_job_id] = machines;
+                    _running_jobs.insert(pending_job_id);
+                    _pending_jobs.erase(job_it);
+
+                } 
+            }
+            else if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
-                _decision->add_execute_job(pending_job->id,
+                _decision->add_execute_job(pending_job->id.job_name(),
                     machines, date);
                 
 
                 // Update data structures
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
-                 _current_allocations[pending_job->id] = machines;
+                 _current_allocations[pending_job_id] = machines;
                 job_it = _pending_jobs.erase(job_it);
-                _running_jobs.insert(pending_job->id);
+                _running_jobs.insert(pending_job->id.job_name());
                 
             }
             else
             {
-                
                 // The job becomes priority!
                 // As there is no backfilling, we can simply leave this loop.
                 break;
@@ -432,26 +566,72 @@ void FCFSFast2::make_decisions(double date,
                _pending_jobs.push_front(new_job);
             else
             // Yes. The new job is queued up.
+            
             _pending_jobs.push_back(new_job);
         }
         else
         {
             // No, the queue is empty.
             // Can the new job be executed now?
-            if (new_job->nb_requested_resources <= _nb_available_machines)
+            
+            if (_share_packing && new_job->nb_requested_resources==1)
             {
-                // Yes, the job can be executed right away!
+                 bool found = false;
+                //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
+                for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
+                {
+                    //is this machine able to handle another job?
+                    machine* current_machine = machines_by_int[*it];
+                    if (current_machine->cores_available >= 1)
+                    {                                
+                            //it is able to handle another job, execute a job on it and subtract from cores_available
+                            IntervalSet machines = *it;
+                            
+                            _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+                            //update data structures
+                            current_machine->cores_available -=1;
+                            _current_allocations[new_job_id] = machines;
+                            _running_jobs.insert(new_job_id);
+                            found = true;
+                    }
+                    if (found == true)
+                        break; 
+                }  
+                // there were no available core machines to put it on, try to put on a new core machine
+                if (found == false && _nb_available_machines > 0)
+                {
+                    
+                    //first get a machine
+                    IntervalSet machines = _available_machines.left(1);
+                    
+                    _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+
+                    //update data structures
+                    machine* current_machine = machines_by_int[machines[0]];
+                    current_machine->cores_available -= 1;
+                    _available_core_machines += machines;
+                    _available_machines -= machines;
+                    _nb_available_machines -= 1;
+                    _current_allocations[new_job_id] = machines;
+                    _running_jobs.insert(new_job_id);
+
+                } 
+            }
+            else if (new_job->nb_requested_resources <= _nb_available_machines)
+            {
                 IntervalSet machines = _available_machines.left(
                     new_job->nb_requested_resources);
-                _decision->add_execute_job(new_job_id, machines, date);
+                _decision->add_execute_job(new_job->id.job_name(),
+                        machines, date);
+                
 
                 // Update data structures
                 _available_machines -= machines;
                 _nb_available_machines -= new_job->nb_requested_resources;
-                _current_allocations[new_job_id] = machines;
-                _running_jobs.insert(new_job_id);
-                
+                 _current_allocations[new_job_id] = machines;
+                _running_jobs.insert(new_job->id.job_name());
             }
+            
             else
             {
                 // No. The job is queued up.

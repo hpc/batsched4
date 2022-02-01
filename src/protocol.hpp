@@ -64,6 +64,7 @@ public:
 
     /**
      * @brief Appends an EXECUTE_JOB event.
+     * @param[in] type the type of simgrid task to use, parallel or sequential.  parallel uses all cores.
      * @param[in] job_id The job identifier. It must be known by Batsim.
      * @param[in] allocated_resources The resources on which the job should be executed.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
@@ -73,7 +74,8 @@ public:
      *            By default, the number of allocated resources must equals
      *            the job size, and executor i is launched on allocated resource i.
      */
-    virtual void append_execute_job(const std::string & job_id,
+    virtual void append_execute_job(const std::string & type,
+                                    const std::string & job_id,
                                     const IntervalSet & allocated_resources,
                                     double date,
                                     const std::vector<int> & executor_to_allocated_resource_mapping = {}) = 0;
@@ -228,7 +230,8 @@ public:
      *            By default, the number of allocated resources must equals
      *            the job size, and executor i is launched on allocated resource i.
      */
-    void append_execute_job(const std::string & job_id,
+    void append_execute_job(const std::string & type,
+                            const std::string & job_id,
                             const IntervalSet & allocated_resources,
                             double date,
                             const std::vector<int> & executor_to_allocated_resource_mapping = {});

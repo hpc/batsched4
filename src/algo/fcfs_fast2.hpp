@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+
 #include <unordered_set>
 #include <list>
 #include <random>
@@ -50,11 +51,13 @@ private:
     IntervalSet _available_machines;
     IntervalSet _unavailable_machines;
     IntervalSet _repair_machines;
+    IntervalSet _available_core_machines;
+   
     int _nb_available_machines = -1;
 
     // Pending jobs (queue)
     std::list<Job *> _pending_jobs;
-    std::unordered_set<std::string> _my_kill_jobs;
+    std::list<Job *> _my_kill_jobs;
     std::unordered_set<std::string> _running_jobs;
     myBatsched::Workloads * _myWorkloads;
     double _oldDate=-1;
@@ -68,6 +71,20 @@ private:
     std::mt19937 generator2;
     std::uniform_int_distribution<int> * unif_distribution;
     std::string _output_folder;
+        
+    struct machine{
+        int id;
+        std::string name;
+        int core_count = -1;
+        int cores_available;
+        double speed;
+    };
+    bool _share_packing = false;
+    double _core_percent = 1.0;
+    std::map<int,machine *> machines_by_int;
+    std::map<std::string,machine *> machines_by_name;
+    const std::string SEQUENTIAL = "sequential";
+    const std::string PARALLEL = "parallel";
 
     // Allocations of running jobs
     std::unordered_map<std::string, IntervalSet> _current_allocations;

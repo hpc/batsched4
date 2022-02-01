@@ -15,7 +15,7 @@ public:
     SchedulingDecision();
     ~SchedulingDecision();
 
-    void add_execute_job(const std::string &job_id, const IntervalSet & machine_ids, double date,
+    void add_execute_job(const std::string &type, const std::string &job_id, const IntervalSet & machine_ids, double date,
                          std::vector<int> executor_to_allocated_resource_mapping = {});
     void add_reject_job(const std::string &job_id, double date);
     void add_kill_job(const std::vector<std::string> & job_ids, double date);

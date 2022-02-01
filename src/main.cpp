@@ -463,7 +463,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
-                algo->on_simulation_start(current_date, event_data["config"]);
+                algo->on_simulation_start(current_date, event_data);
             }
             else if (event_type == "SIMULATION_ENDS")
             {
