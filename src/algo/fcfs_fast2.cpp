@@ -118,7 +118,7 @@ void FCFSFast2::on_simulation_start(double date,
         number = distribution->operator()(generator);
         _decision->add_call_me_later(batsched_tools::MTBF,1,number+date,date);
     }
-        
+}      
         
     
  void FCFSFast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
