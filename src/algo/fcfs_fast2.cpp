@@ -374,7 +374,7 @@ void FCFSFast2::make_decisions(double date,
     if(!_my_kill_jobs.empty()){
          std::vector<std::string> kills;
         for( Job* kill:_my_kill_jobs)
-            kills.push_back(kill.id);
+            kills.push_back(kill->id);
         _decision->add_kill_job(kills,date);
         _my_kill_jobs.clear();
     }
