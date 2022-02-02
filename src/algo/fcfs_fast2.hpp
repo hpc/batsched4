@@ -27,7 +27,7 @@ public:
     virtual void on_simulation_start(double date,
         const rapidjson::Value & batsim_config);
 
-    //virtual void on_simulation_end(double date);
+    virtual void on_simulation_end(double date);
     virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);
     virtual void on_machine_available_notify_event(double date, IntervalSet machines);
     virtual void on_job_fault_notify_event(double date, std::string job);
