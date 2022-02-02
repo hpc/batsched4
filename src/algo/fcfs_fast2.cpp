@@ -119,7 +119,9 @@ void FCFSFast2::on_simulation_start(double date,
         _decision->add_call_me_later(batsched_tools::MTBF,1,number+date,date);
     }
 }      
-        
+void FCFSFast2::on_simulation_end(double date){
+    (void) date;
+}
     
  void FCFSFast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
     LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
