@@ -213,7 +213,7 @@ void FCFSFast2::on_machine_instant_down_up(double date){
         for(auto key_value : _current_allocations)   
 	{
 		if (!((key_value.second & machine).is_empty())){
-                	_my_kill_jobs.insert(key_value.first);
+                	_my_kill_jobs.push_back((*_workload)[key_value.first]);
 	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
             	}
 	}
@@ -362,7 +362,7 @@ void FCFSFast2::make_decisions(double date,
                 _nb_available_machines += finished_job->nb_requested_resources;
                 _current_allocations.erase(ended_job_id);
                 _running_jobs.erase(ended_job_id);
-                _my_kill_jobs.erase(ended_job_id);
+                _my_kill_jobs.remove(ended_job_id);
         }
     }
     
@@ -373,8 +373,8 @@ void FCFSFast2::make_decisions(double date,
    
     if(!_my_kill_jobs.empty()){
          std::vector<std::string> kills;
-        for( std::string kill:_my_kill_jobs)
-            kills.push_back(kill);
+        for( Job* kill:_my_kill_jobs)
+            kills.push_back(kill.id);
         _decision->add_kill_job(kills,date);
         _my_kill_jobs.clear();
     }
