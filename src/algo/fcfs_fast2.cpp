@@ -41,7 +41,7 @@ void FCFSFast2::on_simulation_start(double date,
 {
     bool seedFailures = false;
     bool logBLog = false;
-    auto batsim_config = batsim_event_data["config"];
+    const rapidjson::Value & batsim_config = batsim_event_data["config"];
     if (batsim_config.HasMember("share-packing"))
         _share_packing = batsim_config["share-packing"].GetBool();
 
