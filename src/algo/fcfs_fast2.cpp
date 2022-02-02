@@ -388,7 +388,7 @@ void FCFSFast2::make_decisions(double date,
     
     
     
-    if (!(_machines_that_became_available_recently.is_empty()) && !(_pending_jobs.is_empty()))
+    if (!(_machines_that_became_available_recently.is_empty()) && !(_pending_jobs.empty()))
     {
         for (auto job_it = _pending_jobs.begin();
              job_it != _pending_jobs.end(); )
@@ -444,7 +444,7 @@ void FCFSFast2::make_decisions(double date,
             {
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
-                _decision->add_execute_job(pending_job->id,
+                _decision->add_execute_job(PARALLEL,pending_job->id,
                     machines, date);
                 
 
@@ -523,7 +523,7 @@ void FCFSFast2::make_decisions(double date,
             {
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
-                _decision->add_execute_job(pending_job->id,
+                _decision->add_execute_job(PARALLEL,pending_job->id,
                     machines, date);
                 
 
@@ -621,7 +621,7 @@ void FCFSFast2::make_decisions(double date,
             {
                 IntervalSet machines = _available_machines.left(
                     new_job->nb_requested_resources);
-                _decision->add_execute_job(new_job->id,
+                _decision->add_execute_job(PARALLEL,new_job->id,
                         machines, date);
                 
 
