@@ -189,7 +189,7 @@ void FCFSFast2::on_machine_down_for_repair(double date){
             for(auto key_value : _current_allocations)
             {
                 if (!((key_value.second & machine).is_empty())){
-                    _my_kill_jobs.insert(key_value.first);
+                    _my_kill_jobs.push_back((*_workload)[key_value.first]);
                     BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
                 }
             }
