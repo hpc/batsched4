@@ -362,7 +362,7 @@ void FCFSFast2::make_decisions(double date,
                 _nb_available_machines += finished_job->nb_requested_resources;
                 _current_allocations.erase(ended_job_id);
                 _running_jobs.erase(ended_job_id);
-                _my_kill_jobs.remove(ended_job_id);
+                _my_kill_jobs.remove((*_workload)[ended_job_id]);
         }
     }
     
