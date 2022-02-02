@@ -153,7 +153,7 @@ void FCFSFast2::on_machine_state_changed(double date, IntervalSet machines, int 
 void FCFSFast2::on_myKillJob_notify_event(double date){
     
     if (!_running_jobs.empty()){
-        _my_kill_jobs.insert((*workload)[*_running_jobs.begin()]);
+        _my_kill_jobs.insert((*_workload)[*_running_jobs.begin()]);
     }
         
     
