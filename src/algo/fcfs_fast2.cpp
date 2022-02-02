@@ -473,7 +473,7 @@ void FCFSFast2::make_decisions(double date,
              job_it != _pending_jobs.end(); )
         {
             Job * pending_job = *job_it;
-            std:string pending_job_id = pending_job->id;
+            std::string pending_job_id = pending_job->id;
             if (_share_packing && pending_job->nb_requested_resources==1)
             {
                  bool found = false;
