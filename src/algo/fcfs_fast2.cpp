@@ -394,7 +394,7 @@ void FCFSFast2::make_decisions(double date,
              job_it != _pending_jobs.end(); )
         {
             Job * pending_job = *job_it;
-            std:string pending_job_id = pending_job->id;
+            std::string pending_job_id = pending_job->id;
             if (_share_packing && pending_job->nb_requested_resources==1)
             {
                  bool found = false;
@@ -408,7 +408,7 @@ void FCFSFast2::make_decisions(double date,
                             //it is able to handle another job, execute a job on it and subtract from cores_available
                             IntervalSet machines = *it;
                             
-                            _decision->add_execute_job(PARALLEL,new_job_id,machines,date,mapping);
+                            _decision->add_execute_job(PARALLEL,pending_job_id,machines,date,mapping);
                             //update data structures
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id] = machines;
