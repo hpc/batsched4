@@ -394,7 +394,7 @@ void FCFSFast2::make_decisions(double date,
              job_it != _pending_jobs.end(); )
         {
             Job * pending_job = *job_it;
-            std:string pending_job_id = pending_job->id.job_name();
+            std:string pending_job_id = pending_job->id;
             if (_share_packing && pending_job->nb_requested_resources==1)
             {
                  bool found = false;
@@ -444,7 +444,7 @@ void FCFSFast2::make_decisions(double date,
             {
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
-                _decision->add_execute_job(pending_job->id.job_name(),
+                _decision->add_execute_job(pending_job->id,
                     machines, date);
                 
 
@@ -453,7 +453,7 @@ void FCFSFast2::make_decisions(double date,
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id] = machines;
                 job_it = _pending_jobs.erase(job_it);
-                _running_jobs.insert(pending_job->id.job_name());
+                _running_jobs.insert(pending_job->id);
                 
             }
             else
@@ -473,7 +473,7 @@ void FCFSFast2::make_decisions(double date,
              job_it != _pending_jobs.end(); )
         {
             Job * pending_job = *job_it;
-            std:string pending_job_id = pending_job->id.job_name();
+            std:string pending_job_id = pending_job->id;
             if (_share_packing && pending_job->nb_requested_resources==1)
             {
                  bool found = false;
@@ -523,7 +523,7 @@ void FCFSFast2::make_decisions(double date,
             {
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
-                _decision->add_execute_job(pending_job->id.job_name(),
+                _decision->add_execute_job(pending_job->id,
                     machines, date);
                 
 
@@ -532,7 +532,7 @@ void FCFSFast2::make_decisions(double date,
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id] = machines;
                 job_it = _pending_jobs.erase(job_it);
-                _running_jobs.insert(pending_job->id.job_name());
+                _running_jobs.insert(pending_job->id);
                 
             }
             else
@@ -621,7 +621,7 @@ void FCFSFast2::make_decisions(double date,
             {
                 IntervalSet machines = _available_machines.left(
                     new_job->nb_requested_resources);
-                _decision->add_execute_job(new_job->id.job_name(),
+                _decision->add_execute_job(new_job->id,
                         machines, date);
                 
 
@@ -629,7 +629,7 @@ void FCFSFast2::make_decisions(double date,
                 _available_machines -= machines;
                 _nb_available_machines -= new_job->nb_requested_resources;
                  _current_allocations[new_job_id] = machines;
-                _running_jobs.insert(new_job->id.job_name());
+                _running_jobs.insert(new_job->id);
             }
             
             else
