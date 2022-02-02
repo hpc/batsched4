@@ -408,7 +408,7 @@ void FCFSFast2::make_decisions(double date,
                             //it is able to handle another job, execute a job on it and subtract from cores_available
                             IntervalSet machines = *it;
                             
-                            _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+                            _decision->add_execute_job(PARALLEL,new_job_id,machines,date,mapping);
                             //update data structures
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id] = machines;
@@ -426,7 +426,7 @@ void FCFSFast2::make_decisions(double date,
                     //first get a machine
                     IntervalSet machines = _available_machines.left(1);
                     
-                    _decision->add_execute_job(SEQUENTIAL,pending_job_id,machines,date,mapping);
+                    _decision->add_execute_job(PARALLEL,pending_job_id,machines,date,mapping);
 
                     //update data structures
                     machine* current_machine = machines_by_int[machines[0]];
@@ -487,7 +487,7 @@ void FCFSFast2::make_decisions(double date,
                             //it is able to handle another job, execute a job on it and subtract from cores_available
                             IntervalSet machines = *it;
                             
-                            _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+                            _decision->add_execute_job(PARALLEL,pending_job_id,machines,date,mapping);
                             //update data structures
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id] = machines;
@@ -505,7 +505,7 @@ void FCFSFast2::make_decisions(double date,
                     //first get a machine
                     IntervalSet machines = _available_machines.left(1);
                     
-                    _decision->add_execute_job(SEQUENTIAL,pending_job_id,machines,date,mapping);
+                    _decision->add_execute_job(PARALLEL,pending_job_id,machines,date,mapping);
 
                     //update data structures
                     machine* current_machine = machines_by_int[machines[0]];
@@ -587,7 +587,7 @@ void FCFSFast2::make_decisions(double date,
                             //it is able to handle another job, execute a job on it and subtract from cores_available
                             IntervalSet machines = *it;
                             
-                            _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+                            _decision->add_execute_job(PARALLEL,new_job_id,machines,date,mapping);
                             //update data structures
                             current_machine->cores_available -=1;
                             _current_allocations[new_job_id] = machines;
@@ -604,7 +604,7 @@ void FCFSFast2::make_decisions(double date,
                     //first get a machine
                     IntervalSet machines = _available_machines.left(1);
                     
-                    _decision->add_execute_job(SEQUENTIAL,new_job_id,machines,date,mapping);
+                    _decision->add_execute_job(PARALLEL,new_job_id,machines,date,mapping);
 
                     //update data structures
                     machine* current_machine = machines_by_int[machines[0]];
