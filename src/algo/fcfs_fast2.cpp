@@ -484,6 +484,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
             std::string pending_job_id = pending_job->id;
             if (_share_packing && pending_job->nb_requested_resources==1)
             {
+                LOG_F(INFO,"Line 487 fcfs_fast2.cpp");
                  bool found = false;
                 //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                 for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
@@ -502,6 +503,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                             _running_jobs.insert(pending_job_id);
                             _pending_jobs.erase(job_it);
                             found = true;
+                            LOG_F(INFO,"Line 506  fcfs_fast2.cpp");
                     }
                     if (found == true)
                         break; 
@@ -509,7 +511,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                 // there were no available core machines to put it on, try to put on a new core machine
                 if (found == false && _nb_available_machines > 0)
                 {
-                    
+                    LOG_F(INFO,"Line 514  fcfs_fast2.cpp");
                     //first get a machine
                     IntervalSet machines = _available_machines.left(1);
                     
@@ -524,11 +526,13 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                     _current_allocations[pending_job_id] = machines;
                     _running_jobs.insert(pending_job_id);
                     _pending_jobs.erase(job_it);
+                    LOG_F(INFO,"Line 529  fcfs_fast2.cpp");
 
                 } 
             }
             else if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
+                LOG_F(INFO,"Line 535  fcfs_fast2.cpp"); 
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
                 _decision->add_execute_job(PARALLEL,pending_job->id,
@@ -541,7 +545,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                  _current_allocations[pending_job_id] = machines;
                 job_it = _pending_jobs.erase(job_it);
                 _running_jobs.insert(pending_job->id);
-                
+                LOG_F(INFO,"Line 548  fcfs_fast2.cpp");
             }
             else
             {
