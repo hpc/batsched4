@@ -618,7 +618,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
         }
 
         bool requested_callback_only = requested_callback_received && (events_array.Size() == 1);
-
+        LOG_F(INFO,"line 621 main.cpp");
         // make_decisions is not called if (!call_make_decisions_on_single_nop && single_nop_received)
         if (!(!call_make_decisions_on_single_nop && requested_callback_only))
         {
@@ -626,10 +626,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             algo->make_decisions(message_date, &update_info, nullptr);
             algo->clear_recent_data_structures();
         }
-
+        LOG_F(INFO,"line 629 main.cpp");
         message_date = max(message_date, d.last_date());
-
+        LOG_F(INFO,"line 631 main.cpp");
         const string & message_to_send = d.content(message_date);
+        LOG_F(INFO,"line 633 main.cpp");
         n.write(message_to_send);
     }
 }
