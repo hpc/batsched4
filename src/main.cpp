@@ -483,13 +483,13 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "JOB_COMPLETED")
             {
-                LOG_F("line 486 main.cpp");
+                LOG_F(INFO,"line 486 main.cpp");
                 string job_id = event_data["job_id"].GetString();
-                LOG_F("line 488 main.cpp");
+                LOG_F(INFO,"line 488 main.cpp");
                 workload[job_id]->completion_time = current_date;
-                LOG_F("line 490 main.cpp");
+                LOG_F(INFO,"line 490 main.cpp");
                 algo->on_job_end(current_date, {job_id});
-                LOG_F("line 492 main.cpp");
+                LOG_F(INFO,"line 492 main.cpp");
             }
             else if (event_type == "RESOURCE_STATE_CHANGED")
             {
