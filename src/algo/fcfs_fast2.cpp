@@ -319,6 +319,7 @@ void FCFSFast2::make_decisions(double date,
     SortableJobOrder::UpdateInformation *update_info,
     SortableJobOrder::CompareInformation *compare_info)
 {
+   LOG_F(INFO,"Line 322   fcfs_fast2.cpp");
     (void) update_info;
     (void) compare_info;
     std::vector<int> mapping = {0};
@@ -336,7 +337,7 @@ void FCFSFast2::make_decisions(double date,
 
     
 
-
+LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
     //*****************************************************************
     // Handle newly finished jobs
     //*****************************************************************
@@ -375,7 +376,7 @@ void FCFSFast2::make_decisions(double date,
     
 
     
-    
+    LOG_F(INFO,"Line 379  fcfs_fast2.cpp");
     //Handle new jobs to kill
    
     if(!_my_kill_jobs.empty()){
@@ -393,7 +394,7 @@ void FCFSFast2::make_decisions(double date,
     
     
     
-    
+    LOG_F(INFO,"Line 397  fcfs_fast2.cpp");
     
     if (!(_machines_that_became_available_recently.is_empty()) && !(_pending_jobs.empty()))
     {
@@ -472,7 +473,7 @@ void FCFSFast2::make_decisions(double date,
         }
     }
     
-
+LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
     // If jobs have finished, execute jobs as long as they fit
     if (job_ended)
     {
@@ -550,7 +551,7 @@ void FCFSFast2::make_decisions(double date,
             }
         }
     }
-
+    LOG_F(INFO,"Line 554  fcfs_fast2.cpp");
     // Handle newly released jobs
     for (const std::string & new_job_id : _jobs_released_recently)
     {
@@ -646,6 +647,7 @@ void FCFSFast2::make_decisions(double date,
             }
         }
     }
+    LOG_F(INFO,"Line 650  fcfs_fast2.cpp");
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
     {
         
