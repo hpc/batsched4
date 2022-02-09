@@ -484,6 +484,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
             Job * pending_job = *job_it;
             LOG_F(INFO,"Line 485  fcfs_fast2.cpp");
             LOG_F(INFO,"Line 486 pending job %p",static_cast<void *>(pending_job));
+            LOG_F(INFO,"Line 487 pending job %d ",pending_job->nb_requested_resources);
             std::string pending_job_id = pending_job->id;
             LOG_F(INFO,"Line 487  fcfs_fast2.cpp");
             if (_share_packing && pending_job->nb_requested_resources==1)
