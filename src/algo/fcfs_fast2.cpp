@@ -264,11 +264,6 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
                         break;
             case batsched_tools::FIXED_FAILURE:
                         {
-                            if (true)
-                            {
-                                IntervalSet s=2;
-                                _decision->add_set_resource_state(s,8,date);
-                            }
                             BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
@@ -658,7 +653,11 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                     _running_jobs.insert(new_job_id);
 
                 } 
-            }
+                else{ // there was no machine available...queue it up
+                    _pending_jobs.push_back(new_job);
+                }
+
+            } // do things normally, we don't have share-packing or job isn't 1 resource
             else if (new_job->nb_requested_resources <= _nb_available_machines)
             {
                 IntervalSet machines = _available_machines.left(
