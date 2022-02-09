@@ -402,7 +402,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             const std::string event_type = event_object["type"].GetString();
             current_date = event_object["timestamp"].GetDouble();
             const r::Value & event_data = event_object["data"];
-            LOF_F(INFO,"Line 405 main.cpp");
+            LOG_F(INFO,"Line 405 main.cpp");
             if (event_type == "SIMULATION_BEGINS")
             {
                 int nb_resources;
