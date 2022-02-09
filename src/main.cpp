@@ -368,30 +368,32 @@ int main(int argc, char ** argv)
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
          Workload & workload, bool call_make_decisions_on_single_nop)
 {
+    LOG_F(INFO,"line 371 main.cpp");
     bool simulation_finished = false;
     myB::Workloads myWorkloads;
     // Redis creation
     RedisStorage redis;
     bool redis_enabled = false;
     algo->set_redis(&redis);
-
+    LOG_F(INFO,"line 378 main.cpp");
     while (!simulation_finished)
     {
+        LOG_F(INFO,"line 381 main.cpp");
         string received_message;
         n.read(received_message);
-
+        LOG_F(INFO,"line 384 main.cpp");
         if (boost::trim_copy(received_message).empty())
             throw runtime_error("Empty message received (connection lost ?)");
 
         d.clear();
-
+        LOG_F(INFO,"line 389 main.cpp");
         r::Document doc;
         doc.Parse(received_message.c_str());
 
         double message_date = doc["now"].GetDouble();
         double current_date = message_date;
         bool requested_callback_received = false;
-
+        LOG_F(INFO,"line 396 main.cpp");
         // Let's handle all received events
         const r::Value & events_array = doc["events"];
 
