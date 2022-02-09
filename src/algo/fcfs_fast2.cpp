@@ -533,6 +533,8 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                     LOG_F(INFO,"Line 533  fcfs_fast2.cpp");
                     _running_jobs.insert(pending_job_id);
                     LOG_F(INFO,"Line 535  fcfs_fast2.cpp");
+                    LOG_F(INFO,"Line 536  fcfs_fast2.cpp pending_job: %p",static_cast<void *>(*job_it));
+                    LOG_F(INFO,"Line   fcfs_fast2.cpp pending_job_id: %s",pending_job->id.c_str());
                     _pending_jobs.erase(job_it);
                     LOG_F(INFO,"Line 537  fcfs_fast2.cpp");
 
