@@ -397,11 +397,12 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 
         for (unsigned int event_i = 0; event_i < events_array.Size(); ++event_i)
         {
+            LOG_F(INFO,"Line 400 main.cpp");
             const r::Value & event_object = events_array[event_i];
             const std::string event_type = event_object["type"].GetString();
             current_date = event_object["timestamp"].GetDouble();
             const r::Value & event_data = event_object["data"];
-
+            LOF_F(INFO,"Line 405 main.cpp");
             if (event_type == "SIMULATION_BEGINS")
             {
                 int nb_resources;
