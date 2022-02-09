@@ -519,7 +519,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                     LOG_F(INFO,"Line 519  fcfs_fast2.cpp");
                     //first get a machine
                     IntervalSet machines = _available_machines.left(1);
-                    
+                    LOG_F(INFO,"Line 522  fcfs_fast2.cpp");
                     _decision->add_execute_job(PARALLEL,pending_job_id,machines,date,mapping);
 
                     //update data structures
@@ -528,16 +528,19 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                     _available_core_machines += machines;
                     _available_machines -= machines;
                     _nb_available_machines -= 1;
+                    LOG_F(INFO,"Line 531  fcfs_fast2.cpp");
                     _current_allocations[pending_job_id] = machines;
+                    LOG_F(INFO,"Line 533  fcfs_fast2.cpp");
                     _running_jobs.insert(pending_job_id);
+                    LOG_F(INFO,"Line 535  fcfs_fast2.cpp");
                     _pending_jobs.erase(job_it);
-                    LOG_F(INFO,"Line 534  fcfs_fast2.cpp");
+                    LOG_F(INFO,"Line 537  fcfs_fast2.cpp");
 
                 } 
             }
             else if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
-                LOG_F(INFO,"Line 535  fcfs_fast2.cpp"); 
+                LOG_F(INFO,"Line 543  fcfs_fast2.cpp"); 
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
                 _decision->add_execute_job(PARALLEL,pending_job->id,
@@ -550,7 +553,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                  _current_allocations[pending_job_id] = machines;
                 job_it = _pending_jobs.erase(job_it);
                 _running_jobs.insert(pending_job->id);
-                LOG_F(INFO,"Line 548  fcfs_fast2.cpp");
+                LOG_F(INFO,"Line 556  fcfs_fast2.cpp");
             }
             else
             {
@@ -559,9 +562,9 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                 break;
             }
         }
-        LOG_F(INFO,"Line 560  fcfs_fast2.cpp");
+        LOG_F(INFO,"Line 566  fcfs_fast2.cpp");
     }
-    LOG_F(INFO,"Line 554  fcfs_fast2.cpp");
+    LOG_F(INFO,"Line 567  fcfs_fast2.cpp");
     // Handle newly released jobs
     for (const std::string & new_job_id : _jobs_released_recently)
     {
@@ -582,10 +585,11 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
             // submitted job is a resubmitted one, put at front of pending jobs
            if (new_job_id.find("#")!=std::string::npos)
                _pending_jobs.push_front(new_job);
-            else
-            // Yes. The new job is queued up.
-            LOG_F(INFO,"Line 587  fcfs_fast2.cpp  new_job: %p  new_job_id: %s",static_cast<void *>(new_job),new_job_id.c_str());
-            _pending_jobs.push_back(new_job);
+            else{
+                // Yes. The new job is queued up.
+                LOG_F(INFO,"Line 590  fcfs_fast2.cpp  new_job: %p  new_job_id: %s",static_cast<void *>(new_job),new_job_id.c_str());
+                _pending_jobs.push_back(new_job);
+            }
         }
         else
         {
