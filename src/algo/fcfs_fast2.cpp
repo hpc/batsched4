@@ -398,8 +398,9 @@ LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
     
     if (!(_machines_that_became_available_recently.is_empty()) && !(_pending_jobs.empty()))
     {
-        for (auto job_it = _pending_jobs.begin();
-             job_it != _pending_jobs.end(); job_it++ )
+        std::list<Job *>::iterator job_it =_pending_jobs.begin();
+        bool erased = false;
+        while(job_it!=_pending_jobs.end())
         {
             Job * pending_job = *job_it;
             std::string pending_job_id = pending_job->id;
@@ -421,7 +422,8 @@ LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id] = machines;
                             _running_jobs.insert(pending_job_id);
-                            _pending_jobs.erase(job_it);
+                            job_it = _pending_jobs.erase(job_it);
+                            erased = true;
                             found = true;
                     }
                     if (found == true)
@@ -444,7 +446,8 @@ LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
                     _nb_available_machines -= 1;
                     _current_allocations[pending_job_id] = machines;
                     _running_jobs.insert(pending_job_id);
-                    _pending_jobs.erase(job_it);
+                    job_it = _pending_jobs.erase(job_it);
+                    erased = true;
 
                 } 
             }
@@ -460,7 +463,8 @@ LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id] = machines;
-                _pending_jobs.erase(job_it);
+                job_it = _pending_jobs.erase(job_it);
+                erased = true;
                 _running_jobs.insert(pending_job->id);
                 
             }
@@ -470,16 +474,21 @@ LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
                 // As there is no backfilling, we can simply leave this loop.
                 break;
             }
+            if (!erased)
+                job_it++;
+            else
+                erased = false;
         }
     }
     
 LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
     // If jobs have finished, execute jobs as long as they fit
-    std::list<Job *>::iterator job_it;
+    std::list<Job *>::iterator job_it =_pending_jobs.begin();
     if (job_ended)
     {
-        for (job_it = _pending_jobs.begin();
-             job_it != _pending_jobs.end(); job_it++)
+        bool erased = false;
+        while(job_it!=_pending_jobs.end())
+            
         {
             LOG_F(INFO,"Line 483  fcfs_fast2.cpp");
             Job * pending_job = *job_it;
@@ -508,7 +517,8 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id] = machines;
                             _running_jobs.insert(pending_job_id);
-                            _pending_jobs.erase(job_it);
+                            job_it = _pending_jobs.erase(job_it);
+                            erased = true;
                             found = true;
                             LOG_F(INFO,"Line 511  fcfs_fast2.cpp");
                     }
@@ -537,7 +547,8 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                     LOG_F(INFO,"Line 535  fcfs_fast2.cpp");
                     LOG_F(INFO,"Line 536  fcfs_fast2.cpp pending_job: %p",static_cast<void *>(*job_it));
                     LOG_F(INFO,"Line   fcfs_fast2.cpp pending_job_id: %s",pending_job->id.c_str());
-                    _pending_jobs.erase(job_it);
+                    job_it = _pending_jobs.erase(job_it);
+                    erased = true;
                     LOG_F(INFO,"Line 537  fcfs_fast2.cpp");
 
                 } 
@@ -555,7 +566,8 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id] = machines;
-                _pending_jobs.erase(job_it);
+                job_it = _pending_jobs.erase(job_it);
+                erased = true;
                 _running_jobs.insert(pending_job->id);
                 LOG_F(INFO,"Line 556  fcfs_fast2.cpp");
             }
@@ -565,6 +577,10 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                 // As there is no backfilling, we can simply leave this loop.
                 break;
             }
+            if (!erased)
+                job_it++;
+            else
+                erased = false;
         }
         LOG_F(INFO,"Line 566  fcfs_fast2.cpp");
     }
