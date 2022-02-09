@@ -460,7 +460,7 @@ LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id] = machines;
-                job_it = _pending_jobs.erase(job_it);
+                _pending_jobs.erase(job_it);
                 _running_jobs.insert(pending_job->id);
                 
             }
@@ -475,9 +475,10 @@ LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
     
 LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
     // If jobs have finished, execute jobs as long as they fit
+    std::list<Job *>::iterator job_it;
     if (job_ended)
     {
-        for (auto job_it = _pending_jobs.begin();
+        for (job_it = _pending_jobs.begin();
              job_it != _pending_jobs.end(); job_it++)
         {
             LOG_F(INFO,"Line 483  fcfs_fast2.cpp");
@@ -554,7 +555,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id] = machines;
-                job_it = _pending_jobs.erase(job_it);
+                _pending_jobs.erase(job_it);
                 _running_jobs.insert(pending_job->id);
                 LOG_F(INFO,"Line 556  fcfs_fast2.cpp");
             }
