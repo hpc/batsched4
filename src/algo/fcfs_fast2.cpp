@@ -653,7 +653,7 @@ LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
                     _running_jobs.insert(new_job_id);
 
                 } 
-                else{ // there was no machine available...queue it up
+                else if (found == false){ // there was no machine available...queue it up
                     _pending_jobs.push_back(new_job);
                 }
 
