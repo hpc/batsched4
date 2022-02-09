@@ -596,6 +596,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     
                     std::string json_desc = event_data["metadata"].GetString();
                     LOG_F(INFO,"batsim_meta: %s",json_desc.c_str());
+                    LOG_F(INFO,"line 599 main.cpp");
                 }
                 else if (notify_type == "test")
                 {
@@ -611,6 +612,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             {
                 throw runtime_error("Unknown event received. Type = " + event_type);
             }
+            LOG_F(INFO,"line 615 main.cpp");
         }
 
         bool requested_callback_only = requested_callback_received && (events_array.Size() == 1);
