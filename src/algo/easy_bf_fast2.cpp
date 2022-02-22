@@ -801,6 +801,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     point.nb_released_machines = pending_job->nb_requested_resources;
                     point.date = date + (double)pending_job->walltime;
                     point.machines = alloc.machines;
+                    LOG_F(INFO,"line 804");
                     alloc.horizon_it = insert_horizon_point(point);
 
                     // Update data structures
