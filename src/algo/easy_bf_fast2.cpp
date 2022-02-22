@@ -402,6 +402,7 @@ std::string easy_bf_fast2::to_json_desc(rapidjson::Document * doc)
 
 bool easy_bf_fast2::handle_newly_finished_jobs()
 {
+   LOG_F(INFO,"line 405");
    std::vector<int> mapping = {0};
     bool job_ended = false;
     for (const std::string & ended_job_id : _jobs_ended_recently)
@@ -438,6 +439,7 @@ bool easy_bf_fast2::handle_newly_finished_jobs()
                 _horizons.erase(alloc.horizon_it);
         }
     }
+    LOG_F(INFO,"line 442");
     return job_ended;
 }
 
