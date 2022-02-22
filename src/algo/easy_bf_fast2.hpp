@@ -125,8 +125,8 @@ private:
     std::unordered_map<std::string, Allocation> _current_allocations;
     std::list<FinishedHorizonPoint> _horizons;
     Job * _priority_job = nullptr;
-
-
+    int _p_counter = 0; //pending jobs erased counter
+    int _e_counter = 0; //execute job counter
     b_log *_myBLOG;
 
 };

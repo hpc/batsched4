@@ -374,6 +374,7 @@ void easy_bf_fast2::make_decisions(double date,
         _need_to_send_finished_submitting_jobs = false;
     }
     */
+   LOG_F(INFO,"_e_counter %d _p_counter %d",_e_counter,_p_counter);
     if (_jobs_killed_recently.empty() && _pending_jobs.empty() && _running_jobs.empty() &&
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
     {
@@ -532,6 +533,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 {
                     //yes it can be executed right away
                     _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
+                    _e_counter+=1;
                     executed = true;
                     //update data structures
                     machine* current_machine = machines_by_int[alloc.machines[0]];
@@ -555,6 +557,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     alloc.machines = _available_machines.left(1);
                    
                     _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
+                    _e_counter+=1;
                     executed = true;
                     
                     point.nb_released_machines = _priority_job->nb_requested_resources;
@@ -583,7 +586,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _priority_job->nb_requested_resources);
                 _decision->add_execute_job(PARALLEL,_priority_job->id, alloc.machines,
                     date);
-
+                _e_counter+=1;
                 point.nb_released_machines = _priority_job->nb_requested_resources;
                 point.date = date + (double)_priority_job->walltime;
                 point.machines = alloc.machines;
@@ -622,6 +625,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             alloc.machines = *it;
                             
                             _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                            _e_counter+=1;
                             point.nb_released_machines = pending_job->nb_requested_resources;
                             point.date = date + (double)pending_job->walltime;
                             point.machines = alloc.machines;
@@ -632,6 +636,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             _current_allocations[pending_job_id] = alloc;
                             _running_jobs.insert(pending_job_id);
                             job_it = _pending_jobs.erase(job_it);
+                            _p_counter+=1;
                             erased = true;
                             found = true;
                                 
@@ -648,6 +653,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         alloc.machines = _available_machines.left(1);
                       
                         _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                        _e_counter+=1;
                         point.nb_released_machines = pending_job->nb_requested_resources;
                         point.date = date + (double)pending_job->walltime;
                         point.machines = alloc.machines;
@@ -664,6 +670,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         _running_jobs.insert(pending_job_id);
                         
                         job_it = _pending_jobs.erase(job_it);
+                        _p_counter+=1;
                         erased = true;
                     }
                         
@@ -677,6 +684,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         pending_job->nb_requested_resources);
                     _decision->add_execute_job(PARALLEL,pending_job->id,
                         alloc.machines, date);
+                    _e_counter+=1;
                     point.nb_released_machines = pending_job->nb_requested_resources;
                     point.date = date + (double)pending_job->walltime;
                     point.machines = alloc.machines;
@@ -688,6 +696,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _nb_available_machines -= pending_job->nb_requested_resources;
                     _current_allocations[pending_job_id] = alloc;
                     job_it = _pending_jobs.erase(job_it);
+                    _p_counter+=1;
                     erased = true;
                     _running_jobs.insert(pending_job->id);
                    
@@ -699,6 +708,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
                     //LOG_F(INFO,"line 699");
                     job_it = _pending_jobs.erase(job_it);
+                    _p_counter+=1;
                     //LOG_F(INFO,"line 701");
                     // Stop first queue traversal.
                     break;
@@ -741,7 +751,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 
                                 _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
                                 execute = true;
-                                
+                                _e_counter+=1;
                                 point.nb_released_machines = pending_job->nb_requested_resources;
                                 point.date = date + (double)pending_job->walltime;
                                 point.machines = alloc.machines;
@@ -752,6 +762,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 _current_allocations[pending_job_id] = alloc;
                                 _running_jobs.insert(pending_job_id);
                                 job_it = _pending_jobs.erase(job_it);
+                                _p_counter+=1;
                                 erased = true;
                                 
                                 
@@ -770,6 +781,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             alloc.machines = _available_machines.left(1);
                         
                             _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                            _e_counter+=1;
                             execute=true;
                             point.nb_released_machines = pending_job->nb_requested_resources;
                             point.date = date + (double)pending_job->walltime;
@@ -787,6 +799,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             _running_jobs.insert(pending_job_id);
                             
                             job_it = _pending_jobs.erase(job_it);
+                            _p_counter+=1;
                             erased = true;
                         }
                     }
@@ -800,6 +813,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         pending_job->nb_requested_resources);
                     _decision->add_execute_job(PARALLEL,pending_job->id,
                         alloc.machines, date);
+                    _e_counter+=1;
                     execute = true;
                     point.nb_released_machines = pending_job->nb_requested_resources;
                     point.date = date + (double)pending_job->walltime;
@@ -814,6 +828,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     //LOG_F(INFO,"line 811");
                     _running_jobs.insert(pending_job_id);
                     job_it = _pending_jobs.erase(job_it);
+                    _p_counter+=1;
                     //LOG_F(INFO,"line 814");
                     erased = true;
                 }
@@ -835,6 +850,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
 void easy_bf_fast2::handle_newly_released_jobs(double date)
 {
     int counter = 0;
+    int pending = 0;
     std::vector<int> mapping = {0};
     // Handle newly released jobs
     for (const std::string & new_job_id : _jobs_released_recently)
@@ -878,7 +894,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                 {
                     //yes it can be executed right away
                     _decision->add_execute_job(PARALLEL,new_job_id,alloc.machines,date,mapping);
-                    counter+=1;
+                    _e_counter+=1;
                     executed = true;
                     //update data structures
                     FinishedHorizonPoint point;
@@ -905,7 +921,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                     //first get a machine
                     alloc.machines = _available_machines.left(1);
                     _decision->add_execute_job(PARALLEL,new_job_id,alloc.machines,date,mapping);
-                    counter+=1;
+                    _e_counter+=1;
                     executed = true;
                     FinishedHorizonPoint point;
                     point.nb_released_machines = new_job->nb_requested_resources;
@@ -940,7 +956,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                 alloc.machines = _available_machines.left(
                     new_job->nb_requested_resources);
                 _decision->add_execute_job(PARALLEL,new_job_id, alloc.machines, date);
-                counter+=1;
+                _e_counter+=1;
                 executed = true;
 
                 FinishedHorizonPoint point;
@@ -962,7 +978,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
             {
                 _priority_job = new_job;
                 _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
-                counter+=1;
+                
             }
             // submitted job is a resubmitted one, put at front of pending jobs
             else if(new_job_id.find("#")!=std::string::npos)
@@ -970,10 +986,10 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                 
             else
                 _pending_jobs.push_back(new_job);
-                counter+=1;
+                
         }
     }//end released jobs loop
-    LOG_F(INFO,"counter = %d",counter);
+    
 }
 
         
