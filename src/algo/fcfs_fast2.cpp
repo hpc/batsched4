@@ -227,7 +227,7 @@ void FCFSFast2::on_job_fault_notify_event(double date, std::string job){
   if ( found != _running_jobs.end() )    
         _decision->add_kill_job({job},date);
   else
-      //LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
+      LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
 }
 
 void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
