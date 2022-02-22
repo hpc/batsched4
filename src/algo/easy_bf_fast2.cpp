@@ -696,7 +696,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     erased = false;
             }
             //now let's backfill jobs that don't hinder priority job
-           bool erased = false;
+           erased = false;
             while(job_it!=_pending_jobs.end())
             {
                 bool execute = false;
@@ -732,7 +732,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 
                                 //update data structures
                                 current_machine->cores_available -=1;
-                                _current_allocations[pending_job_id] = alloc
+                                _current_allocations[pending_job_id] = alloc;
                                 _running_jobs.insert(pending_job_id);
                                 job_it = _pending_jobs.erase(job_it);
                                 erased = true;
@@ -864,7 +864,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                     point.machines = alloc.machines;
                     alloc.horizon_it = insert_horizon_point(point);
 
-                    
+                    machine * current_machine = machines_by_int[alloc.machines[0]];
                     current_machine->cores_available -=1;
                     _current_allocations[pending_job_id] = alloc;
                     _running_jobs.insert(pending_job_id);
@@ -915,7 +915,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
             {
                 alloc.machines = _available_machines.left(
                     new_job->nb_requested_resources);
-                _decision->add_execute_job(new_job_id, alloc.machines, date);
+                _decision->add_execute_job(PARALLEL,new_job_id, alloc.machines, date);
                 executed = true;
 
                 FinishedHorizonPoint point;
@@ -1287,7 +1287,7 @@ double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
         for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
             {
                 machine* current_machine = machines_by_int[*it];
-                machine_copy* a_machine = new machine();
+                machine* a_machine = new machine();
                 //all we need to copy are cores_available and core_count
                 a_machine->cores_available = current_machine->cores_available;
                 a_machine->core_count = current_machine->core_count;
@@ -1309,7 +1309,7 @@ double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
             //ok that isn't all we needed, let's keep track of these released cores on each machine
             int machine_number = it->machines[0];
             machine * current_machine = machines_by_int_copy[machine_number];
-            current_machine->cores_available +=1
+            current_machine->cores_available +=1;
             //ok so we added a core to the released machine
             //does this bring a whole machine available?
             if (current_machine->cores_available == int(current_machine->core_count * _core_percent))
