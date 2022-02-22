@@ -23,7 +23,7 @@ FCFSFast2::FCFSFast2(Workload *workload,
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay,
         variant_options)
 {
-    LOG_F(DEBUG,"created 4");
+    //LOG_F(INFO,"created 4");
     _myWorkloads = new myBatsched::Workloads;
     //batsim log object.  declared in batsched_tools.hpp
     _myBLOG = new b_log();
@@ -69,7 +69,7 @@ void FCFSFast2::on_simulation_start(double date,
     generator2.seed(seed);
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     _nb_available_machines = _nb_machines;
-    LOG_F(DEBUG,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
+    //LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
     const rapidjson::Value& resources = batsim_event_data["compute_resources"];
     for ( auto & itr : resources.GetArray())
@@ -88,7 +88,7 @@ void FCFSFast2::on_simulation_start(double date,
             a_machine->name = (itr)["name"].GetString();
         machines_by_int[a_machine->id] = a_machine;
         machines_by_name[a_machine->name] = a_machine;
-        LOG_F(DEBUG,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
+        //LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
    }
      _oldDate=date;
      if (_myWorkloads->_fixed_failures != -1.0)
@@ -124,7 +124,7 @@ void FCFSFast2::on_simulation_end(double date){
 }
     
  void FCFSFast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
-    LOG_F(DEBUG,"unavailable %s",machines.to_string_hyphen().c_str());
+    //LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
     _unavailable_machines+=machines;
     _available_machines-=machines;
     for(auto key_value : _current_allocations)
@@ -169,7 +169,7 @@ void FCFSFast2::on_machine_down_for_repair(double date){
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     //if the machine is already down for repairs ignore it.
-    LOG_F(DEBUG,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
+    //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
     BLOG_F(b_log::FAILURES,"Machine Repair: %d",number);
     if ((machine & _repair_machines).is_empty())
     {
@@ -181,8 +181,8 @@ void FCFSFast2::on_machine_down_for_repair(double date){
         _nb_available_machines=_available_machines.size();
 
         double repair_time = _myWorkloads->_repair_time;
-        LOG_F(DEBUG,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-        LOG_F(DEBUG,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
+        //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
+        //LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
         //call me back when the repair is done
         _decision->add_call_me_later(batsched_tools::REPAIR_DONE,number,date+repair_time,date);
         //now kill the jobs that are running on machines that need to be repaired.        
@@ -223,11 +223,11 @@ void FCFSFast2::on_machine_instant_down_up(double date){
 }
 void FCFSFast2::on_job_fault_notify_event(double date, std::string job){
     std::unordered_set<std::string>::const_iterator found = _running_jobs.find(job);
-  LOG_F(DEBUG,"on_job_fault_notify_event called");
+  //LOG_F(INFO,"on_job_fault_notify_event called");
   if ( found != _running_jobs.end() )    
         _decision->add_kill_job({job},date);
   else
-      LOG_F(DEBUG,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
+      //LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
 }
 
 void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
@@ -287,7 +287,7 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
                             _repair_machines -= machine;
                             _nb_available_machines=_available_machines.size();
                             _machines_that_became_available_recently += machine;
-                           LOG_F(DEBUG,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
+                           //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
                         }
                         break;
         }
@@ -314,7 +314,7 @@ void FCFSFast2::make_decisions(double date,
     SortableJobOrder::UpdateInformation *update_info,
     SortableJobOrder::CompareInformation *compare_info)
 {
-   LOG_F(DEBUG,"Line 322   fcfs_fast2.cpp");
+   //LOG_F(INFO,"Line 322   fcfs_fast2.cpp");
     (void) update_info;
     (void) compare_info;
     std::vector<int> mapping = {0};
@@ -332,7 +332,7 @@ void FCFSFast2::make_decisions(double date,
 
     
 
-LOG_F(DEBUG,"Line 340  fcfs_fast2.cpp");
+//LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
     //*****************************************************************
     // Handle newly finished jobs
     //*****************************************************************
@@ -371,7 +371,7 @@ LOG_F(DEBUG,"Line 340  fcfs_fast2.cpp");
     
 
     
-    LOG_F(DEBUG,"Line 379  fcfs_fast2.cpp");
+    //LOG_F(INFO,"Line 379  fcfs_fast2.cpp");
     //Handle new jobs to kill
    
     if(!_my_kill_jobs.empty()){
@@ -389,7 +389,7 @@ LOG_F(DEBUG,"Line 340  fcfs_fast2.cpp");
     
     
     
-    LOG_F(DEBUG,"Line 397  fcfs_fast2.cpp");
+    //LOG_F(INFO,"Line 397  fcfs_fast2.cpp");
     
     if (!(_machines_that_became_available_recently.is_empty()) && !(_pending_jobs.empty()))
     {
@@ -476,7 +476,7 @@ LOG_F(DEBUG,"Line 340  fcfs_fast2.cpp");
         }
     }
     
-LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
+//LOG_F(INFO,"Line 476  fcfs_fast2.cpp");
     // If jobs have finished, execute jobs as long as they fit
     std::list<Job *>::iterator job_it =_pending_jobs.begin();
     if (job_ended)
@@ -485,17 +485,17 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
         while(job_it!=_pending_jobs.end())
             
         {
-            LOG_F(DEBUG,"Line 483  fcfs_fast2.cpp");
+            //LOG_F(INFO,"Line 483  fcfs_fast2.cpp");
             Job * pending_job = *job_it;
-            LOG_F(DEBUG,"Line 485  fcfs_fast2.cpp");
-            LOG_F(DEBUG,"Line 486 pending job %p",static_cast<void *>(pending_job));
-            LOG_F(DEBUG,"Line 487 pending job %s",(*job_it)->id.c_str());
-            LOG_F(DEBUG,"Line 488 pending job %d ",pending_job->nb_requested_resources);
+            //LOG_F(INFO,"Line 485  fcfs_fast2.cpp");
+            //LOG_F(INFO,"Line 486 pending job %p",static_cast<void *>(pending_job));
+            //LOG_F(INFO,"Line 487 pending job %s",(*job_it)->id.c_str());
+            //LOG_F(INFO,"Line 488 pending job %d ",pending_job->nb_requested_resources);
             std::string pending_job_id = pending_job->id;
-            LOG_F(DEBUG,"Line 489  fcfs_fast2.cpp");
+            //LOG_F(INFO,"Line 489  fcfs_fast2.cpp");
             if (_share_packing && pending_job->nb_requested_resources==1)
             {
-                LOG_F(DEBUG,"Line 492 fcfs_fast2.cpp");
+                //LOG_F(INFO,"Line 492 fcfs_fast2.cpp");
                  bool found = false;
                 //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                 for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
@@ -515,7 +515,7 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
                             found = true;
-                            LOG_F(DEBUG,"Line 511  fcfs_fast2.cpp");
+                            //LOG_F(INFO,"Line 511  fcfs_fast2.cpp");
                     }
                     if (found == true)
                         break; 
@@ -523,10 +523,10 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
                 // there were no available core machines to put it on, try to put on a new core machine
                 if (found == false && _nb_available_machines > 0)
                 {
-                    LOG_F(DEBUG,"Line 519  fcfs_fast2.cpp");
+                    //LOG_F(INFO,"Line 519  fcfs_fast2.cpp");
                     //first get a machine
                     IntervalSet machines = _available_machines.left(1);
-                    LOG_F(DEBUG,"Line 522  fcfs_fast2.cpp");
+                    //LOG_F(INFO,"Line 522  fcfs_fast2.cpp");
                     _decision->add_execute_job(PARALLEL,pending_job_id,machines,date,mapping);
 
                     //update data structures
@@ -535,22 +535,22 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
                     _available_core_machines += machines;
                     _available_machines -= machines;
                     _nb_available_machines -= 1;
-                    LOG_F(DEBUG,"Line 531  fcfs_fast2.cpp");
+                    //LOG_F(INFO,"Line 531  fcfs_fast2.cpp");
                     _current_allocations[pending_job_id] = machines;
-                    LOG_F(DEBUG,"Line 533  fcfs_fast2.cpp");
+                    //LOG_F(INFO,"Line 533  fcfs_fast2.cpp");
                     _running_jobs.insert(pending_job_id);
-                    LOG_F(DEBUG,"Line 535  fcfs_fast2.cpp");
-                    LOG_F(DEBUG,"Line 536  fcfs_fast2.cpp pending_job: %p",static_cast<void *>(*job_it));
-                    LOG_F(DEBUG,"Line   fcfs_fast2.cpp pending_job_id: %s",pending_job->id.c_str());
+                    //LOG_F(INFO,"Line 535  fcfs_fast2.cpp");
+                    //LOG_F(INFO,"Line 536  fcfs_fast2.cpp pending_job: %p",static_cast<void *>(*job_it));
+                    //LOG_F(INFO,"Line   fcfs_fast2.cpp pending_job_id: %s",pending_job->id.c_str());
                     job_it = _pending_jobs.erase(job_it);
                     erased = true;
-                    LOG_F(DEBUG,"Line 537  fcfs_fast2.cpp");
+                    //LOG_F(INFO,"Line 537  fcfs_fast2.cpp");
 
                 } 
             }
             else if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
-                LOG_F(DEBUG,"Line 543  fcfs_fast2.cpp"); 
+                //LOG_F(INFO,"Line 543  fcfs_fast2.cpp"); 
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
                 _decision->add_execute_job(PARALLEL,pending_job->id,
@@ -564,7 +564,7 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
                 job_it = _pending_jobs.erase(job_it);
                 erased = true;
                 _running_jobs.insert(pending_job->id);
-                LOG_F(DEBUG,"Line 556  fcfs_fast2.cpp");
+                //LOG_F(INFO,"Line 556  fcfs_fast2.cpp");
             }
             else
             {
@@ -577,9 +577,9 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
             else
                 erased = false;
         }
-        LOG_F(DEBUG,"Line 566  fcfs_fast2.cpp");
+        //LOG_F(INFO,"Line 566  fcfs_fast2.cpp");
     }
-    LOG_F(DEBUG,"Line 567  fcfs_fast2.cpp");
+    //LOG_F(INFO,"Line 567  fcfs_fast2.cpp");
     // Handle newly released jobs
     for (const std::string & new_job_id : _jobs_released_recently)
     {
@@ -589,7 +589,7 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
         if (new_job->nb_requested_resources > _nb_machines)
         {
             // Invalid!
-            LOG_F(DEBUG,"Job being rejected HERE %s",new_job_id.c_str());
+            //LOG_F(INFO,"Job being rejected HERE %s",new_job_id.c_str());
             _decision->add_reject_job(new_job_id, date);
             continue;
         }
@@ -602,7 +602,7 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
                _pending_jobs.push_front(new_job);
             else{
                 // Yes. The new job is queued up.
-                LOG_F(DEBUG,"Line 590  fcfs_fast2.cpp  new_job: %p  new_job_id: %s",static_cast<void *>(new_job),new_job_id.c_str());
+                //LOG_F(INFO,"Line 590  fcfs_fast2.cpp  new_job: %p  new_job_id: %s",static_cast<void *>(new_job),new_job_id.c_str());
                 _pending_jobs.push_back(new_job);
             }
         }
@@ -676,12 +676,12 @@ LOG_F(DEBUG,"Line 476  fcfs_fast2.cpp");
             else
             {
                 // No. The job is queued up.
-                LOG_F(DEBUG,"Line 656   fcfs_fast2.cpp  new job:%p  new job id: %s",static_cast<void *>(new_job),new_job_id.c_str());
+                //LOG_F(INFO,"Line 656   fcfs_fast2.cpp  new job:%p  new job id: %s",static_cast<void *>(new_job),new_job_id.c_str());
                 _pending_jobs.push_back(new_job);
             }
         }
     }
-    LOG_F(DEBUG,"Line 650  fcfs_fast2.cpp");
+    //LOG_F(INFO,"Line 650  fcfs_fast2.cpp");
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
     {
         
@@ -714,7 +714,7 @@ void FCFSFast2::handle_resubmission(double date)
     {
         std::string killed_job=killed_map.first;
         double progress = killed_map.second;
-        LOG_F(DEBUG,"REPAIR  progress: %f",progress);
+        //LOG_F(INFO,"REPAIR  progress: %f",progress);
         auto start = killed_job.find("!")+1;
         auto end = killed_job.find("#");
         std::string basename = (end ==std::string::npos) ? killed_job.substr(start) : killed_job.substr(start,end-start); 
@@ -746,7 +746,7 @@ void FCFSFast2::handle_resubmission(double date)
                     
                     
                     progress_time =progress * profile_doc["delay"].GetDouble();
-                    LOG_F(DEBUG,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+                    //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
                     
                     bool has_checkpointed = false;
                     std::string meta_str = "null";
@@ -831,12 +831,12 @@ void FCFSFast2::handle_resubmission(double date)
         
                     }        
                     //only if a new checkpoint has been reached does the delay time change
-                    LOG_F(DEBUG,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
+                    //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
                     if (num_checkpoints_completed > 0)
                     {
                         
                         double delay = profile_doc["delay"].GetDouble() - progress_time + job_to_queue->read_time;
-                        LOG_F(DEBUG,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
+                        //LOG_F(INFO,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
                         profile_doc["delay"].SetDouble(delay);
                         
                         
@@ -858,8 +858,8 @@ void FCFSFast2::handle_resubmission(double date)
                         
                         
                         progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
-                        LOG_F(DEBUG,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
-                        LOG_F(DEBUG,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
+                        //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+                        //LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
                         
                         bool has_checkpointed = false;
                         std::string meta_str = "null";
@@ -945,13 +945,13 @@ void FCFSFast2::handle_resubmission(double date)
             
                         }        
                         //only if a new checkpoint has been reached does the delay time change
-                        LOG_F(DEBUG,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
+                        //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
                         if (num_checkpoints_completed > 0)
                         {
                             double cpu = profile_doc["cpu"].GetDouble();
                             double cpu_time = cpu / one_second;
                             cpu_time = cpu_time - progress_time + job_to_queue->read_time;
-                            LOG_F(DEBUG,"REPAIR cpu_time: %f  readtime: %f",cpu_time,job_to_queue->read_time);
+                            //LOG_F(INFO,"REPAIR cpu_time: %f  readtime: %f",cpu_time,job_to_queue->read_time);
                             profile_doc["cpu"].SetDouble(cpu_time*one_second);
                             
                             
@@ -987,7 +987,7 @@ void FCFSFast2::handle_resubmission(double date)
         myB::JobPtr j = myB::Job::from_json(doc,w0,error_prefix);
         w0->jobs->add_job(j);
         job_jd = to_json_desc(&doc);
-        LOG_F(DEBUG,"workload: %s  job: %s, profile: %s",workload_name.c_str(),job_name.c_str(),profile_name.c_str());
+        //LOG_F(INFO,"workload: %s  job: %s, profile: %s",workload_name.c_str(),job_name.c_str(),profile_name.c_str());
         _decision->add_submit_profile(workload_name,
                                     profile_name,
                                     profile_jd,
