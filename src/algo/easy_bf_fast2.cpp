@@ -630,7 +630,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id] = alloc;
                             _running_jobs.insert(pending_job_id);
-                            job_it = _pending_jobs.erase(job_it);
+                            _pending_jobs.erase(job_it);
                             erased = true;
                             found = true;
                                 
@@ -662,7 +662,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                        
                         _running_jobs.insert(pending_job_id);
                         
-                        job_it = _pending_jobs.erase(job_it);
+                        _pending_jobs.erase(job_it);
                         erased = true;
                     }
                         
@@ -686,7 +686,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _available_machines -= alloc.machines;
                     _nb_available_machines -= pending_job->nb_requested_resources;
                     _current_allocations[pending_job_id] = alloc;
-                    job_it = _pending_jobs.erase(job_it);
+                    _pending_jobs.erase(job_it);
                     erased = true;
                     _running_jobs.insert(pending_job->id);
                    
@@ -748,7 +748,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 current_machine->cores_available -=1;
                                 _current_allocations[pending_job_id] = alloc;
                                 _running_jobs.insert(pending_job_id);
-                                job_it = _pending_jobs.erase(job_it);
+                                _pending_jobs.erase(job_it);
                                 erased = true;
                                 
                                 
@@ -783,7 +783,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         
                             _running_jobs.insert(pending_job_id);
                             
-                            job_it = _pending_jobs.erase(job_it);
+                            _pending_jobs.erase(job_it);
                             erased = true;
                         }
                     }
