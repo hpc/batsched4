@@ -572,7 +572,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 //LOG_F(INFO, "Priority job fits!");
                 alloc.machines = _available_machines.left(
                     _priority_job->nb_requested_resources);
-                _decision->add_execute_job(_priority_job->id, alloc.machines,
+                _decision->add_execute_job(PARALLEL,_priority_job->id, alloc.machines,
                     date);
 
                 point.nb_released_machines = _priority_job->nb_requested_resources;
@@ -588,10 +588,12 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             }
             //ok priority job got to run, now execute the whole queue until a priority job cannot fit  
             std::list<Job *>::iterator job_it =_pending_jobs.begin();
+            bool erased = false;
             while(job_it!=_pending_jobs.end())
             {
                 Job * pending_job = *job_it;
                 Allocation alloc;
+                
            
                 std::string pending_job_id = pending_job->id;
             
@@ -617,7 +619,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             
                             //update data structures
                             current_machine->cores_available -=1;
-                            _current_allocations[pending_job_id] = alloc
+                            _current_allocations[pending_job_id] = alloc;
                             _running_jobs.insert(pending_job_id);
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
@@ -632,7 +634,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     {
                    
                         //first get a machine
-                        IntervalSet machines = _available_machines.left(1);
+                        alloc.machines = _available_machines.left(1);
                       
                         _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
                         point.nb_released_machines = pending_job->nb_requested_resources;
@@ -642,16 +644,17 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         //update data structures
                         machine* current_machine = machines_by_int[alloc.machines[0]];
                         current_machine->cores_available -= 1;
-                        _available_core_machines += machines;
-                        _available_machines -= machines;
+                        _available_core_machines += alloc.machines;
+                        _available_machines -= alloc.machines;
                         _nb_available_machines -= 1;
                        
-                        _current_allocations[pending_job_id] = machines;
+                        _current_allocations[pending_job_id] = alloc;
                        
                         _running_jobs.insert(pending_job_id);
                         
                         job_it = _pending_jobs.erase(job_it);
                         erased = true;
+                    }
                         
 
                 } // end of pending jobs share-packing block
@@ -659,10 +662,10 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 else if (pending_job->nb_requested_resources <= _nb_available_machines)
                 {
                    
-                    IntervalSet machines = _available_machines.left(
+                    alloc.machines = _available_machines.left(
                         pending_job->nb_requested_resources);
                     _decision->add_execute_job(PARALLEL,pending_job->id,
-                        machines, date);
+                        alloc.machines, date);
                     point.nb_released_machines = pending_job->nb_requested_resources;
                     point.date = date + (double)pending_job->walltime;
                     point.machines = alloc.machines;
@@ -670,9 +673,9 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     
 
                     // Update data structures
-                    _available_machines -= machines;
+                    _available_machines -= alloc.machines;
                     _nb_available_machines -= pending_job->nb_requested_resources;
-                    _current_allocations[pending_job_id] = machines;
+                    _current_allocations[pending_job_id] = alloc;
                     job_it = _pending_jobs.erase(job_it);
                     erased = true;
                     _running_jobs.insert(pending_job->id);
@@ -693,7 +696,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     erased = false;
             }
             //now let's backfill jobs that don't hinder priority job
-           
+           bool erased = false;
             while(job_it!=_pending_jobs.end())
             {
                 bool execute = false;
@@ -777,7 +780,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     // Yes, it can be backfilled!
                     alloc.machines = _available_machines.left(
                         pending_job->nb_requested_resources);
-                    _decision->add_execute_job(pending_job->id,
+                    _decision->add_execute_job(PARALLEL,pending_job->id,
                         alloc.machines, date);
                     execute = true;
                     point.nb_released_machines = pending_job->nb_requested_resources;
