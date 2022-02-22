@@ -707,6 +707,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             }
             //now let's backfill jobs that don't hinder priority job
            erased = false;
+           job_it =_pending_jobs.begin();
             while(job_it!=_pending_jobs.end())
             {
                 bool execute = false;
