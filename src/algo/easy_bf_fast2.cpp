@@ -630,7 +630,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id] = alloc;
                             _running_jobs.insert(pending_job_id);
-                            _pending_jobs.erase(job_it);
+                            job_it = _pending_jobs.erase(job_it);
                             erased = true;
                             found = true;
                                 
@@ -662,7 +662,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                        
                         _running_jobs.insert(pending_job_id);
                         
-                        _pending_jobs.erase(job_it);
+                        job_it = _pending_jobs.erase(job_it);
                         erased = true;
                     }
                         
@@ -696,7 +696,8 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     //ok we have a priority job, now stop traversing pending jobs
                     _priority_job = pending_job;
                     _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
-                    _pending_jobs.erase(job_it);
+                    LOG_F(INFO,"line 699");
+                    job_it = _pending_jobs.erase(job_it);
                     // Stop first queue traversal.
                     break;
                 }
@@ -748,7 +749,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 current_machine->cores_available -=1;
                                 _current_allocations[pending_job_id] = alloc;
                                 _running_jobs.insert(pending_job_id);
-                                _pending_jobs.erase(job_it);
+                                job_it = _pending_jobs.erase(job_it);
                                 erased = true;
                                 
                                 
@@ -783,7 +784,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         
                             _running_jobs.insert(pending_job_id);
                             
-                            _pending_jobs.erase(job_it);
+                            job_it = _pending_jobs.erase(job_it);
                             erased = true;
                         }
                     }
@@ -810,7 +811,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _current_allocations[pending_job->id] = alloc;
                     LOG_F(INFO,"line 811");
                     _running_jobs.insert(pending_job_id);
-                    _pending_jobs.erase(job_it);
+                    job_it = _pending_jobs.erase(job_it);
                     LOG_F(INFO,"line 814");
                     erased = true;
                 }
@@ -1321,6 +1322,7 @@ double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
         //is this the case that a single core is being released?
         if (_share_packing && it->nb_released_machines == 1)
         {
+            LOG_F(INFO,"line 1324");
             //ok a single core is released
             //is that all we needed for the priority_job (unlikely for a priority job but not out of the question)
             if (required == 1)
@@ -1331,6 +1333,7 @@ double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
             current_machine->cores_available +=1;
             //ok so we added a core to the released machine
             //does this bring a whole machine available?
+            LOG_F(INFO,"line 1335");
             if (current_machine->cores_available == int(current_machine->core_count * _core_percent))
                 {
                     //yes it did make a whole machine available
