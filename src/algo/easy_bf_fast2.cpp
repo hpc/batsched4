@@ -989,7 +989,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                 
         }
     }//end released jobs loop
-    
+    LOG_F(INFO,"pending_jobs size %d",_pending_jobs.size());
 }
 
         
