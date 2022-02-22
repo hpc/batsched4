@@ -803,13 +803,15 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     point.machines = alloc.machines;
                     LOG_F(INFO,"line 804");
                     alloc.horizon_it = insert_horizon_point(point);
-
+                    LOG_F(INFO,"line 806");
                     // Update data structures
                     _available_machines -= alloc.machines;
                     _nb_available_machines -= pending_job->nb_requested_resources;
                     _current_allocations[pending_job->id] = alloc;
+                    LOG_F(INFO,"line 811");
                     _running_jobs.insert(pending_job_id);
                     _pending_jobs.erase(job_it);
+                    LOG_F(INFO,"line 814");
                     erased = true;
                 }
                 if (!erased)
