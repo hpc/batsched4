@@ -61,7 +61,7 @@ void easy_bf_fast2::on_simulation_start(double date,
         logBLog = batsim_config["log_b_log"].GetBool();
     //log BLogs, add log files that you want logged to.
     if (logBLog){
-        _myBLOG->add_//LOG_File(_output_folder+"/log/failures.log",b_log::FAILURES);
+        _myBLOG->add_log_file(_output_folder+"/log/failures.log",b_log::FAILURES);
     }
     unsigned seed = 0;
     if (seedFailures)
@@ -71,7 +71,7 @@ void easy_bf_fast2::on_simulation_start(double date,
     generator2.seed(seed);
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     _nb_available_machines = _nb_machines;
-    ////LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
+    //LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
     const rapidjson::Value& resources = batsim_event_data["compute_resources"];
     for ( auto & itr : resources.GetArray())
@@ -90,7 +90,7 @@ void easy_bf_fast2::on_simulation_start(double date,
             a_machine->name = (itr)["name"].GetString();
         machines_by_int[a_machine->id] = a_machine;
         machines_by_name[a_machine->name] = a_machine;
-        ////LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
+        //LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
    }
      _oldDate=date;
      if (_myWorkloads->_fixed_failures != -1.0)
@@ -126,7 +126,7 @@ void easy_bf_fast2::on_simulation_end(double date){
 }
     
  void easy_bf_fast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
-    ////LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
+    //LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
     _unavailable_machines+=machines;
     _available_machines-=machines;
     for(auto key_value : _current_allocations)
@@ -171,8 +171,8 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     //if the machine is already down for repairs ignore it.
-    ////LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-    B//LOG_F(b_log::FAILURES,"Machine Repair: %d",number);
+    //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
+    BLOG_F(b_log::FAILURES,"Machine Repair: %d",number);
     if ((machine & _repair_machines).is_empty())
     {
         //ok the machine is not down for repairs
@@ -183,8 +183,8 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
         _nb_available_machines=_available_machines.size();
 
         double repair_time = _myWorkloads->_repair_time;
-        ////LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-        ////LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
+        //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
+        //LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
         //call me back when the repair is done
         _decision->add_call_me_later(batsched_tools::REPAIR_DONE,number,date+repair_time,date);
         //now kill the jobs that are running on machines that need to be repaired.        
@@ -194,14 +194,14 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
             {
                 if (!((key_value.second.machines & machine).is_empty())){
                     _my_kill_jobs.push_back((*_workload)[key_value.first]);
-                    B//LOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
+                    BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
                 }
             }
         }
     }
     else
     {
-        B//LOG_F(b_log::FAILURES,"Machine Already Being Repaired: %d",number);
+        BLOG_F(b_log::FAILURES,"Machine Already Being Repaired: %d",number);
     }
 }
 
@@ -211,25 +211,25 @@ void easy_bf_fast2::on_machine_instant_down_up(double date){
     int number = unif_distribution->operator()(generator2);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
-    B//LOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
+    BLOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
     //if there are no running jobs, then there are none to kill
     if (!_running_jobs.empty()){
         for(auto key_value : _current_allocations)   
 	    {
 		    if (!((key_value.second.machines & machine).is_empty())){
                 	_my_kill_jobs.push_back((*_workload)[key_value.first]);
-	                B//LOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
+	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
             }
 	    }
     }
 }
 void easy_bf_fast2::on_job_fault_notify_event(double date, std::string job){
     std::unordered_set<std::string>::const_iterator found = _running_jobs.find(job);
-  ////LOG_F(INFO,"on_job_fault_notify_event called");
+  //LOG_F(INFO,"on_job_fault_notify_event called");
   if ( found != _running_jobs.end() )    
         _decision->add_kill_job({job},date);
   else
-      //LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
+      LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
 }
 
 void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
@@ -239,7 +239,7 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
             case batsched_tools::SMTBF:
                         {
                             //Log the failure
-                            B//LOG_F(b_log::FAILURES,"FAILURE SMTBF");
+                            BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = distribution->operator()(generator);
@@ -266,7 +266,7 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                         break;
             case batsched_tools::FIXED_FAILURE:
                         {
-                            B//LOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
+                            BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = _myWorkloads->_fixed_failures;
@@ -280,7 +280,7 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                         break;
             case batsched_tools::REPAIR_DONE:
                         {
-                            B//LOG_F(b_log::FAILURES,"REPAIR_DONE");
+                            BLOG_F(b_log::FAILURES,"REPAIR_DONE");
                             //a repair is done, all that needs to happen is add the machines to available
                             //and remove them from repair machines and add one to the number of available
                             IntervalSet machine = id;
@@ -289,7 +289,7 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                             _repair_machines -= machine;
                             _nb_available_machines=_available_machines.size();
                             _machines_that_became_available_recently += machine;
-                           ////LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
+                           //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
                         }
                         break;
         }
@@ -328,7 +328,7 @@ void easy_bf_fast2::make_decisions(double date,
     SortableJobOrder::UpdateInformation *update_info,
     SortableJobOrder::CompareInformation *compare_info)
 {
-   ////LOG_F(INFO,"Line 322   fcfs_fast2.cpp");
+   ////LOG_F(INFO,"line 322   fcfs_fast2.cpp");
     (void) update_info;
     (void) compare_info;
     std::vector<int> mapping = {0};
@@ -346,7 +346,7 @@ void easy_bf_fast2::make_decisions(double date,
 
     
 
-    ////LOG_F(INFO,"Line 340  fcfs_fast2.cpp");
+    ////LOG_F(INFO,"line 340  fcfs_fast2.cpp");
     //*****************************************************************
     // Handle newly finished jobs
     //*****************************************************************
@@ -577,7 +577,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             //ok not share-packing or resources > 1
             else if (_priority_job->nb_requested_resources <= _nb_available_machines)
             {
-                ////LOG_F(INFO, "Priority job fits!");
+                //LOG_F(INFO, "Priority job fits!");
                 alloc.machines = _available_machines.left(
                     _priority_job->nb_requested_resources);
                 _decision->add_execute_job(PARALLEL,_priority_job->id, alloc.machines,
@@ -843,7 +843,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
         if (new_job->nb_requested_resources > _nb_machines)
         {
             // Invalid!
-            ////LOG_F(INFO,"Job being rejected HERE %s",new_job_id.c_str());
+            //LOG_F(INFO,"Job being rejected HERE %s",new_job_id.c_str());
             _decision->add_reject_job(new_job_id, date);
             continue;
         }
@@ -978,7 +978,7 @@ void easy_bf_fast2::handle_resubmission(double date)
     {
         std::string killed_job=killed_map.first;
         double progress = killed_map.second;
-        ////LOG_F(INFO,"REPAIR  progress: %f",progress);
+        //LOG_F(INFO,"REPAIR  progress: %f",progress);
         auto start = killed_job.find("!")+1;
         auto end = killed_job.find("#");
         std::string basename = (end ==std::string::npos) ? killed_job.substr(start) : killed_job.substr(start,end-start); 
@@ -1010,7 +1010,7 @@ void easy_bf_fast2::handle_resubmission(double date)
                     
                     
                     progress_time =progress * profile_doc["delay"].GetDouble();
-                    ////LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+                    //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
                     
                     bool has_checkpointed = false;
                     std::string meta_str = "null";
@@ -1095,12 +1095,12 @@ void easy_bf_fast2::handle_resubmission(double date)
         
                     }        
                     //only if a new checkpoint has been reached does the delay time change
-                    ////LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
+                    //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
                     if (num_checkpoints_completed > 0)
                     {
                         
                         double delay = profile_doc["delay"].GetDouble() - progress_time + job_to_queue->read_time;
-                        ////LOG_F(INFO,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
+                        //LOG_F(INFO,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
                         profile_doc["delay"].SetDouble(delay);
                         
                         
@@ -1122,8 +1122,8 @@ void easy_bf_fast2::handle_resubmission(double date)
                         
                         
                         progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
-                        ////LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
-                        ////LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
+                        //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+                        //LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
                         
                         bool has_checkpointed = false;
                         std::string meta_str = "null";
@@ -1209,13 +1209,13 @@ void easy_bf_fast2::handle_resubmission(double date)
             
                         }        
                         //only if a new checkpoint has been reached does the delay time change
-                        ////LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
+                        //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
                         if (num_checkpoints_completed > 0)
                         {
                             double cpu = profile_doc["cpu"].GetDouble();
                             double cpu_time = cpu / one_second;
                             cpu_time = cpu_time - progress_time + job_to_queue->read_time;
-                            ////LOG_F(INFO,"REPAIR cpu_time: %f  readtime: %f",cpu_time,job_to_queue->read_time);
+                            //LOG_F(INFO,"REPAIR cpu_time: %f  readtime: %f",cpu_time,job_to_queue->read_time);
                             profile_doc["cpu"].SetDouble(cpu_time*one_second);
                             
                             
@@ -1251,7 +1251,7 @@ void easy_bf_fast2::handle_resubmission(double date)
         myB::JobPtr j = myB::Job::from_json(doc,w0,error_prefix);
         w0->jobs->add_job(j);
         job_jd = to_json_desc(&doc);
-        ////LOG_F(INFO,"workload: %s  job: %s, profile: %s",workload_name.c_str(),job_name.c_str(),profile_name.c_str());
+        //LOG_F(INFO,"workload: %s  job: %s, profile: %s",workload_name.c_str(),job_name.c_str(),profile_name.c_str());
         _decision->add_submit_profile(workload_name,
                                     profile_name,
                                     profile_jd,
