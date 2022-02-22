@@ -866,8 +866,8 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
 
                     machine * current_machine = machines_by_int[alloc.machines[0]];
                     current_machine->cores_available -=1;
-                    _current_allocations[pending_job_id] = alloc;
-                    _running_jobs.insert(pending_job_id);
+                    _current_allocations[new_job_id] = alloc;
+                    _running_jobs.insert(new_job_id);
                     
                 }
             }
