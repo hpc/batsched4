@@ -698,6 +698,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
                     LOG_F(INFO,"line 699");
                     job_it = _pending_jobs.erase(job_it);
+                    LOG_F(INFO,"line 701");
                     // Stop first queue traversal.
                     break;
                 }
