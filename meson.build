@@ -74,7 +74,8 @@ batsched_deps = [
 #    'src/algo/wt_estimator.hpp',
 
 src = [
-    
+    'src/algo/easy_bf_fast2.cpp',
+    'src/algo/easy_bf_fast2.hpp',
     'src/algo/fcfs_fast2.cpp',
     'src/algo/fcfs_fast2.hpp',
     'src/batsched_tools.cpp',

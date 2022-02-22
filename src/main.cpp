@@ -55,7 +55,7 @@
 #include "algo/submitter.hpp"
 #include "algo/wt_estimator.hpp"
 */
-
+#include "algo/easy_bf_fast2.hpp"
 #include "algo/fcfs_fast2.hpp"
 
 
@@ -92,11 +92,13 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 int main(int argc, char ** argv)
 {
     const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_fast",
+                                       "easy_bf_fast2",
                                       "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
                                       "energy_bf_monitoring_inertial", "energy_bf_subpart_sleeper",
-                                      "energy_watcher", "fcfs_fast", "fcfs_fast2",
+                                      "energy_watcher", "fcfs_fast",
+                                      "fcfs_fast2",
                                       "filler", "killer", "killer2", "random", "rejecter",
                                       "sequencer", "sleeper", "submitter", "waiting_time_estimator"};
     const set<string> policies_set = {"basic", "contiguous"};
