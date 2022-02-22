@@ -407,7 +407,7 @@ std::string easy_bf_fast2::to_json_desc(rapidjson::Document * doc)
 
 bool easy_bf_fast2::handle_newly_finished_jobs()
 {
-   LOG_F(INFO,"line 405");
+   LOG_F(INFO,"line 410");
    std::vector<int> mapping = {0};
     bool job_ended = false;
     for (const std::string & ended_job_id : _jobs_ended_recently)
@@ -444,7 +444,7 @@ bool easy_bf_fast2::handle_newly_finished_jobs()
                 _horizons.erase(alloc.horizon_it);
         }
     }
-    LOG_F(INFO,"line 442");
+    LOG_F(INFO,"line 447");
     return job_ended;
 }
 
@@ -495,6 +495,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
     {
         if (_priority_job != nullptr)
         {
+            LOG_F(INFO,"line 498");
             //first check if priority job fits
             //it fits if it's a 1 resource job and share_packing is enabled and
             //we either find an _available_core_machine or
@@ -525,7 +526,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     }
                                  
                 }
-            
+                LOG_F(INFO,"line 529");
                 if (found == true)
                 {
                     //yes it can be executed right away
@@ -593,6 +594,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 _current_allocations[_priority_job->id] = alloc;
                 _priority_job = nullptr;
             }
+            LOG_F(INFO,"line 597");
             //ok priority job got to run, now execute the whole queue until a priority job cannot fit  
             std::list<Job *>::iterator job_it =_pending_jobs.begin();
             bool erased = false;
@@ -606,7 +608,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             
                 if (_share_packing && pending_job->nb_requested_resources==1)
                 {
-                   
+                   LOG_F(INFO,"line 611");
                     bool found = false;
                     //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                     for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
@@ -640,6 +642,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     if (found == false && _nb_available_machines > 0)
                     {
                    
+                       LOG_F(INFO,"line 645");
                         //first get a machine
                         alloc.machines = _available_machines.left(1);
                       
@@ -677,7 +680,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     point.date = date + (double)pending_job->walltime;
                     point.machines = alloc.machines;
                     alloc.horizon_it = insert_horizon_point(point);
-                    
+                    LOG_F(INFO,"line 683");
 
                     // Update data structures
                     _available_machines -= alloc.machines;
@@ -709,7 +712,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 bool execute = false;
                 Job * pending_job = *job_it;
                 Allocation alloc;
-           
+           LOG_F(INFO,"line 715");
                 std::string pending_job_id = pending_job->id;
             
                 if (_share_packing && pending_job->nb_requested_resources==1)
@@ -771,7 +774,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             _available_core_machines += alloc.machines;
                             _available_machines -= alloc.machines;
                             _nb_available_machines -= 1;
-                        
+                        LOG_F(INFO,"line 777");
                             _current_allocations[pending_job_id] = alloc;
                         
                             _running_jobs.insert(pending_job_id);
@@ -785,6 +788,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         date + pending_job->walltime <= _priority_job->completion_time)
                 {
                     // Yes, it can be backfilled!
+                    LOG_F(INFO,"line 791");
                     alloc.machines = _available_machines.left(
                         pending_job->nb_requested_resources);
                     _decision->add_execute_job(PARALLEL,pending_job->id,
@@ -1287,6 +1291,7 @@ double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
 {
     int nb_available = _nb_available_machines;
     int required = _priority_job->nb_requested_resources;
+    LOG_F(INFO,"line 1294");
     //make a shallow copy of machines_by_int if share-packing
     std::map<int,machine *> machines_by_int_copy;
     if (_share_packing)
@@ -1302,7 +1307,7 @@ double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
             }
 
     }   
-            
+         LOG_F(INFO,"line 1310");   
 
     for (auto it = _horizons.begin(); it != _horizons.end(); ++it)
     {
