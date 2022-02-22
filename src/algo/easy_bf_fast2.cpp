@@ -586,6 +586,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _priority_job->nb_requested_resources);
                 _decision->add_execute_job(PARALLEL,_priority_job->id, alloc.machines,
                     date);
+                executed = true;
                 _e_counter+=1;
                 point.nb_released_machines = _priority_job->nb_requested_resources;
                 point.date = date + (double)_priority_job->walltime;
