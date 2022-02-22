@@ -215,12 +215,12 @@ void easy_bf_fast2::on_machine_instant_down_up(double date){
     //if there are no running jobs, then there are none to kill
     if (!_running_jobs.empty()){
         for(auto key_value : _current_allocations)   
-	{
-		if (!((key_value.second.machines & machine).is_empty())){
+	    {
+		    if (!((key_value.second.machines & machine).is_empty())){
                 	_my_kill_jobs.push_back((*_workload)[key_value.first]);
 	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
-            	}
-	}
+            }
+	    }
     }
 }
 void easy_bf_fast2::on_job_fault_notify_event(double date, std::string job){
@@ -359,7 +359,7 @@ void easy_bf_fast2::make_decisions(double date,
     //***********************************************************
     
     handle_machines_coming_available(date);
-    handle_job_ended_execution(job_ended,date);
+    handle_ended_job_execution(job_ended,date);
     handle_newly_released_jobs(date);
     
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
@@ -525,7 +525,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
                     executed = true;
                     //update data structures
-                    
+                    machine* current_machine = machines_by_int[alloc.machines[0]];
                     point.nb_released_machines = _priority_job->nb_requested_resources;
                     point.date = date + (double)_priority_job->walltime;
                     point.machines = alloc.machines;
