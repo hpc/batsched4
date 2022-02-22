@@ -192,7 +192,7 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
         if (!_running_jobs.empty()){
             for(auto key_value : _current_allocations)
             {
-                if (!((key_value.second & machine).is_empty())){
+                if (!((key_value.second.machines & machine).is_empty())){
                     _my_kill_jobs.push_back((*_workload)[key_value.first]);
                     BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
                 }
@@ -216,7 +216,7 @@ void easy_bf_fast2::on_machine_instant_down_up(double date){
     if (!_running_jobs.empty()){
         for(auto key_value : _current_allocations)   
 	{
-		if (!((key_value.second & machine).is_empty())){
+		if (!((key_value.second.machines & machine).is_empty())){
                 	_my_kill_jobs.push_back((*_workload)[key_value.first]);
 	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
             	}
