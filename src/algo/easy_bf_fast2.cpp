@@ -718,15 +718,18 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 if (_share_packing && pending_job->nb_requested_resources==1)
                 {
                    
+                    LOG_F(INFO,"line 721");
                     bool found = false;
                     //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                     for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                     {
                         //is this machine able to handle another job?
                         machine* current_machine = machines_by_int[*it];
+                        LOG_F(INFO,"line 728");
                         if (current_machine->cores_available >= 1)
                         {                                
                             found = true;
+                            LOG_F(INFO,"line 731");
                             if (date + pending_job->walltime <= _priority_job->completion_time)
                             {
                                 //it is able to handle another job, execute a job on it and subtract from cores_available
@@ -739,7 +742,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 point.date = date + (double)pending_job->walltime;
                                 point.machines = alloc.machines;
                                 alloc.horizon_it = insert_horizon_point(point);
-                                
+                                LOG_F(INFO,"line 744");
                                 //update data structures
                                 current_machine->cores_available -=1;
                                 _current_allocations[pending_job_id] = alloc;
@@ -756,7 +759,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     // there were no available core machines to put it on, try to put on a new core machine
                     if (found == false && _nb_available_machines > 0)
                     {
-                   
+                        LOG_F(INFO,"line 760");
                         if (date + pending_job->walltime <= _priority_job->completion_time)
                         {
                             //first get a machine
@@ -774,7 +777,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             _available_core_machines += alloc.machines;
                             _available_machines -= alloc.machines;
                             _nb_available_machines -= 1;
-                        LOG_F(INFO,"line 777");
+                        LOG_F(INFO,"line 778");
                             _current_allocations[pending_job_id] = alloc;
                         
                             _running_jobs.insert(pending_job_id);
