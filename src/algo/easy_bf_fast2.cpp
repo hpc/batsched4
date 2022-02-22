@@ -600,123 +600,127 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             }
             //LOG_F(INFO,"line 597");
             //ok priority job got to run, now execute the whole queue until a priority job cannot fit  
-            std::list<Job *>::iterator job_it =_pending_jobs.begin();
-            bool erased = false;
-            while(job_it!=_pending_jobs.end())
+            if (executed)
             {
-                Job * pending_job = *job_it;
-                Allocation alloc;
-                
-           
-                std::string pending_job_id = pending_job->id;
-            
-                if (_share_packing && pending_job->nb_requested_resources==1)
+                std::list<Job *>::iterator job_it =_pending_jobs.begin();
+                bool erased = false;
+                while(job_it!=_pending_jobs.end())
                 {
-                   //LOG_F(INFO,"line 611");
-                    bool found = false;
-                    //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
-                    for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
+                    Job * pending_job = *job_it;
+                    Allocation alloc;
+                    
+            
+                    std::string pending_job_id = pending_job->id;
+                
+                    if (_share_packing && pending_job->nb_requested_resources==1)
                     {
-                        //is this machine able to handle another job?
-                        machine* current_machine = machines_by_int[*it];
-                        if (current_machine->cores_available >= 1)
-                        {                                
-                            //it is able to handle another job, execute a job on it and subtract from cores_available
-                            alloc.machines = *it;
-                            
+                    //LOG_F(INFO,"line 611");
+                        bool found = false;
+                        //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
+                        for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
+                        {
+                            //is this machine able to handle another job?
+                            machine* current_machine = machines_by_int[*it];
+                            if (current_machine->cores_available >= 1)
+                            {                                
+                                //it is able to handle another job, execute a job on it and subtract from cores_available
+                                alloc.machines = *it;
+                                
+                                _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                                _e_counter+=1;
+                                point.nb_released_machines = pending_job->nb_requested_resources;
+                                point.date = date + (double)pending_job->walltime;
+                                point.machines = alloc.machines;
+                                alloc.horizon_it = insert_horizon_point(point);
+                                
+                                //update data structures
+                                current_machine->cores_available -=1;
+                                _current_allocations[pending_job_id] = alloc;
+                                _running_jobs.insert(pending_job_id);
+                                job_it = _pending_jobs.erase(job_it);
+                                _p_counter+=1;
+                                erased = true;
+                                found = true;
+                                    
+                            }
+                            if (found == true)
+                                break; 
+                        }  
+                        // there were no available core machines to put it on, try to put on a new core machine
+                        if (found == false && _nb_available_machines > 0)
+                        {
+                    
+                        //LOG_F(INFO,"line 645");
+                            //first get a machine
+                            alloc.machines = _available_machines.left(1);
+                        
                             _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
                             _e_counter+=1;
                             point.nb_released_machines = pending_job->nb_requested_resources;
                             point.date = date + (double)pending_job->walltime;
                             point.machines = alloc.machines;
                             alloc.horizon_it = insert_horizon_point(point);
-                            
                             //update data structures
-                            current_machine->cores_available -=1;
+                            machine* current_machine = machines_by_int[alloc.machines[0]];
+                            current_machine->cores_available -= 1;
+                            _available_core_machines += alloc.machines;
+                            _available_machines -= alloc.machines;
+                            _nb_available_machines -= 1;
+                        
                             _current_allocations[pending_job_id] = alloc;
+                        
                             _running_jobs.insert(pending_job_id);
+                            
                             job_it = _pending_jobs.erase(job_it);
                             _p_counter+=1;
                             erased = true;
-                            found = true;
-                                
                         }
-                        if (found == true)
-                            break; 
-                    }  
-                    // there were no available core machines to put it on, try to put on a new core machine
-                    if (found == false && _nb_available_machines > 0)
+                            
+
+                    } // end of pending jobs share-packing block
+                
+                    else if (pending_job->nb_requested_resources <= _nb_available_machines)
                     {
-                   
-                       //LOG_F(INFO,"line 645");
-                        //first get a machine
-                        alloc.machines = _available_machines.left(1);
-                      
-                        _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                    
+                        alloc.machines = _available_machines.left(
+                            pending_job->nb_requested_resources);
+                        _decision->add_execute_job(PARALLEL,pending_job->id,
+                            alloc.machines, date);
                         _e_counter+=1;
                         point.nb_released_machines = pending_job->nb_requested_resources;
                         point.date = date + (double)pending_job->walltime;
                         point.machines = alloc.machines;
                         alloc.horizon_it = insert_horizon_point(point);
-                        //update data structures
-                        machine* current_machine = machines_by_int[alloc.machines[0]];
-                        current_machine->cores_available -= 1;
-                        _available_core_machines += alloc.machines;
+                        //LOG_F(INFO,"line 683");
+
+                        // Update data structures
                         _available_machines -= alloc.machines;
-                        _nb_available_machines -= 1;
-                       
+                        _nb_available_machines -= pending_job->nb_requested_resources;
                         _current_allocations[pending_job_id] = alloc;
-                       
-                        _running_jobs.insert(pending_job_id);
-                        
                         job_it = _pending_jobs.erase(job_it);
                         _p_counter+=1;
                         erased = true;
+                        _running_jobs.insert(pending_job->id);
+                    
                     }
-                        
-
-                } // end of pending jobs share-packing block
-             
-                else if (pending_job->nb_requested_resources <= _nb_available_machines)
-                {
-                   
-                    alloc.machines = _available_machines.left(
-                        pending_job->nb_requested_resources);
-                    _decision->add_execute_job(PARALLEL,pending_job->id,
-                        alloc.machines, date);
-                    _e_counter+=1;
-                    point.nb_released_machines = pending_job->nb_requested_resources;
-                    point.date = date + (double)pending_job->walltime;
-                    point.machines = alloc.machines;
-                    alloc.horizon_it = insert_horizon_point(point);
-                    //LOG_F(INFO,"line 683");
-
-                    // Update data structures
-                    _available_machines -= alloc.machines;
-                    _nb_available_machines -= pending_job->nb_requested_resources;
-                    _current_allocations[pending_job_id] = alloc;
-                    job_it = _pending_jobs.erase(job_it);
-                    _p_counter+=1;
-                    erased = true;
-                    _running_jobs.insert(pending_job->id);
-                   
+                    else
+                    {
+                        //ok we have a priority job, now stop traversing pending jobs
+                        _priority_job = pending_job;
+                        _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
+                        //LOG_F(INFO,"line 699");
+                        LOG_Fpending_job->id
+                        job_it = _pending_jobs.erase(job_it);
+                        _p_counter+=1;
+                        //LOG_F(INFO,"line 701");
+                        // Stop first queue traversal.
+                        break;
+                    }
+                    if (!erased)
+                        job_it++;
+                    else
+                        erased = false;
                 }
-                else
-                {
-                    //ok we have a priority job, now stop traversing pending jobs
-                    _priority_job = pending_job;
-                    _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
-                    //LOG_F(INFO,"line 699");
-                    job_it = _pending_jobs.erase(job_it);
-                    _p_counter+=1;
-                    //LOG_F(INFO,"line 701");
-                    // Stop first queue traversal.
-                    break;
-                }
-                if (!erased)
-                    job_it++;
-                else
-                    erased = false;
             }
             //now let's backfill jobs that don't hinder priority job
            erased = false;
