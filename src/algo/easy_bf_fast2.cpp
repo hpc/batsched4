@@ -709,7 +709,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         _priority_job = pending_job;
                         _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
                         //LOG_F(INFO,"line 699");
-                        LOG_Fpending_job->id
+                        
                         job_it = _pending_jobs.erase(job_it);
                         _p_counter+=1;
                         //LOG_F(INFO,"line 701");
@@ -723,7 +723,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 }
             }
             //now let's backfill jobs that don't hinder priority job
-           erased = false;
+           bool erased = false;
            job_it =_pending_jobs.begin();
             while(job_it!=_pending_jobs.end())
             {
