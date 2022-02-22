@@ -131,7 +131,7 @@ void easy_bf_fast2::on_simulation_end(double date){
     _available_machines-=machines;
     for(auto key_value : _current_allocations)
     {
-            if (!((key_value.second & machines).is_empty()))
+            if (!((key_value.second.machines & machines).is_empty()))
                 _decision->add_kill_job({key_value.first},date);
     }
     
