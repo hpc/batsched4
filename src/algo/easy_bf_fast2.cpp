@@ -444,7 +444,8 @@ bool easy_bf_fast2::handle_newly_finished_jobs()
                 _horizons.erase(alloc.horizon_it);
         }
     }
-    //LOG_F(INFO,"line 447");
+
+    LOG_F(INFO,"_nb_available_machines %d",_nb_available_machines);
     return job_ended;
 }
 
@@ -495,7 +496,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
     {
         if (_priority_job != nullptr)
         {
-            //LOG_F(INFO,"line 498");
+            LOG_F(INFO,"pending_jobs %d _nb_available_machines %d",_pending_jobs.size(),_nb_available_machines);
             //first check if priority job fits
             //it fits if it's a 1 resource job and share_packing is enabled and
             //we either find an _available_core_machine or
