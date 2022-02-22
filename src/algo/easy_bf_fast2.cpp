@@ -377,8 +377,8 @@ void easy_bf_fast2::make_decisions(double date,
     if (_jobs_killed_recently.empty() && _pending_jobs.empty() && _running_jobs.empty() &&
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
     {
-        _decision->add_scheduler_finished_submitting_jobs(date);
-        _need_to_send_finished_submitting_jobs = false;
+        //_decision->add_scheduler_finished_submitting_jobs(date);
+        //_need_to_send_finished_submitting_jobs = false;
     }
       
 }
