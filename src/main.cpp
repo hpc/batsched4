@@ -311,6 +311,8 @@ int main(int argc, char ** argv)
         */
         if (scheduling_variant == "fcfs_fast2")
             algo = new FCFSFast2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "easy_bf_fast2")
+            algo = new easy_bf_fast2(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);

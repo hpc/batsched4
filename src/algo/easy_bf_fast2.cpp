@@ -13,9 +13,11 @@
 #include <chrono>
 #include "../batsched_tools.hpp"
 
+
 #define B_LOG_INSTANCE _myBLOG
 namespace myB = myBatsched;
 namespace r = rapidjson;
+const int DEBUG = 10;
 
 easy_bf_fast2::easy_bf_fast2(Workload *workload,
     SchedulingDecision *decision, Queue *queue, ResourceSelector *selector,
@@ -23,7 +25,7 @@ easy_bf_fast2::easy_bf_fast2(Workload *workload,
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay,
         variant_options)
 {
-    LOG_F(DEBUG,"created 4");
+    
     _myWorkloads = new myBatsched::Workloads;
     //batsim log object.  declared in batsched_tools.hpp
     _myBLOG = new b_log();

@@ -16,7 +16,7 @@
 #define B_LOG_INSTANCE _myBLOG
 namespace myB = myBatsched;
 namespace r = rapidjson;
-
+const int DEBUG = 10;
 FCFSFast2::FCFSFast2(Workload *workload,
     SchedulingDecision *decision, Queue *queue, ResourceSelector *selector,
     double rjms_delay, rapidjson::Document *variant_options) :
