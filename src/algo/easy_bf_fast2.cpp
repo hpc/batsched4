@@ -495,6 +495,8 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
     std::list<Job *>::iterator job_it =_pending_jobs.begin();
     if (job_ended)
     {
+        if (_priority_job == nullptr)
+            LOG_F(INFO,"line 499 nullptr");
         if (_priority_job != nullptr)
         {
             LOG_F(INFO,"pending_jobs %d _nb_available_machines %d",_pending_jobs.size(),_nb_available_machines);
