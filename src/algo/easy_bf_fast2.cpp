@@ -608,12 +608,12 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             {
                 std::list<Job *>::iterator job_it =_pending_jobs.begin();
                 bool erased = false;
-                bool executed2 = false;
+                bool executed2;
                 while(job_it!=_pending_jobs.end())
                 {
                     Job * pending_job = *job_it;
                     Allocation alloc;
-                      
+                    executed2 = false;
             
                     std::string pending_job_id = pending_job->id;
                 
