@@ -608,12 +608,12 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             {
                 std::list<Job *>::iterator job_it =_pending_jobs.begin();
                 bool erased = false;
-                
+                bool executed2 = false;
                 while(job_it!=_pending_jobs.end())
                 {
                     Job * pending_job = *job_it;
                     Allocation alloc;
-                    executed = false;    
+                      
             
                     std::string pending_job_id = pending_job->id;
                 
@@ -632,7 +632,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 alloc.machines = *it;
                                 
                                 _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
-                                executed = true;
+                                executed2 = true;
                                 _e_counter+=1;
                                 point.nb_released_machines = pending_job->nb_requested_resources;
                                 point.date = date + (double)pending_job->walltime;
@@ -661,7 +661,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             alloc.machines = _available_machines.left(1);
                         
                             _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
-                            executed = true;
+                            executed2 = true;
                             _e_counter+=1;
                             point.nb_released_machines = pending_job->nb_requested_resources;
                             point.date = date + (double)pending_job->walltime;
@@ -693,7 +693,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             pending_job->nb_requested_resources);
                         _decision->add_execute_job(PARALLEL,pending_job->id,
                             alloc.machines, date);
-                        executed = true;
+                        executed2 = true;
                         _e_counter+=1;
                         point.nb_released_machines = pending_job->nb_requested_resources;
                         point.date = date + (double)pending_job->walltime;
@@ -711,7 +711,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         _running_jobs.insert(pending_job->id);
                     
                     }
-                    if (!executed)
+                    if (executed2==false)
                     {
                         //ok we have a priority job, now stop traversing pending jobs
                         _priority_job = pending_job;
@@ -779,6 +779,9 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 
                                 
                             }
+                            else
+                                LOG_F(INFO,"date %f walltime %f completion_time %f",
+                                 date,pending_job->walltime,_priority_job->completion_time);
                         }
                         if (found == true)
                             break; 
@@ -814,6 +817,9 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             _p_counter+=1;
                             erased = true;
                         }
+                        else
+                            LOG_F(INFO,"date %f walltime %f completion_time %f",
+                                 date,pending_job->walltime,_priority_job->completion_time);
                     }
                 } // end of backfilling jobs share-packing block
                 else if (pending_job->nb_requested_resources <= _nb_available_machines &&
@@ -844,7 +850,11 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     //LOG_F(INFO,"line 814");
                     erased = true;
                 }
-                if (!erased)
+                else{
+                    LOG_F(INFO,"date %f walltime %f completion_time %f",
+                                 date,pending_job->walltime,_priority_job->completion_time);
+                }
+                if (erased==false)
                     job_it++;
                 else
                    erased = false;
