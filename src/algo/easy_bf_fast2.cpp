@@ -616,7 +616,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 
                     if (_share_packing && pending_job->nb_requested_resources==1)
                     {
-                    //LOG_F(INFO,"line 611");
+                    LOG_F(INFO,"line 611");
                         bool found = false;
                         //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                         for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
@@ -710,7 +710,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         //ok we have a priority job, now stop traversing pending jobs
                         _priority_job = pending_job;
                         _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();
-                        //LOG_F(INFO,"line 699");
+                        LOG_F(INFO,"line 699");
                         
                         job_it = _pending_jobs.erase(job_it);
                         _p_counter+=1;
@@ -738,7 +738,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 if (_share_packing && pending_job->nb_requested_resources==1)
                 {
                    
-                    //LOG_F(INFO,"line 721");
+                    LOG_F(INFO,"line 721");
                     bool found = false;
                     //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                     for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
@@ -780,7 +780,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     // there were no available core machines to put it on, try to put on a new core machine
                     if (found == false && _nb_available_machines > 0)
                     {
-                        //LOG_F(INFO,"line 760");
+                        LOG_F(INFO,"line 760");
                         if (date + pending_job->walltime <= _priority_job->completion_time)
                         {
                             //first get a machine

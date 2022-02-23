@@ -372,43 +372,43 @@ int main(int argc, char ** argv)
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
          Workload & workload, bool call_make_decisions_on_single_nop)
 {
-    LOG_F(INFO,"line 371 main.cpp");
+    //LOG_F(INFO,"line 371 main.cpp");
     bool simulation_finished = false;
     myB::Workloads myWorkloads;
     // Redis creation
     RedisStorage redis;
     bool redis_enabled = false;
     algo->set_redis(&redis);
-    LOG_F(INFO,"line 378 main.cpp");
+    //LOG_F(INFO,"line 378 main.cpp");
     while (!simulation_finished)
     {
-        LOG_F(INFO,"line 381 main.cpp");
+        //LOG_F(INFO,"line 381 main.cpp");
         string received_message;
         n.read(received_message);
-        LOG_F(INFO,"line 384 main.cpp");
+        //LOG_F(INFO,"line 384 main.cpp");
         if (boost::trim_copy(received_message).empty())
             throw runtime_error("Empty message received (connection lost ?)");
 
         d.clear();
-        LOG_F(INFO,"line 389 main.cpp");
+        //LOG_F(INFO,"line 389 main.cpp");
         r::Document doc;
         doc.Parse(received_message.c_str());
 
         double message_date = doc["now"].GetDouble();
         double current_date = message_date;
         bool requested_callback_received = false;
-        LOG_F(INFO,"line 396 main.cpp");
+        //LOG_F(INFO,"line 396 main.cpp");
         // Let's handle all received events
         const r::Value & events_array = doc["events"];
 
         for (unsigned int event_i = 0; event_i < events_array.Size(); ++event_i)
         {
-            LOG_F(INFO,"Line 400 main.cpp");
+            //LOG_F(INFO,"line 400 main.cpp");
             const r::Value & event_object = events_array[event_i];
             const std::string event_type = event_object["type"].GetString();
             current_date = event_object["timestamp"].GetDouble();
             const r::Value & event_data = event_object["data"];
-            LOG_F(INFO,"Line 405 main.cpp");
+            //LOG_F(INFO,"line 405 main.cpp");
             if (event_type == "SIMULATION_BEGINS")
             {
                 int nb_resources;
@@ -490,13 +490,13 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "JOB_COMPLETED")
             {
-                LOG_F(INFO,"line 486 main.cpp");
+                //LOG_F(INFO,"line 486 main.cpp");
                 string job_id = event_data["job_id"].GetString();
-                LOG_F(INFO,"line 488 main.cpp");
+                //LOG_F(INFO,"line 488 main.cpp");
                 workload[job_id]->completion_time = current_date;
-                LOG_F(INFO,"line 490 main.cpp");
+                //LOG_F(INFO,"line 490 main.cpp");
                 algo->on_job_end(current_date, {job_id});
-                LOG_F(INFO,"line 492 main.cpp");
+                //LOG_F(INFO,"line 492 main.cpp");
             }
             else if (event_type == "RESOURCE_STATE_CHANGED")
             {
@@ -602,7 +602,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     
                     std::string json_desc = event_data["metadata"].GetString();
                     LOG_F(INFO,"batsim_meta: %s",json_desc.c_str());
-                    LOG_F(INFO,"line 599 main.cpp");
+                    //LOG_F(INFO,"line 599 main.cpp");
                 }
                 else if (notify_type == "test")
                 {
@@ -618,11 +618,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             {
                 throw runtime_error("Unknown event received. Type = " + event_type);
             }
-            LOG_F(INFO,"line 615 main.cpp");
+            //LOG_F(INFO,"line 615 main.cpp");
         }
 
         bool requested_callback_only = requested_callback_received && (events_array.Size() == 1);
-        LOG_F(INFO,"line 621 main.cpp");
+        //LOG_F(INFO,"line 621 main.cpp");
         // make_decisions is not called if (!call_make_decisions_on_single_nop && single_nop_received)
         if (!(!call_make_decisions_on_single_nop && requested_callback_only))
         {
@@ -630,11 +630,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             algo->make_decisions(message_date, &update_info, nullptr);
             algo->clear_recent_data_structures();
         }
-        LOG_F(INFO,"line 629 main.cpp");
+        //LOG_F(INFO,"line 629 main.cpp");
         message_date = max(message_date, d.last_date());
-        LOG_F(INFO,"line 631 main.cpp");
+        //LOG_F(INFO,"line 631 main.cpp");
         const string & message_to_send = d.content(message_date);
-        LOG_F(INFO,"line 633 main.cpp");
+        //LOG_F(INFO,"line 633 main.cpp");
         n.write(message_to_send);
     }
 }
