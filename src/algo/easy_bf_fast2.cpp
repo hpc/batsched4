@@ -608,11 +608,12 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             {
                 std::list<Job *>::iterator job_it =_pending_jobs.begin();
                 bool erased = false;
+                
                 while(job_it!=_pending_jobs.end())
                 {
                     Job * pending_job = *job_it;
                     Allocation alloc;
-                    
+                    executed = false;    
             
                     std::string pending_job_id = pending_job->id;
                 
@@ -631,6 +632,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 alloc.machines = *it;
                                 
                                 _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                                executed = true;
                                 _e_counter+=1;
                                 point.nb_released_machines = pending_job->nb_requested_resources;
                                 point.date = date + (double)pending_job->walltime;
@@ -659,6 +661,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             alloc.machines = _available_machines.left(1);
                         
                             _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                            executed = true;
                             _e_counter+=1;
                             point.nb_released_machines = pending_job->nb_requested_resources;
                             point.date = date + (double)pending_job->walltime;
@@ -690,6 +693,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             pending_job->nb_requested_resources);
                         _decision->add_execute_job(PARALLEL,pending_job->id,
                             alloc.machines, date);
+                        executed = true;
                         _e_counter+=1;
                         point.nb_released_machines = pending_job->nb_requested_resources;
                         point.date = date + (double)pending_job->walltime;
@@ -707,7 +711,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         _running_jobs.insert(pending_job->id);
                     
                     }
-                    else
+                    if (!executed)
                     {
                         //ok we have a priority job, now stop traversing pending jobs
                         _priority_job = pending_job;
