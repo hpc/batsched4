@@ -350,22 +350,22 @@ void easy_bf_fast2::make_decisions(double date,
     //*****************************************************************
     // Handle newly finished jobs
     //*****************************************************************
-    //LOG_F(INFO,"line 353");
+    LOG_F(INFO,"line 353");
     bool job_ended = handle_newly_finished_jobs();
-    //LOG_F(INFO,"line 355");    
+    LOG_F(INFO,"line 355");    
     handle_new_jobs_to_kill(date);
     //************************************************************resubmission if killed
     //Handle jobs to queue back up (if killed)
-    //LOG_F(INFO,"line 359");
+    LOG_F(INFO,"line 359");
     handle_resubmission(date);    
     //***********************************************************
-    //LOG_F(INFO,"line 362");
+    LOG_F(INFO,"line 362");
     handle_machines_coming_available(date);
-    //LOG_F(INFO,"line 364");
+    LOG_F(INFO,"line 364");
     handle_ended_job_execution(job_ended,date);
-    //LOG_F(INFO,"line 366");
+    LOG_F(INFO,"line 366");
     handle_newly_released_jobs(date);
-    //LOG_F(INFO,"line 368");
+    LOG_F(INFO,"line 368");
     
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
     {
