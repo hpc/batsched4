@@ -575,6 +575,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _current_allocations[_priority_job->id] = alloc;
                    
                     _running_jobs.insert(_priority_job->id);
+                    _priority_job = nullptr;
                    
                 }
             }
