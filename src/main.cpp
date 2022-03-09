@@ -56,7 +56,9 @@
 #include "algo/wt_estimator.hpp"
 */
 #include "algo/easy_bf_fast2.hpp"
+#include "algo/easy_bf_fast2_holdback.hpp"
 #include "algo/fcfs_fast2.hpp"
+
 
 
 using namespace std;
