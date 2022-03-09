@@ -96,7 +96,8 @@ void easy_bf_fast2_holdback::on_simulation_start(double date,
         //LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
    }
    if (_share_packing_holdback > 0)
-    {
+   {
+        _nb_available_machines -=_share_packing_holdback;
         _heldback_machines = _available_machines.left(_share_packing_holdback);
         _available_machines -= _heldback_machines;
         _unavailable_machines +=_heldback_machines;
@@ -435,7 +436,7 @@ bool easy_bf_fast2_holdback::handle_newly_finished_jobs()
                 current_machine->cores_available += 1;
                 //if that machine was part of heldback machines then that's all that needs to be done
                 bool skip = false;
-                if (_share_packing_holdback > 0 && !(_heldback_machines & alloc.machines).is_empty())
+                if (_share_packing_holdback > 0 && !((_heldback_machines & alloc.machines).is_empty()))
                     skip = true;
                 //if that increase means no jobs are running on that machine (all its cores are available) then put it back in the mix
                 if (!skip && current_machine->cores_available == int(current_machine->core_count * _core_percent))
