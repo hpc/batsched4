@@ -436,7 +436,7 @@ bool easy_bf_fast2_holdback::handle_newly_finished_jobs()
                 //if that machine was part of heldback machines then that's all that needs to be done
                 bool skip = false;
                 if (_share_packing_holdback > 0 && !(_heldback_machines & alloc.machines).is_empty())
-                    skip = true
+                    skip = true;
                 //if that increase means no jobs are running on that machine (all its cores are available) then put it back in the mix
                 if (!skip && current_machine->cores_available == int(current_machine->core_count * _core_percent))
                 {
@@ -688,7 +688,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                             }
                             if (found == true)
                             {
-                                _decision->add_execute_job(PARALLEL,new_job_id,alloc.machines,date,mapping);
+                                _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
                                 _e_counter+=1;
                                 executed2 = true;
                                 //update data structures
@@ -697,8 +697,8 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
 
                                 machine * current_machine = machines_by_int[alloc.machines[0]];
                                 current_machine->cores_available -=1;
-                                _current_allocations[new_job_id] = alloc;
-                                _running_jobs.insert(new_job_id);
+                                _current_allocations[pending_job_id] = alloc;
+                                _running_jobs.insert(pending_job_id);
                                  job_it = _pending_jobs.erase(job_it);
                                  erased = true;
                                 
