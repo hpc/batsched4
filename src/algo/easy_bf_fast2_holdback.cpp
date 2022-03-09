@@ -445,7 +445,7 @@ bool easy_bf_fast2_holdback::handle_newly_finished_jobs()
                     _nb_available_machines += 1; // we increase available machines by 1
                 }
                 _current_allocations.erase(ended_job_id);
-                if (alloc.horizon_it != nullptr)
+                if (alloc.has_horizon == true)
                     _horizons.erase(alloc.horizon_it);
                 _running_jobs.erase(ended_job_id);
         }
@@ -551,85 +551,88 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                         executed = true;
                         //update data structures
                         //the job doesn't get put into the horizons because it is not part of backfilling
-                        alloc.horizon_it = nullptr;
+                        alloc.has_horizon = false;
 
                         machine * current_machine = machines_by_int[alloc.machines[0]];
                         current_machine->cores_available -=1;
-                        _current_allocations[new_job_id] = alloc;
-                        _running_jobs.insert(new_job_id);
+                        _current_allocations[_priority_job->id] = alloc;
+                        _running_jobs.insert(_priority_job->id);
+                        _priority_job = nullptr;
                         
                     }
                 }
 
 
                 //ok the job can be share-packed:
-                if (executed == false) //(not able to run on heldback machines )
-                    //first check if there is a share-packing machine available:
-                    //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
-                    for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
+                    if (executed == false) //(not able to run on heldback machines )
                     {
-                        //is this machine able to handle another job?
-                        machine* current_machine = machines_by_int[*it];
-                        if (current_machine->cores_available >= 1)
-                        {                                
-                            //it is able to handle another job
-                            found = true;
-                            alloc.machines = *it;
-                            break;
+                        //first check if there is a share-packing machine available:
+                        //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
+                        for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
+                        {
+                            //is this machine able to handle another job?
+                            machine* current_machine = machines_by_int[*it];
+                            if (current_machine->cores_available >= 1)
+                            {                                
+                                //it is able to handle another job
+                                found = true;
+                                alloc.machines = *it;
+                                break;
+                            }
+                                        
                         }
-                                    
-                    }
-                    //LOG_F(INFO,"line 529");
-                    if (found == true)
-                    {
-                        //yes it can be executed right away
-                        _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
-                        _e_counter+=1;
-                        executed = true;
-                        //update data structures
-                        machine* current_machine = machines_by_int[alloc.machines[0]];
-                        point.nb_released_machines = _priority_job->nb_requested_resources;
-                        point.date = date + (double)_priority_job->walltime;
-                        point.machines = alloc.machines;
-                        alloc.horizon_it = insert_horizon_point(point);
+                        //LOG_F(INFO,"line 529");
+                        if (found == true)
+                        {
+                            //yes it can be executed right away
+                            _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
+                            _e_counter+=1;
+                            executed = true;
+                            //update data structures
+                            machine* current_machine = machines_by_int[alloc.machines[0]];
+                            point.nb_released_machines = _priority_job->nb_requested_resources;
+                            point.date = date + (double)_priority_job->walltime;
+                            point.machines = alloc.machines;
+                            alloc.horizon_it = insert_horizon_point(point);
 
-                        
-                        current_machine->cores_available -=1;
-                        _current_allocations[_priority_job->id] = alloc;
-                        _running_jobs.insert(_priority_job->id);
+                            
+                            current_machine->cores_available -=1;
+                            _current_allocations[_priority_job->id] = alloc;
+                            _running_jobs.insert(_priority_job->id);
 
-                        _priority_job = nullptr;    
+                            _priority_job = nullptr;    
+                            
+                        }
+                        if (found == false && _nb_available_machines > 0)
+                        {
+                            
+                            //first get a machine
+                            alloc.machines = _available_machines.left(1);
                         
-                    }
-                    if (found == false && _nb_available_machines > 0)
-                    {
-                        
-                        //first get a machine
-                        alloc.machines = _available_machines.left(1);
-                    
-                        _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
-                        _e_counter+=1;
-                        executed = true;
-                        
-                        point.nb_released_machines = _priority_job->nb_requested_resources;
-                        point.date = date + (double)_priority_job->walltime;
-                        point.machines = alloc.machines;
-                        alloc.horizon_it = insert_horizon_point(point);
+                            _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
+                            _e_counter+=1;
+                            executed = true;
+                            
+                            point.nb_released_machines = _priority_job->nb_requested_resources;
+                            point.date = date + (double)_priority_job->walltime;
+                            point.machines = alloc.machines;
+                            alloc.horizon_it = insert_horizon_point(point);
 
-                        //update data structures
-                        machine* current_machine = machines_by_int[alloc.machines[0]];
-                        current_machine->cores_available -= 1;
-                        _available_core_machines += alloc.machines;
-                        _available_machines -= alloc.machines;
-                        _nb_available_machines -= 1;
-                    
-                        _current_allocations[_priority_job->id] = alloc;
-                    
-                        _running_jobs.insert(_priority_job->id);
-                        _priority_job = nullptr;
-                    
+                            //update data structures
+                            machine* current_machine = machines_by_int[alloc.machines[0]];
+                            current_machine->cores_available -= 1;
+                            _available_core_machines += alloc.machines;
+                            _available_machines -= alloc.machines;
+                            _nb_available_machines -= 1;
+                        
+                            _current_allocations[_priority_job->id] = alloc;
+                        
+                            _running_jobs.insert(_priority_job->id);
+                            _priority_job = nullptr;
+                        
+                        }
                     }
-                }
+                
             }
             //ok not share-packing or resources > 1
             else if (_priority_job->nb_requested_resources <= _nb_available_machines)
@@ -690,7 +693,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                                 executed2 = true;
                                 //update data structures
                                 //the job doesn't get put into the horizons because it is not part of backfilling
-                                alloc.horizon_it = nullptr;
+                                alloc.has_horizon = false;
 
                                 machine * current_machine = machines_by_int[alloc.machines[0]];
                                 current_machine->cores_available -=1;
@@ -995,7 +998,7 @@ void easy_bf_fast2_holdback::handle_newly_released_jobs(double date)
                     executed = true;
                     //update data structures
                     //the job doesn't get put into the horizons because it is not part of backfilling
-                    alloc.horizon_it = nullptr;
+                    alloc.has_horizon = false;
 
                     machine * current_machine = machines_by_int[alloc.machines[0]];
                     current_machine->cores_available -=1;

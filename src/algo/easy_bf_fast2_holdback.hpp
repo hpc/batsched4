@@ -71,6 +71,7 @@ private:
     {
         IntervalSet machines;
         std::list<FinishedHorizonPoint>::iterator horizon_it;
+        bool has_horizon = true;
     };
 
 
