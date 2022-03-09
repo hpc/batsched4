@@ -76,6 +76,8 @@ batsched_deps = [
 src = [
     'src/algo/easy_bf_fast2.cpp',
     'src/algo/easy_bf_fast2.hpp',
+    'src/algo/easy_bf_fast2_holdback.cpp,
+    'src/algo/easy_bf_fast2_holdback.hpp,
     'src/algo/fcfs_fast2.cpp',
     'src/algo/fcfs_fast2.hpp',
     'src/batsched_tools.cpp',

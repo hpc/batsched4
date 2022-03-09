@@ -92,7 +92,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 int main(int argc, char ** argv)
 {
     const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_fast",
-                                       "easy_bf_fast2",
+                                       "easy_bf_fast2","easy_bf_fast2_holdback",
                                       "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
                                       "energy_bf_monitoring",
@@ -313,6 +313,8 @@ int main(int argc, char ** argv)
             algo = new FCFSFast2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf_fast2")
             algo = new easy_bf_fast2(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "easy_bf_fast2_holdback")
+            algo = new easy_bf_fast2_holdback(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
