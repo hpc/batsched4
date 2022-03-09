@@ -705,6 +705,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                             }
                         }
                         if (executed2 == false)
+                        {
                             //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                             for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                             {
