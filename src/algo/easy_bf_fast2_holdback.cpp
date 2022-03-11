@@ -829,7 +829,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
             
                 if (_share_packing && pending_job->nb_requested_resources==1)
                 {
-                   
+                        bool found = false;
                         if (_share_packing_holdback > 0)
                         {
                             for (auto it = _heldback_machines.elements_begin(); it != _heldback_machines.elements_end(); ++it)
