@@ -6,6 +6,7 @@
 #include "../json_workload.hpp"
 #include "../locality.hpp"
 #include "../schedule.hpp"
+#include "../batsched_tools.hpp"
 
 class ConservativeBackfilling : public ISchedulingAlgorithm
 {
@@ -26,4 +27,5 @@ private:
     Schedule _schedule;
     bool _dump_provisional_schedules = false;
     std::string _dump_prefix = "/tmp/dump";
+    const std::string PARALLEL="PARALLEL";
 };

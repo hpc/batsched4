@@ -88,7 +88,7 @@ void ConservativeBackfilling::make_decisions(double date,
             // If the job should start now, let's say it to the resource manager
             if (alloc.started_in_first_slice)
             {
-                _decision->add_execute_job('PARALLEL', new_job->id, alloc.used_machines, date);
+                _decision->add_execute_job(PARALLEL, new_job->id, alloc.used_machines, date);
                 _queue->remove_job(new_job);
             }
         }
@@ -115,7 +115,7 @@ void ConservativeBackfilling::make_decisions(double date,
 
             if (alloc.started_in_first_slice)
             {
-                _decision->add_execute_job('PARALLEL',job->id, alloc.used_machines, date);
+                _decision->add_execute_job(PARALLEL,job->id, alloc.used_machines, date);
                 job_it = _queue->remove_job(job_it);
             }
             else
