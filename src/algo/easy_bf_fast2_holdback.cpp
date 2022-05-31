@@ -632,9 +632,9 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                             _priority_job = nullptr;
                         
                         }
-                    }
+                    }//end not executed
                 
-            }
+            }//end share-packing
             //ok not share-packing or resources > 1
             else if (_priority_job->nb_requested_resources <= _nb_available_machines)
             {
@@ -657,9 +657,10 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                 _priority_job = nullptr;
             }
             //LOG_F(INFO,"line 597");
-            //ok priority job got to run, now execute the whole queue until a priority job cannot fit  
+              
             if (executed)
             {
+                //ok priority job got to run, now execute the whole queue until a priority job cannot fit
                 std::list<Job *>::iterator job_it =_pending_jobs.begin();
                 bool erased = false;
                 bool executed2;
@@ -670,13 +671,15 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                     executed2 = false;
             
                     std::string pending_job_id = pending_job->id;
-                
+                    //can the job be share-packed?
                     if (_share_packing && pending_job->nb_requested_resources==1)
                     {
-                    LOG_F(INFO,"line 611");
+                        //it can be share-packed, can we run it on a heldback machine?
+                        LOG_F(INFO,"line 611");
                         bool found = false;
                         if (_share_packing_holdback > 0)
                         {
+                            //we can run it on a heldback machine as long as one is available.
                             for (auto it = _heldback_machines.elements_begin(); it != _heldback_machines.elements_end(); ++it)
                             {
                                 machine* current_machine = machines_by_int[*it];
@@ -689,6 +692,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                             }
                             if (found == true)
                             {
+                                //a heldback machine is available, execute the job on it.
                                 _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
                                 _e_counter+=1;
                                 executed2 = true;
@@ -704,9 +708,11 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                                  erased = true;
                                 
                             }
-                        }
+                        }//end share-packing holdback
+                        //was the job able to be put on a heldback machine?
                         if (executed2 == false)
                         {
+                            //no it was not able to be put on a heldback machine, try putting it on a normal share-packing machine.
                             //it is a 1 resource job, iterate over the available core machines until it finds one to put the job on.
                             for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                             {
@@ -768,7 +774,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                                 _p_counter+=1;
                                 erased = true;
                             }
-                        }        
+                        }// end not executed     
 
                     } // end of pending jobs share-packing block
                 
@@ -826,9 +832,11 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                 Allocation alloc;
                 //LOG_F(INFO,"line 715");
                 std::string pending_job_id = pending_job->id;
-            
+                //can we share-pack it?
                 if (_share_packing && pending_job->nb_requested_resources==1)
                 {
+                        //yes we can share-pack it
+                        //can we use a heldback machine?
                         bool found = false;
                         if (_share_packing_holdback > 0)
                         {
@@ -844,6 +852,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                             }
                             if (found == true)
                             {
+                                //yes we can use a heldback machine
                                 _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
                                 _e_counter+=1;
                                 execute = true;
@@ -938,7 +947,7 @@ void easy_bf_fast2_holdback::handle_ended_job_execution(bool job_ended,double da
                                 LOG_F(INFO,"date %f walltime %f completion_time %f",
                                     date,pending_job->walltime,_priority_job->completion_time);
                         }
-                    } 
+                    }// end of not executed 
                 }// end of backfilling jobs share-packing block
                 else if (pending_job->nb_requested_resources <= _nb_available_machines &&
                         date + pending_job->walltime <= _priority_job->completion_time)

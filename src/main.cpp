@@ -31,8 +31,8 @@
 #include "data_storage.hpp"
 #include "batsched_tools.hpp"
 
+
 /*
-#include "algo/conservative_bf.hpp"
 #include "algo/crasher.hpp"
 #include "algo/easy_bf.hpp"
 #include "algo/easy_bf_fast.hpp"
@@ -55,6 +55,7 @@
 #include "algo/submitter.hpp"
 #include "algo/wt_estimator.hpp"
 */
+#include "algo/conservative_bf.hpp"
 #include "algo/easy_bf_fast2.hpp"
 #include "algo/easy_bf_fast2_holdback.hpp"
 #include "algo/fcfs_fast2.hpp"
@@ -282,8 +283,7 @@ int main(int argc, char ** argv)
         // Scheduling variant
         /*if (scheduling_variant == "filler")
             algo = new Filler(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
-        else if (scheduling_variant == "conservative_bf")
-            algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        
         else if (scheduling_variant == "crasher")
             algo = new Crasher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf")
@@ -311,12 +311,15 @@ int main(int argc, char ** argv)
         else if (scheduling_variant == "fcfs_fast")
             algo = new FCFSFast(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         */
+       
         if (scheduling_variant == "fcfs_fast2")
             algo = new FCFSFast2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf_fast2")
             algo = new easy_bf_fast2(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf_fast2_holdback")
             algo = new easy_bf_fast2_holdback(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "conservative_bf")
+            algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
