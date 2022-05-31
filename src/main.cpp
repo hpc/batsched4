@@ -341,7 +341,7 @@ int main(int argc, char ** argv)
         bool success = false;
         Network n;
         n.bind(socket_endpoint);
-           
+           LOG_F(1, "before run");
         // Run the simulation
         run(n, algo, decision, w, call_make_decisions_on_single_nop);
     }
@@ -410,7 +410,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 
         for (unsigned int event_i = 0; event_i < events_array.Size(); ++event_i)
         {
-            //LOG_F(INFO,"line 400 main.cpp");
+            LOG_F(INFO,"line 400 main.cpp");
             const r::Value & event_object = events_array[event_i];
             const std::string event_type = event_object["type"].GetString();
             current_date = event_object["timestamp"].GetDouble();
@@ -472,8 +472,9 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 myWorkloads._repair_time = event_data["config"]["repair_time"].GetDouble();
                 myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 myWorkloads._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
+                LOG_F(1, "before set workloads");
                 algo->set_workloads(&myWorkloads);
-            
+            LOG_F(1, "after set workloads");
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
@@ -634,6 +635,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
         if (!(!call_make_decisions_on_single_nop && requested_callback_only))
         {
             SortableJobOrder::UpdateInformation update_info(current_date);
+            LOG_F(1, "before make decisions");
             algo->make_decisions(message_date, &update_info, nullptr);
             algo->clear_recent_data_structures();
         }
