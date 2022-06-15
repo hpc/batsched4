@@ -497,18 +497,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     IntervalSet resources = IntervalSet::from_string_hyphen(event_data["resources"].GetString(), " ");
                     algo->on_machine_unavailable_notify_event(current_date, resources);
                 }
-                else if (notify_type == "myKillJob")
-                {
-                    
-                        algo->on_myKillJob_notify_event(current_date);
-                    
-                }
-                else if (notify_type == "job_fault")
-                {
-                    LOG_F(INFO,"main.cpp notify_type==jobfault");
-                    std::string job = event_data["job"].GetString();
-                    algo->on_job_fault_notify_event(current_date,job);
-                }
+                
+                
                 else if (notify_type == "batsim_metadata")
                 {
                     
