@@ -887,6 +887,7 @@ string Schedule::to_svg() const
 
 void Schedule::write_svg_to_file(const string &filename) const
 {
+    LOG_F(INFO,"filename: %s",filename.c_str());
     ofstream f(filename);
 
     if (f.is_open())
