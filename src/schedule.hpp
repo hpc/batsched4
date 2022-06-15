@@ -36,7 +36,7 @@ public:
     typedef struct JobAlloc JobAlloc;
 
 public:
-    Schedule(int nb_machines = 1, std::string svg_prefix="/tmp/", Rational initial_time = 0);
+    Schedule(int nb_machines = 1, Rational initial_time = 0);
     Schedule(const Schedule & other);
 
     Schedule & operator=(const Schedule & other);
@@ -49,6 +49,7 @@ public:
     void remove_job_all_occurences(const Job * job);
     void remove_job_first_occurence(const Job * job);
     void remove_job_last_occurence(const Job * job);
+    void set_svg_prefix(std::string svg_prefix);
     JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
     JobAlloc add_job_first_fit_after_time_slice(const Job * job,

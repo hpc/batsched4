@@ -10,15 +10,11 @@
 
 using namespace std;
 
-Schedule::Schedule(int nb_machines, std::string svg_prefix,Rational initial_time)
+Schedule::Schedule(int nb_machines,Rational initial_time)
 {
     PPK_ASSERT_ERROR(nb_machines > 0);
     _nb_machines = nb_machines;
-    _svg_prefix=svg_prefix;
-    if (_svg_prefix!="/tmp/")
-        _debug = true;
-    else
-        _debug = false;
+    
     TimeSlice slice;
     slice.begin = initial_time;
     slice.end = 1e19; // greater than the number of seconds elapsed since the big bang
@@ -32,11 +28,18 @@ Schedule::Schedule(int nb_machines, std::string svg_prefix,Rational initial_time
     generate_colors();
 }
 
+
 Schedule::Schedule(const Schedule &other)
 {
     *this = other;
 }
-
+Schedule::set_svg_prefix(std::string svg_prefix){
+    _svg_prefix = svg_prefix;
+    if (_svg_prefix!="/tmp/")
+        _debug = true;
+    else
+        _debug = false;
+}
 Schedule &Schedule::operator=(const Schedule &other)
 {
     _profile = other._profile;

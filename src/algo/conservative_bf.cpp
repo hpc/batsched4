@@ -32,7 +32,8 @@ ConservativeBackfilling::~ConservativeBackfilling()
 
 void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
-    _schedule = Schedule(_nb_machines,_svg_prefix, date);
+    _schedule = Schedule(_nb_machines, date);
+    _schedule.set_svg_prefix(_svg_prefix);
     (void) batsim_config;
 }
 
