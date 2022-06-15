@@ -36,7 +36,7 @@ public:
     typedef struct JobAlloc JobAlloc;
 
 public:
-    Schedule(int nb_machines = 1, std::string svg_prefix, Rational initial_time = 0);
+    Schedule(int nb_machines = 1, std::string svg_prefix="/tmp/", Rational initial_time = 0);
     Schedule(const Schedule & other);
 
     Schedule & operator=(const Schedule & other);
