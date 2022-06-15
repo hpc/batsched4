@@ -36,7 +36,7 @@ public:
     typedef struct JobAlloc JobAlloc;
 
 public:
-    Schedule(int nb_machines = 1, Rational initial_time = 0);
+    Schedule(int nb_machines = 1, std::string svg_prefix, Rational initial_time = 0);
     Schedule(const Schedule & other);
 
     Schedule & operator=(const Schedule & other);
@@ -114,7 +114,8 @@ private:
     // The profile is a list of timeslices and a set of job allocations
     std::list<TimeSlice> _profile;
     int _nb_machines;
-    bool _debug = true;
+    bool _debug = false;
+    std::string _svg_prefix;
 
     unsigned int _output_number = 0;
     std::vector<std::string> _colors;

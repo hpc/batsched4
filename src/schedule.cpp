@@ -10,11 +10,15 @@
 
 using namespace std;
 
-Schedule::Schedule(int nb_machines, Rational initial_time)
+Schedule::Schedule(int nb_machines, std::string svg_prefix,Rational initial_time)
 {
     PPK_ASSERT_ERROR(nb_machines > 0);
     _nb_machines = nb_machines;
-
+    _svg_prefix=svg_prefix;
+    if (_svg_prefix!="/tmp/")
+        _debug = true;
+    else
+        _debug = false;
     TimeSlice slice;
     slice.begin = initial_time;
     slice.end = 1e19; // greater than the number of seconds elapsed since the big bang
@@ -898,10 +902,11 @@ void Schedule::write_svg_to_file(const string &filename) const
 
 void Schedule::output_to_svg(const string &filename_prefix)
 {
+    
     const int bufsize = 4096;
     char *buf = new char[bufsize];
 
-    snprintf(buf, bufsize, "%s%06d.svg", filename_prefix.c_str(), _output_number);
+    snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
     ++_output_number %= 10000000;
 
     write_svg_to_file(buf);
