@@ -144,6 +144,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit(
 Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
     std::list<TimeSlice>::iterator first_time_slice, ResourceSelector *selector, bool assert_insertion_successful)
 {
+    LOG_F(INFO,"check debug %d",_debug);
     if (_debug)
     {
         LOG_F(1, "Adding job '%s' (size=%d, walltime=%g). Output number %d. %s",
