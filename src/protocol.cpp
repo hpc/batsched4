@@ -192,8 +192,7 @@ void JsonProtocolWriter::append_register_profile(const string &workload_name,
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_execute_job(const string &type,
-                                            const string &job_id,
+void JsonProtocolWriter::append_execute_job(const string &job_id,
                                             const IntervalSet &allocated_resources,
                                             double date,
                                             const vector<int> & executor_to_allocated_resource_mapping)
@@ -202,7 +201,6 @@ void JsonProtocolWriter::append_execute_job(const string &type,
       "timestamp": 10.0,
       "type": "EXECUTE_JOB",
       "data": {
-        "type": "parallel" | "sequential"
         "job_id": "w12!45",
         "alloc": "2-3",
         "mapping": {"0": "0", "1": "0", "2": "1", "3": "1"}
@@ -214,7 +212,7 @@ void JsonProtocolWriter::append_execute_job(const string &type,
     _is_empty = false;
 
     Value data(rapidjson::kObjectType);
-    data.AddMember("type", Value().SetString(type.c_str(),_alloc), _alloc);
+   
     data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
     data.AddMember("alloc", Value().SetString(allocated_resources.to_string_hyphen(" ", "-").c_str(), _alloc), _alloc);
 

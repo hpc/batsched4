@@ -12,7 +12,7 @@ class ConservativeBackfilling : public ISchedulingAlgorithm
 {
 public:
     ConservativeBackfilling(Workload * workload, SchedulingDecision * decision, Queue * queue, ResourceSelector * selector,
-                            double rjms_delay, rapidjson::Document * variant_options);
+                            double rjms_delay, std::string svg_prefix,rapidjson::Document * variant_options);
     virtual ~ConservativeBackfilling();
 
     virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
@@ -25,7 +25,7 @@ public:
 
 private:
     Schedule _schedule;
+    std::string _svg_prefix;
     bool _dump_provisional_schedules = false;
     std::string _dump_prefix = "/tmp/dump";
-    const std::string PARALLEL="PARALLEL";
 };

@@ -10,7 +10,7 @@
 
 using namespace std;
 
-Schedule::Schedule(int nb_machines, Rational initial_time)
+Schedule::Schedule(int nb_machines,Rational initial_time)
 {
     PPK_ASSERT_ERROR(nb_machines > 0);
     _nb_machines = nb_machines;
@@ -32,7 +32,13 @@ Schedule::Schedule(const Schedule &other)
 {
     *this = other;
 }
-
+Schedule::set_svg_prefix(std::string svg_prefix){
+    _svg_prefix = svg_prefix;
+    if (_svg_prefix!="/tmp/")
+        _debug = true;
+    else
+        _debug = false;
+}
 Schedule &Schedule::operator=(const Schedule &other)
 {
     _profile = other._profile;
@@ -144,7 +150,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit(
 Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
     std::list<TimeSlice>::iterator first_time_slice, ResourceSelector *selector, bool assert_insertion_successful)
 {
-    LOG_F(1,"checking _debug: %d",_debug);
+    
     if (_debug)
     {
         LOG_F(1, "Adding job '%s' (size=%d, walltime=%g). Output number %d. %s",
@@ -900,7 +906,7 @@ void Schedule::output_to_svg(const string &filename_prefix)
     const int bufsize = 4096;
     char *buf = new char[bufsize];
 
-    snprintf(buf, bufsize, "%s%06d.svg", filename_prefix.c_str(), _output_number);
+    snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
     ++_output_number %= 10000000;
 
     write_svg_to_file(buf);

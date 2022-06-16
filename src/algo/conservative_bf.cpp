@@ -7,7 +7,7 @@
 using namespace std;
 
 ConservativeBackfilling::ConservativeBackfilling(Workload *workload, SchedulingDecision *decision,
-                                                 Queue *queue, ResourceSelector * selector, double rjms_delay, rapidjson::Document *variant_options) :
+                                                 Queue *queue, ResourceSelector * selector, double rjms_delay, std::string svg_prefix,rapidjson::Document *variant_options) :
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay, variant_options)
 {
     if (variant_options->HasMember("dump_previsional_schedules"))
@@ -23,6 +23,7 @@ ConservativeBackfilling::ConservativeBackfilling(Workload *workload, SchedulingD
                 "Invalid options: 'dump_prefix' should be a string");
         _dump_prefix = (*variant_options)["dump_prefix"].GetString();
     }
+    _svg_prefix=svg_prefix;
 }
 
 ConservativeBackfilling::~ConservativeBackfilling()
@@ -32,6 +33,8 @@ ConservativeBackfilling::~ConservativeBackfilling()
 void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     _schedule = Schedule(_nb_machines, date);
+    _schedule.set_svg_prefix(_svg_prefix);
+
     (void) batsim_config;
 }
 
@@ -88,7 +91,7 @@ void ConservativeBackfilling::make_decisions(double date,
             // If the job should start now, let's say it to the resource manager
             if (alloc.started_in_first_slice)
             {
-                _decision->add_execute_job(PARALLEL, new_job->id, alloc.used_machines, date);
+                _decision->add_execute_job(new_job->id, alloc.used_machines, date);
                 _queue->remove_job(new_job);
             }
         }
@@ -115,7 +118,7 @@ void ConservativeBackfilling::make_decisions(double date,
 
             if (alloc.started_in_first_slice)
             {
-                _decision->add_execute_job(PARALLEL,job->id, alloc.used_machines, date);
+                _decision->add_execute_job(job->id, alloc.used_machines, date);
                 job_it = _queue->remove_job(job_it);
             }
             else
