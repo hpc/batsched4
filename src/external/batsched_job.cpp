@@ -112,11 +112,12 @@ void Jobs::load_from_json(const rapidjson::Document &doc, const std::string &fil
             std::string job_desc = jobs[i].GetString();
             LOG_F(INFO,"our string: %s",job_desc.c_str());
             job_desc=Job::not_escaped(job_desc);
+            LOG_F(INFO,"after not_escaped");
             Document d;
             d.Parse(job_desc.c_str());
             const rapidjson::Value & job_json_description = d.GetObject();
             auto j = Job::from_json(job_json_description, _workload, error_prefix);
-
+            LOG_F(INFO,"after from_json");
             CHECK_F(!exists(j->id), "%s: duplication of job id '%s'",
                     error_prefix.c_str(), j->id.to_string().c_str());
             _jobs[j->id] = j;
