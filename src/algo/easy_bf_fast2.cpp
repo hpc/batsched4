@@ -534,7 +534,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 if (found == true)
                 {
                     //yes it can be executed right away
-                    _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
+                    _decision->add_execute_job(_priority_job->id,alloc.machines,date,mapping);
                     _e_counter+=1;
                     executed = true;
                     //update data structures
@@ -558,7 +558,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     //first get a machine
                     alloc.machines = _available_machines.left(1);
                    
-                    _decision->add_execute_job(PARALLEL,_priority_job->id,alloc.machines,date,mapping);
+                    _decision->add_execute_job(_priority_job->id,alloc.machines,date,mapping);
                     _e_counter+=1;
                     executed = true;
                     
@@ -587,7 +587,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 //LOG_F(INFO, "Priority job fits!");
                 alloc.machines = _available_machines.left(
                     _priority_job->nb_requested_resources);
-                _decision->add_execute_job(PARALLEL,_priority_job->id, alloc.machines,
+                _decision->add_execute_job(_priority_job->id, alloc.machines,
                     date);
                 executed = true;
                 _e_counter+=1;
@@ -631,7 +631,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 //it is able to handle another job, execute a job on it and subtract from cores_available
                                 alloc.machines = *it;
                                 
-                                _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                                _decision->add_execute_job(pending_job_id,alloc.machines,date,mapping);
                                 executed2 = true;
                                 _e_counter+=1;
                                 point.nb_released_machines = pending_job->nb_requested_resources;
@@ -660,7 +660,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             //first get a machine
                             alloc.machines = _available_machines.left(1);
                         
-                            _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                            _decision->add_execute_job(pending_job_id,alloc.machines,date,mapping);
                             executed2 = true;
                             _e_counter+=1;
                             point.nb_released_machines = pending_job->nb_requested_resources;
@@ -691,7 +691,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     
                         alloc.machines = _available_machines.left(
                             pending_job->nb_requested_resources);
-                        _decision->add_execute_job(PARALLEL,pending_job->id,
+                        _decision->add_execute_job(pending_job->id,
                             alloc.machines, date);
                         executed2 = true;
                         _e_counter+=1;
@@ -761,7 +761,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                                 //it is able to handle another job, execute a job on it and subtract from cores_available
                                 alloc.machines = *it;
                                 
-                                _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                                _decision->add_execute_job(pending_job_id,alloc.machines,date,mapping);
                                 execute = true;
                                 _e_counter+=1;
                                 point.nb_released_machines = pending_job->nb_requested_resources;
@@ -795,7 +795,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             //first get a machine
                             alloc.machines = _available_machines.left(1);
                         
-                            _decision->add_execute_job(PARALLEL,pending_job_id,alloc.machines,date,mapping);
+                            _decision->add_execute_job(pending_job_id,alloc.machines,date,mapping);
                             _e_counter+=1;
                             execute=true;
                             point.nb_released_machines = pending_job->nb_requested_resources;
@@ -829,7 +829,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     //LOG_F(INFO,"line 791");
                     alloc.machines = _available_machines.left(
                         pending_job->nb_requested_resources);
-                    _decision->add_execute_job(PARALLEL,pending_job->id,
+                    _decision->add_execute_job(pending_job->id,
                         alloc.machines, date);
                     _e_counter+=1;
                     execute = true;
@@ -915,7 +915,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                          date + new_job->walltime<= _priority_job->completion_time)
                 {
                     //yes it can be executed right away
-                    _decision->add_execute_job(PARALLEL,new_job_id,alloc.machines,date,mapping);
+                    _decision->add_execute_job(new_job_id,alloc.machines,date,mapping);
                     _e_counter+=1;
                     executed = true;
                     //update data structures
@@ -942,7 +942,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                     //yes it can
                     //first get a machine
                     alloc.machines = _available_machines.left(1);
-                    _decision->add_execute_job(PARALLEL,new_job_id,alloc.machines,date,mapping);
+                    _decision->add_execute_job(new_job_id,alloc.machines,date,mapping);
                     _e_counter+=1;
                     executed = true;
                     FinishedHorizonPoint point;
@@ -977,7 +977,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
             {
                 alloc.machines = _available_machines.left(
                     new_job->nb_requested_resources);
-                _decision->add_execute_job(PARALLEL,new_job_id, alloc.machines, date);
+                _decision->add_execute_job(new_job_id, alloc.machines, date);
                 _e_counter+=1;
                 executed = true;
 
