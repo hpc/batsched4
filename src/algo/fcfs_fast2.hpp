@@ -83,7 +83,7 @@ private:
     double _core_percent = 1.0;
     std::map<int,machine *> machines_by_int;
     std::map<std::string,machine *> machines_by_name;
-=
+
 
     // Allocations of running jobs
     std::unordered_map<std::string, IntervalSet> _current_allocations;

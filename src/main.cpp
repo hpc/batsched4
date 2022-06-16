@@ -131,6 +131,7 @@ int main(int argc, char ** argv)
     args::ValueFlag<string> flag_variant_options_filepath(parser, "options-filepath", "Sets the scheduling variant options as the content of the given filepath. Overrides the variant_options options.", {"variant_options_filepath"}, "");
     args::ValueFlag<string> flag_queue_order(parser, "order", "Sets the queue order. Available values are " + queue_orders_string, {'o', "queue_order"}, "fcfs");
     args::ValueFlag<string> flag_verbosity_level(parser, "verbosity-level", "Sets the verbosity level. Available values are " + verbosity_levels_string, {"verbosity"}, "info");
+    args::ValueFlag<string> flag_svg_prefix(parser,"svg_prefix", "Sets the prefix for outputing svg files using Schedule.cpp",{"svg_prefix"},"/tmp/");
     args::ValueFlag<bool> flag_call_make_decisions_on_single_nop(parser, "flag", "If set to true, make_decisions will be called after single NOP messages.", {"call_make_decisions_on_single_nop"}, true);
     args::Flag flag_version(parser, "version", "Shows batsched version", {"version"});
 
@@ -196,6 +197,8 @@ int main(int argc, char ** argv)
     string variant_options = flag_variant_options.Get();
     string variant_options_filepath = flag_variant_options_filepath.Get();
     string verbosity_level = flag_verbosity_level.Get();
+    string svg_prefix = flag_svg_prefix.Get();
+
     double rjms_delay = flag_rjms_delay.Get();
     bool call_make_decisions_on_single_nop = flag_call_make_decisions_on_single_nop.Get();
 
@@ -319,7 +322,7 @@ int main(int argc, char ** argv)
         else if (scheduling_variant == "easy_bf_fast2_holdback")
             algo = new easy_bf_fast2_holdback(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "conservative_bf")
-            algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+            algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, svg_prefix, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
