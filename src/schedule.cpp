@@ -73,8 +73,8 @@ void Schedule::update_first_slice(Rational current_time)
         }
     }
 }
-JobAlloc Schedule::reserve_time_slice(Job* job){
-    
+JobAlloc Schedule::reserve_time_slice(const Job* job){
+
 }
 void Schedule::update_first_slice_removing_remaining_jobs(Rational current_time)
 {
