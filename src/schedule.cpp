@@ -73,9 +73,7 @@ void Schedule::update_first_slice(Rational current_time)
         }
     }
 }
-JobAlloc Schedule::reserve_time_slice(const Job* job){
 
-}
 void Schedule::update_first_slice_removing_remaining_jobs(Rational current_time)
 {
     PPK_ASSERT_ERROR(current_time < infinite_horizon());
@@ -148,7 +146,38 @@ Schedule::JobAlloc Schedule::add_job_first_fit(
 
     return add_job_first_fit_after_time_slice(job, _profile.begin(), selector, assert_insertion_successful);
 }
+JobAlloc Schedule::reserve_time_slice(const Job* job){
+    // Let's create the job allocation
+    Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
+    //first find a time_slice where the allocation is available
+    //actually we are going to just use the last one
+        //so we found one
+        auto pit = _profile.end();
+        if (job->future_allocations.is_subset_of(pit->available_machines))
+        {
+            Rational beginning = job->start;
+            alloc->begin = beginning;
+            alloc->end = alloc->begin + job->walltime;
+            alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
+            alloc->job = job;
+            alloc->used_machines = job->future_allocations;
+            TimeSliceIterator first_slice_after_split;
+            TimeSliceIterator second_slice_after_split;
+            Rational split_date = pit->begin + job->walltime;
+            split_slice(pit, split_date, first_slice_after_split, second_slice_after_split);
+            // Let's remove the allocated machines from the available machines of the time slice
+            first_slice_after_split->available_machines.remove(alloc->used_machines);
+            first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
+            first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
+            first_slice_after_split->begin=job->start;
+            first_slice_after_split->length=job->walltime;
 
+            return *alloc;
+
+        }
+
+}
+    
 Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
     std::list<TimeSlice>::iterator first_time_slice, ResourceSelector *selector, bool assert_insertion_successful)
 {

@@ -54,7 +54,7 @@ void ConservativeBackfilling::make_decisions(double date,
 {
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently)
-        _schedule.remove_job((*_workload)[ended_job_id]);
+       _schedule.remove_job((*_workload)[ended_job_id]);
 
     // Let's handle recently released jobs
     std::vector<std::string> recently_queued_jobs;
@@ -63,22 +63,28 @@ void ConservativeBackfilling::make_decisions(double date,
         const Job * new_job = (*_workload)[new_job_id];
         LOG_F(INFO,"job %s has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
         if (new_job->purpose == "reservation")
+        {    
             LOG_F(INFO,"job %s has start %f and alloc %s",new_job->id.c_str(),new_job->start,new_job->future_allocations.to_string_hyphen(" ","-").c_str());
+                Schedule::JobAlloc ja = _schedule.reserve_time_slice(new_job);
 
-        if (new_job->nb_requested_resources > _nb_machines)
-        {
-            _decision->add_reject_job(new_job_id, date);
-        }
-        else if (!new_job->has_walltime)
-        {
-            LOG_SCOPE_FUNCTION(INFO);
-            LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
-            _decision->add_reject_job(new_job_id, date);
         }
         else
         {
-            _queue->append_job(new_job, update_info);
-            recently_queued_jobs.push_back(new_job_id);
+            if (new_job->nb_requested_resources > _nb_machines)
+            {
+                _decision->add_reject_job(new_job_id, date);
+            }
+            else if (!new_job->has_walltime)
+            {
+                LOG_SCOPE_FUNCTION(INFO);
+                LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
+                _decision->add_reject_job(new_job_id, date);
+            }
+            else
+            {
+                _queue->append_job(new_job, update_info);
+                recently_queued_jobs.push_back(new_job_id);
+            }
         }
     }
 
