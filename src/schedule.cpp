@@ -905,11 +905,19 @@ void Schedule::output_to_svg(const string &filename_prefix)
 {
     const int bufsize = 4096;
     char *buf = new char[bufsize];
+    char *buf2 = new char[bufsize];
 
     snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
+    snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
     ++_output_number %= 10000000;
+    ofstream f(buf2);
+    auto first_slice = _profile.begin();
+    if (f.is_open())
+        f << first_slice->begin;
+    f.close();
 
     write_svg_to_file(buf);
+
 
     delete[] buf;
 }
