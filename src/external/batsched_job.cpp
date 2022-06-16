@@ -263,7 +263,7 @@ JobPtr Job::from_json(const rapidjson::Value & json_desc,
     {
         CHECK_F(json_desc["alloc"].IsString(), "%s: job %s has a non-string 'alloc' field",
                 error_prefix.c_str(),j->id.to_string().c_str());
-        j->future_allocation = IntervalSet::from_string_hyphen(json_desc["purpose"].GetString()," ","-");
+        j->future_allocation = IntervalSet::from_string_hyphen(json_desc["alloc"].GetString()," ","-");
     }
     if(workload->_checkpointing_on)
     {
@@ -400,6 +400,7 @@ JobPtr Job::from_json(const std::string & json_str,
     
     Document doc;
     doc.Parse(json_str.c_str());
+    LOG_F(INFO,"after parse");
     CHECK_F(!doc.HasParseError(),
                "%s: Cannot be parsed. Content (between '##'):\n#%s#",
                error_prefix.c_str(), json_str.c_str());
