@@ -73,7 +73,9 @@ void Schedule::update_first_slice(Rational current_time)
         }
     }
 }
-
+JobAlloc Schedule::reserve_time_slice(Job* job){
+    
+}
 void Schedule::update_first_slice_removing_remaining_jobs(Rational current_time)
 {
     PPK_ASSERT_ERROR(current_time < infinite_horizon());
