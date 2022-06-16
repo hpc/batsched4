@@ -32,7 +32,7 @@ Schedule::Schedule(const Schedule &other)
 {
     *this = other;
 }
-Schedule::set_svg_prefix(std::string svg_prefix){
+void Schedule::set_svg_prefix(std::string svg_prefix){
     _svg_prefix = svg_prefix;
     if (_svg_prefix!="/tmp/")
         _debug = true;
