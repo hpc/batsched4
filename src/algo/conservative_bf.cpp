@@ -61,7 +61,7 @@ void ConservativeBackfilling::make_decisions(double date,
     for (const string & new_job_id : _jobs_released_recently)
     {
         const Job * new_job = (*_workload)[new_job_id];
-        LOG_F(INFO,"job %d has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
+        LOG_F(INFO,"job %s has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
 
         if (new_job->nb_requested_resources > _nb_machines)
         {
@@ -114,11 +114,12 @@ void ConservativeBackfilling::make_decisions(double date,
         for (auto job_it = _queue->begin(); job_it != _queue->end(); )
         {
             const Job * job = (*job_it)->job;
-
-            _schedule.remove_job_if_exists(job);
+            if (job->purpose!="reservation")
+                _schedule.remove_job_if_exists(job);
 //            if (_dump_provisional_schedules)
 //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
+            if (job->purpose!="reservation")
+                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
 //            if (_dump_provisional_schedules)
 //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
 
