@@ -3,6 +3,7 @@
 #include <list>
 
 #include "../isalgorithm.hpp"
+#include "../external/pointers.hpp"
 #include "../json_workload.hpp"
 #include "../locality.hpp"
 #include "../schedule.hpp"
@@ -18,6 +19,7 @@ public:
     virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
+    virtual void set_workloads(myBatsched::Workloads * w);
 
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
@@ -28,4 +30,6 @@ private:
     std::string _svg_prefix;
     bool _dump_provisional_schedules = false;
     std::string _dump_prefix = "/tmp/dump";
+    myBatsched::Workloads * _myWorkloads;
+    bool _checkpointing_on;
 };

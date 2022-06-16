@@ -161,6 +161,8 @@ JobPtr Job::from_json(const rapidjson::Value & json_desc,
     j->starting_time = -1;
     j->runtime = -1;
     j->state = JobState::JOB_STATE_NOT_SUBMITTED;
+    j->cores = 1;
+    j->purpose = "job";
     
 
     CHECK_F(json_desc.IsObject(), "%s: one job is not an object", error_prefix.c_str());
@@ -232,6 +234,22 @@ JobPtr Job::from_json(const rapidjson::Value & json_desc,
                error_prefix.c_str(), profile_name.c_str(), j->id.to_string().c_str());
     j->profile = workload->profiles->at(profile_name);
     
+    if (json_desc.HasMember("cores"))
+    {
+        CHECK_F(json_desc["cores"].IsInt(), "%s: job %s has a non-number 'cores' field",
+                error_prefix.c_str(),j->id.to_string().c_str());
+        CHECK_F(json_desc["cores"].GetInt() >= 0, "%s: job %s has a negative 'cores' field (%d)",
+               error_prefix.c_str(), j->id.to_string().c_str(), json_desc["cores"].GetInt());
+        j->cores = json_desc["cores"].GetInt();
+        
+    }
+     if (json_desc.HasMember("purpose"))
+    {
+        CHECK_F(json_desc["purpose"].IsString(), "%s: job %s has a non-string 'purpose' field",
+                error_prefix.c_str(),j->id.to_string().c_str());
+        j->purpose = json_desc["purpose"].GetString();
+        
+    }
     if(workload->_checkpointing_on)
     {
     

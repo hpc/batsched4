@@ -20,6 +20,8 @@ struct Job
     double submission_time = 0;
     double completion_time = -1;
     mutable std::map<Rational, JobAlloc*> allocations;
+    int cores=1;
+    std::string purpose = "job";
 };
 
 struct JobAlloc

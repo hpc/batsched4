@@ -113,6 +113,8 @@ struct Job
         double checkpoint_interval;
         double dump_time;
         double read_time;
+        int cores=1;
+        std::string purpose = "job"; 
 public:
     static JobPtr from_json(const rapidjson::Value & json_desc,
                            Workload * workload,

@@ -38,11 +38,16 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     (void) batsim_config;
 }
 
+
 void ConservativeBackfilling::on_simulation_end(double date)
 {
     (void) date;
 }
-
+void ConservativeBackfilling::set_workloads(myBatsched::Workloads *w){
+    _myWorkloads = w;
+    _checkpointing_on = w->_checkpointing_on;
+    
+}
 void ConservativeBackfilling::make_decisions(double date,
                                              SortableJobOrder::UpdateInformation *update_info,
                                              SortableJobOrder::CompareInformation *compare_info)
@@ -56,6 +61,7 @@ void ConservativeBackfilling::make_decisions(double date,
     for (const string & new_job_id : _jobs_released_recently)
     {
         const Job * new_job = (*_workload)[new_job_id];
+        LOG_F(INFO,"job %d has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
 
         if (new_job->nb_requested_resources > _nb_machines)
         {

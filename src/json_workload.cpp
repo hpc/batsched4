@@ -152,6 +152,16 @@ Job *Workload::job_from_json_object(const Value &object)
 
     if (j->walltime == -1)
         j->has_walltime = false;
+    if (object.HasMember("cores"))
+    {
+        PPK_ASSERT_ERROR(object["cores"].IsInt(), "Invalid json object: 'cores' member is not an integer");
+        j->cores = object["cores"].GetInt();
+    }
+    if (object.HasMember("purpose"))
+    {
+        PPK_ASSERT_ERROR(object["purpose"].IsString(), "Invalid json object: 'purpose' member is not a string");
+        j->purpose = object["purpose"].GetString();
+    }
 
     return j;
 }
