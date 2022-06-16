@@ -115,18 +115,21 @@ void ConservativeBackfilling::make_decisions(double date,
         {
             const Job * job = (*job_it)->job;
             if (job->purpose!="reservation")
+            {
                 _schedule.remove_job_if_exists(job);
 //            if (_dump_provisional_schedules)
 //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-            if (job->purpose!="reservation")
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
 //            if (_dump_provisional_schedules)
 //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
 
-            if (alloc.started_in_first_slice)
-            {
-                _decision->add_execute_job(job->id, alloc.used_machines, date);
-                job_it = _queue->remove_job(job_it);
+                if (alloc.started_in_first_slice)
+                {
+                    _decision->add_execute_job(job->id, alloc.used_machines, date);
+                    job_it = _queue->remove_job(job_it);
+                }
+                else
+                    ++job_it;
             }
             else
                 ++job_it;
