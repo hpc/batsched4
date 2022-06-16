@@ -34,7 +34,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
 {
     _schedule = Schedule(_nb_machines, date);
     _schedule.set_svg_prefix(_svg_prefix);
-
+    
     (void) batsim_config;
 }
 
@@ -62,6 +62,8 @@ void ConservativeBackfilling::make_decisions(double date,
     {
         const Job * new_job = (*_workload)[new_job_id];
         LOG_F(INFO,"job %s has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
+        if (new_job->purpose == "reservation")
+            LOG_F(INFO,"job %s has start %f and alloc %s",new_job->id.c_str(),new_job->start,new_job->future_allocations.to_string_hyphen(" ","-"));
 
         if (new_job->nb_requested_resources > _nb_machines)
         {

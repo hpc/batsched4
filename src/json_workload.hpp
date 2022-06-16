@@ -22,6 +22,9 @@ struct Job
     mutable std::map<Rational, JobAlloc*> allocations;
     int cores=1;
     std::string purpose = "job";
+    IntervalSet future_allocations;
+    double start = -1;
+    
 };
 
 struct JobAlloc

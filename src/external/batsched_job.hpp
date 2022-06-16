@@ -114,7 +114,9 @@ struct Job
         double dump_time;
         double read_time;
         int cores=1;
-        std::string purpose = "job"; 
+        std::string purpose = "job";
+        double start;
+        IntervalSet future_allocation; 
 public:
     static JobPtr from_json(const rapidjson::Value & json_desc,
                            Workload * workload,

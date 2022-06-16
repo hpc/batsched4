@@ -163,6 +163,8 @@ JobPtr Job::from_json(const rapidjson::Value & json_desc,
     j->state = JobState::JOB_STATE_NOT_SUBMITTED;
     j->cores = 1;
     j->purpose = "job";
+    j->start = -1.0;
+    j->future_allocation;
     
 
     CHECK_F(json_desc.IsObject(), "%s: one job is not an object", error_prefix.c_str());
@@ -249,6 +251,18 @@ JobPtr Job::from_json(const rapidjson::Value & json_desc,
                 error_prefix.c_str(),j->id.to_string().c_str());
         j->purpose = json_desc["purpose"].GetString();
         
+    }
+    if (json_desc.HasMember("start"))
+    {
+        CHECK_F(json_desc["start"].IsNumber(), "%s: job %s has a non-number 'start' field",
+                error_prefix.c_str(),j->id.to_string().c_str());
+        j->start = json_desc["start"].GetDouble();
+    }
+    if (json_desc.HasMember("alloc"))
+    {
+        CHECK_F(json_desc["alloc"].IsString(), "%s: job %s has a non-string 'alloc' field",
+                error_prefix.c_str(),j->id.to_string().c_str());
+        j->future_allocation = IntervalSet::from_string_hyphen(json_desc["purpose"].GetString()," ","-");
     }
     if(workload->_checkpointing_on)
     {

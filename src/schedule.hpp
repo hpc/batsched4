@@ -52,6 +52,7 @@ public:
     void set_svg_prefix(std::string svg_prefix);
     JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
+    JobAlloc reserve_time_slice(const Job * job)
     JobAlloc add_job_first_fit_after_time_slice(const Job * job,
                                                 std::list<TimeSlice>::iterator first_time_slice,
                                                 ResourceSelector * selector,

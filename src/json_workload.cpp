@@ -162,6 +162,16 @@ Job *Workload::job_from_json_object(const Value &object)
         PPK_ASSERT_ERROR(object["purpose"].IsString(), "Invalid json object: 'purpose' member is not a string");
         j->purpose = object["purpose"].GetString();
     }
+    if (object.HasMember("start"))
+    {
+        PPK_ASSERT_ERROR(object["start"].IsNumber(), "Invalid json object: 'start' member is not a number");
+        j->start = object["start"].GetDouble();
+    }
+    if (object.HasMember("alloc"))
+    {
+        PPK_ASSERT_ERROR(object["alloc"].IsString(), "Invalid json object: 'alloc' member is not a string");
+        j->future_allocations = IntervalSet::from_string_hyphen(object["alloc"].GetString()," ","-");
+    }
 
     return j;
 }
