@@ -153,6 +153,7 @@ JobAlloc Schedule::reserve_time_slice(const Job* job){
     //actually we are going to just use the last one
         //so we found one
         auto pit = _profile.end();
+        pit--;
         if (job->future_allocations.is_subset_of(pit->available_machines))
         {
             Rational beginning = job->start;
