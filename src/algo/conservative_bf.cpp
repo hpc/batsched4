@@ -62,7 +62,7 @@ void ConservativeBackfilling::make_decisions(double date,
     {
         const Job * new_job = (*_workload)[new_job_id];
         LOG_F(INFO,"job %s has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
-        if (new_job->purpose == "reservation")
+        if (new_job->purpose == "eservation")
         {    
             LOG_F(INFO,"job %s has start %f and alloc %s",new_job->id.c_str(),new_job->start,new_job->future_allocations.to_string_hyphen(" ","-").c_str());
                 Schedule::JobAlloc ja = _schedule.reserve_time_slice(new_job);

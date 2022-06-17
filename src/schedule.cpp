@@ -154,6 +154,8 @@ JobAlloc Schedule::reserve_time_slice(const Job* job){
         //so we found one
         auto pit = _profile.end();
         pit--;
+        //first make a new time_slice
+
         if (job->future_allocations.is_subset_of(pit->available_machines))
         {
             Rational beginning = job->start;
@@ -823,8 +825,9 @@ string Schedule::to_svg() const
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
-        "<title>Schedule</title>\n",
-        (double)width, (double)height);
+        "<title>Schedule</title>\n"
+        "<text x=0 y=0 font-size=\"10pt\" fill=\"black\">Sim Time: %g seconds</text>\n",
+        (double)width, (double)height,(double)_profile.begin()->begin);
 
     string res = buf;
 
@@ -839,7 +842,7 @@ string Schedule::to_svg() const
             machine_color = "#DDDDDD";
 
         snprintf(buf, buf_size,
-            "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:none; fill:%s;\"/>\n", (double)0,
+            "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:none; fill:%s;\"/>\n" , (double)0,
             (double)(i * machine_height), (double)width, (double)machine_height, machine_color.c_str());
         res += buf;
     }
@@ -893,9 +896,10 @@ string Schedule::to_svg() const
 
                 snprintf(buf, buf_size,
                     "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:black; stroke-width=%g; "
-                    "fill:%s;\"/>\n",
+                    "fill:%s;\"/>\n"
+                    " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
                     (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
-                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str());
+                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)rect_x0+1,(double)rect_y0+1,machine_height-2,job->id);
 
                 res += buf;
             }
@@ -940,14 +944,14 @@ void Schedule::output_to_svg(const string &filename_prefix)
     char *buf2 = new char[bufsize];
 
     snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
-    snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
+    //snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
     ++_output_number %= 10000000;
-    ofstream f(buf2);
+    /*ofstream f(buf2);
     auto first_slice = _profile.begin();
     if (f.is_open())
         f << first_slice->begin;
     f.close();
-
+    */
     write_svg_to_file(buf);
 
 
