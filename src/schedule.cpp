@@ -826,8 +826,9 @@ string Schedule::to_svg() const
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
         "<title>Schedule</title>\n"
-        "<text x=\"0\" y=\"0\" font-size=\"10pt\" fill=\"black\">Sim Time: %g seconds</text>\n",
-        (double)width, (double)height,(double)_profile.begin()->begin);
+        "<text x=\"5\" y=\"5\" font-size=\"5pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
+        "<g  transform=\"translate(0,10)\">",
+        (double)width, (double)height+20,(double)_profile.begin()->begin);
 
     string res = buf;
 
@@ -921,7 +922,7 @@ string Schedule::to_svg() const
             current_jobs.insert(job);
     }
 
-    res += "</svg>";
+    res += "</g></svg>";
 
     delete[] buf;
     return res;
