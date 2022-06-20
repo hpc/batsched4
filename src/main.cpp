@@ -465,9 +465,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                         myWorkload->load_from_batsim(workload_filename,
                                                      job_json,
                                                      profile_json);
+                        LOG_F(1,"line 468");
                         myWorkload->_host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                         myWorkloads.insert_workload(workload_name,myWorkload);
                 }
+                LOG_F(1,"line 472");
                 myWorkloads._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
                 myWorkloads._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
                 myWorkloads._MTBF = event_data["config"]["MTBF"].GetDouble();
