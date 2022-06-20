@@ -52,6 +52,7 @@ void ConservativeBackfilling::make_decisions(double date,
                                              SortableJobOrder::UpdateInformation *update_info,
                                              SortableJobOrder::CompareInformation *compare_info)
 {
+    LOG_F(INFO,"make decisions");
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently)
        _schedule.remove_job((*_workload)[ended_job_id]);
@@ -150,7 +151,7 @@ void ConservativeBackfilling::make_decisions(double date,
             _schedule.remove_job_if_exists(job);
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
+            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   intervalset.left(5)  [1-2] 5,[8-14]
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
 
