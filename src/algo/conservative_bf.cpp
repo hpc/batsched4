@@ -151,7 +151,7 @@ void ConservativeBackfilling::make_decisions(double date,
             _schedule.remove_job_if_exists(job);
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   intervalset.left(5)  [1-2] 5,[8-14]
+            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
 
