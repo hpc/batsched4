@@ -56,12 +56,13 @@ void ConservativeBackfilling::make_decisions(double date,
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently)
        _schedule.remove_job((*_workload)[ended_job_id]);
-
+    LOG_F(INFO,"after jobs ended");
     // Let's handle recently released jobs
     std::vector<std::string> recently_queued_jobs;
     std::vector<std::string> recently_released_reservations;
     for (const string & new_job_id : _jobs_released_recently)
     {
+        LOG_F(INFO,"jobs released");
         const Job * new_job = (*_workload)[new_job_id];
         LOG_F(INFO,"job %s has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
         if (new_job->purpose!="reservation")
