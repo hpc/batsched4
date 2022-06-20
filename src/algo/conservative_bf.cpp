@@ -134,10 +134,10 @@ void ConservativeBackfilling::make_decisions(double date,
         //   If j should be executed now
         //     Take the decision to run j now
         Schedule::JobAlloc alloc;
-        std::vector<Job *> jobs_removed;
+        std::vector<const Job *> jobs_removed;
         if(_schedule.remove_reservations_if_ready(jobs_removed))
         {
-            for(Job * job : jobs_removed)
+            for(const Job * job : jobs_removed)
             {
                 alloc = _schedule.add_current_reservation(job,_selector);
                 _decision->add_execute_job(alloc.job->id,alloc.used_machines,date);

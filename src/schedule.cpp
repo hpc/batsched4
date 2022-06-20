@@ -357,7 +357,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
     return failed_alloc;
 
 }
-bool Schedule::remove_reservations_if_ready(std::vector<Job *>& jobs_removed)
+bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_removed)
 {
     //first check if next timeslice has a reservation
     auto slice = _profile.begin();

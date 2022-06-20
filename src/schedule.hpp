@@ -52,7 +52,7 @@ public:
     void remove_job_first_occurence(const Job * job);
     void remove_job_last_occurence(const Job * job);
     void set_svg_prefix(std::string svg_prefix);
-    bool remove_reservations_if_ready(std::vector<Job*>& jobs_removed);
+    bool remove_reservations_if_ready(std::vector<const Job*>& jobs_removed);
     JobAlloc add_current_reservation(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
     JobAlloc add_current_reservation_after_time_slice(const Job * job,
