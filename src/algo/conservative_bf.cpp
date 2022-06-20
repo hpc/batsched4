@@ -63,7 +63,7 @@ void ConservativeBackfilling::make_decisions(double date,
     {
         const Job * new_job = (*_workload)[new_job_id];
         LOG_F(INFO,"job %s has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
-        if (!new_job->purpose=="reservation")
+        if (new_job->purpose!="reservation")
         {
             if (new_job->nb_requested_resources > _nb_machines)
             {
@@ -105,6 +105,7 @@ void ConservativeBackfilling::make_decisions(double date,
         if (alloc.started_in_first_slice)
             _decision->add_execute_job(new_job->id,alloc.used_machines,date);
     }
+    recently_released_reservations.clear();
 
     // If no resources have been released, we can just insert the new jobs into the schedule
     if (_jobs_ended_recently.empty())
