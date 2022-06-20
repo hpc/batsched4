@@ -37,7 +37,17 @@ bool BasicResourceSelector::fit(const Job *job, const IntervalSet &available, In
 
     return false;
 }
+bool BasicResourceSelector::fit_reservation(const Job *job, const IntervalSet &available, IntervalSet &allocated)
+{
+    if (job->nb_requested_resources <= (int) available.size())
+    {
+        allocated = job->future_allocations;
+        PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources);
+        return true;
+    }
 
+    return false;
+}
 void BasicResourceSelector::select_resources_to_sedate(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_sedated, IntervalSet &to_sedate)
 {
     (void) available;

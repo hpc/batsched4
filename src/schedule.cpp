@@ -147,6 +147,8 @@ Schedule::JobAlloc Schedule::add_job_first_fit(
     return add_job_first_fit_after_time_slice(job, _profile.begin(), selector, assert_insertion_successful);
 }
 JobAlloc Schedule::reserve_time_slice(const Job* job){
+    if (_debug)
+        output_to_svg();
     // Let's create the job allocation
     Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
     //first find a time_slice where the allocation is available
@@ -154,31 +156,238 @@ JobAlloc Schedule::reserve_time_slice(const Job* job){
         //so we found one
         auto pit = _profile.end();
         pit--;
-        //first make a new time_slice
+        
 
         if (job->future_allocations.is_subset_of(pit->available_machines))
-        {
+        {   //first make new time slice
+            TimeSliceIterator first_slice_after_split;
+            TimeSliceIterator second_slice_after_split;
+            Rational split_date = pit->begin + job->start;
+            split_slice(pit,split_date,first_slice_after_split,second_slice_after_split);
+            pit=second_slice_after_split;
+            
+            //now make an allocation
             Rational beginning = job->start;
             alloc->begin = beginning;
             alloc->end = alloc->begin + job->walltime;
             alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
             alloc->job = job;
             alloc->used_machines = job->future_allocations;
-            TimeSliceIterator first_slice_after_split;
-            TimeSliceIterator second_slice_after_split;
-            Rational split_date = pit->begin + job->walltime;
+            
+            split_date = pit->begin + job->walltime;
             split_slice(pit, split_date, first_slice_after_split, second_slice_after_split);
             // Let's remove the allocated machines from the available machines of the time slice
             first_slice_after_split->available_machines.remove(alloc->used_machines);
             first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
             first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
-            first_slice_after_split->begin=job->start;
-            first_slice_after_split->length=job->walltime;
-
+            if (first_slice_after_split->has_reservation == true)
+                first_slice_after_split->nb_reservations +=1;
+            else
+            {
+                first_slice_after_split->has_reservation = true;
+                first_slice_after_split->nb_reservations = 1;
+            }
+            
             return *alloc;
 
         }
 
+}
+Schedule::JobAlloc Schedule::add_current_reservation(const Job * job, ResourceSelector * selector,bool assert_insertion_successful)
+{
+     PPK_ASSERT_ERROR(!contains_job(job),
+        "Invalid Schedule::add_current_reservation call: Cannot add "
+        "job '%s' because it is already in the schedule. %s",
+        job->id.c_str(), to_string().c_str());
+    return add_current_reservation_after_time_slice(job, _profile.begin(),selector,assert_insertion_successful);
+}
+
+Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job *job,
+    std::list<TimeSlice>::iterator first_time_slice, ResourceSelector *selector, bool assert_insertion_successful)
+{
+    
+    PPK_ASSERT_ERROR(job->purpose=="reservation","You tried to add a non reservation job, job: '%s' via add_current_reservation, consider add_job_first_fit",job->id.c_str());
+    
+    if (_debug)
+    {
+        LOG_F(1, "Adding job '%s' (size=%d, walltime=%g). Output number %d. %s",
+            job->id.c_str(), job->nb_requested_resources, (double)job->walltime,
+            _output_number, to_string().c_str());
+        output_to_svg();
+    }
+
+    // Let's scan the profile for an anchor point.
+    // An anchor point is a point where enough processors are available to run this job
+    for (auto pit = _profile.begin(); pit != _profile.end(); ++pit)
+    {
+        // If the current time slice is an anchor point
+        if ((int)pit->nb_available_machines >= job->nb_requested_resources)
+        {
+            // Let's continue to scan the profile to ascertain that
+            // the machines remain available until the job's expected termination
+
+            // If the job has no walltime, its size will be "infinite"
+            if (!job->has_walltime)
+            {
+                // TODO: remove this ugly const_cast?
+                const_cast<Job *>(job)->walltime = infinite_horizon() - pit->begin;
+            }
+
+            int availableMachinesCount = pit->nb_available_machines;
+            Rational totalTime = pit->length;
+
+            // If the job fits in the current time slice (temporarily speaking)
+            if (totalTime >= job->walltime)
+            {
+                // Let's create the job allocation
+                Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
+
+                // If the job fits in the current time slice (according to the fitting function)
+                if (selector->fit_reservation(job, pit->available_machines, alloc->used_machines))
+                {
+                    Rational beginning = pit->begin;
+                    alloc->begin = beginning;
+                    alloc->end = alloc->begin + job->walltime;
+                    alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
+                    alloc->job = job;
+                    job->allocations[beginning] = alloc;
+
+                    // Let's split the current time slice if needed
+                    TimeSliceIterator first_slice_after_split;
+                    TimeSliceIterator second_slice_after_split;
+                    Rational split_date = pit->begin + job->walltime;
+                    split_slice(pit, split_date, first_slice_after_split, second_slice_after_split);
+                    
+                    // Let's remove the allocated machines from the available machines of the time slice
+                    first_slice_after_split->available_machines.remove(alloc->used_machines);
+                    first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
+                    first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
+                    first_slice_after_split->nb_reservations++;
+                    if (first_slice_after_split->nb_reservations == 1)
+                        first_slice_after_split->has_reservation = true;
+                    if (_debug)
+                    {
+                        LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
+                            job->nb_requested_resources, (double)job->walltime, _output_number, to_string().c_str());
+                        output_to_svg();
+                    }
+
+                    // The job has been placed, we can leave this function
+                    return *alloc;
+                }
+            }
+            else
+            {
+                // TODO : merge this big else with its if, as the "else" is a more general case of the "if"
+                // The job does not fit in the current time slice (temporarily speaking)
+                auto availableMachines = pit->available_machines;
+
+                auto pit2 = pit;
+                ++pit2;
+
+                for (; (pit2 != _profile.end()) && ((int)pit2->nb_available_machines >= job->nb_requested_resources);
+                     ++pit2)
+                {
+                    availableMachines &= pit2->available_machines;
+                    availableMachinesCount = (int)availableMachines.size();
+                    totalTime += pit2->length;
+
+                    if (availableMachinesCount < job->nb_requested_resources) // We don't have enough machines to run the job
+                        break;
+                    else if (totalTime >= job->walltime) // The job fits in the slices [pit, pit2[ (temporarily speaking)
+                    {
+                        // Let's create the job allocation
+                        JobAlloc *alloc = new JobAlloc;
+
+                        // If the job fits in the current time slice (according to the fitting function)
+                        if (selector->fit_reservation(job, availableMachines, alloc->used_machines))
+                        {
+                            alloc->begin = pit->begin;
+                            alloc->end = alloc->begin + job->walltime;
+                            alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
+                            alloc->job = job;
+                            job->allocations[alloc->begin] = alloc;
+
+                            // Let's remove the used machines from the slices before pit2
+                            auto pit3 = pit;
+                            for (; pit3 != pit2; ++pit3)
+                            {
+                                pit3->available_machines -= alloc->used_machines;
+                                pit3->nb_available_machines -= job->nb_requested_resources;
+                                pit3->allocated_jobs[job] = alloc->used_machines;
+                                pit3->nb_reservations++;
+                            if (pit3->nb_reservations == 1)//means a reservation has been added
+                                first_slice_after_split->has_reservation = true;
+                            }
+
+                            // Let's split the current time slice if needed
+                            TimeSliceIterator first_slice_after_split;
+                            TimeSliceIterator second_slice_after_split;
+                            Rational split_date = pit->begin + job->walltime;
+                            split_slice(pit2, split_date, first_slice_after_split, second_slice_after_split);
+
+                            // Let's remove the allocated machines from the available machines of the time slice
+                            first_slice_after_split->available_machines -= alloc->used_machines;
+                            first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
+                            first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
+
+                            if (_debug)
+                            {
+                                LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
+                                    job->nb_requested_resources, (double)job->walltime, _output_number,
+                                    to_string().c_str());
+                                output_to_svg();
+                            }
+
+                            // The job has been placed, we can leave this function
+                            return *alloc;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (assert_insertion_successful)
+        PPK_ASSERT_ERROR(false, "Error in Schedule::add_job_first_fit: could not add job '%s' into %s", job->id.c_str(),
+            to_string().c_str());
+
+    JobAlloc failed_alloc;
+    failed_alloc.has_been_inserted = false;
+    return failed_alloc;
+}
+}
+bool Schedule::remove_reservations_if_ready(std::vector<Job *>& jobs_removed)
+{
+    //first check if next timeslice has a reservation
+    auto slice = _profile.begin();
+    ++slice;
+    if (slice->has_reservation)
+    {
+        //ok the next timeslice does have a reservation
+        //check if it is ready to copy over to the first slice
+        if (_profile.begin()->begin == slice->begin)
+        {
+            //ok they are equal, remove the reservations
+            for (auto it = slice->allocated_jobs.begin(),it != slice->allocated_jobs.end(),it++)
+            {
+                Job* job = it->first;
+                if (job->purpose == "reservation")
+                    {
+                        remove_job_internal(job,slice);
+                        jobs_removed.push_back(job);
+                        if (slice->nb_reservations > 0)
+                            slice->nb_reservations--;
+                        
+                        return true;
+                    }
+
+            }
+            if(slice->nb_reservations == 0)
+                slice->has_reservation = false;
+        }
+    }
+    return false;
 }
     
 Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
@@ -850,6 +1059,7 @@ string Schedule::to_svg() const
 
     map<const Job *, Rational> jobs_starting_times;
     set<const Job *> current_jobs;
+    //first slice are current jobs
     for (auto mit : _profile.begin()->allocated_jobs)
     {
         const Job *allocated_job = mit.first;
@@ -860,6 +1070,7 @@ string Schedule::to_svg() const
     // Let's traverse the profile to find the beginning of each job
     for (auto slice_it = _profile.begin(); slice_it != _profile.end(); ++slice_it)
     {
+        
         const TimeSlice &slice = *slice_it;
         set<const Job *> allocated_jobs;
         for (auto mit : slice.allocated_jobs)
@@ -1100,6 +1311,12 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
         {
             pit->available_machines.insert(job_machines);
             pit->nb_available_machines += job->nb_requested_resources;
+            if (job->purpose == "reservation")
+            {
+                pit->nb_reservations--
+                if (pit->nb_reservations == 0)
+                    pit->has_reservation = false;
+            }
 
             // If the slice is not the first one, let's try to merge it with its preceding slice
             if (pit != _profile.begin())
@@ -1128,6 +1345,12 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             {
                 pit->available_machines.insert(job_machines);
                 pit->nb_available_machines += job->nb_requested_resources;
+                if (job->purpose == "reservation")
+                {
+                    pit->nb_reservations--
+                    if (pit->nb_reservations == 0)
+                        pit->has_reservation = false;
+                }
 
                 // If the slice is not the first one, let's try to merge it with its preceding slice
                 if (pit != _profile.begin())

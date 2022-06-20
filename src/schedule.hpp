@@ -16,6 +16,8 @@ public:
         Rational begin;
         Rational end;
         Rational length;
+        bool has_reservation = false;
+        int nb_reservations = 0;
 
         IntervalSet available_machines;
         int nb_available_machines;
@@ -50,6 +52,13 @@ public:
     void remove_job_first_occurence(const Job * job);
     void remove_job_last_occurence(const Job * job);
     void set_svg_prefix(std::string svg_prefix);
+    bool remove_reservations_if_ready(std::vector<Job*>& jobs_removed);
+    JobAlloc add_current_reservation(const Job * job, ResourceSelector * selector,
+                               bool assert_insertion_successful = true);
+    JobAlloc add_current_reservation_after_time_slice(const Job * job,
+                                                std::list<TimeSlice>::iterator first_time_slice,
+                                                ResourceSelector * selector,
+                                                bool assert_insertion_successful = true);
     JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
     JobAlloc reserve_time_slice(const Job * job);
