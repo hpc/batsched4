@@ -85,7 +85,7 @@ void ConservativeBackfilling::make_decisions(double date,
         }
         else
         {
-            _reservation_queue->append_job(new_job,update_info);
+            //_reservation_queue->append_job(new_job,update_info);
             recently_released_reservations.push_back(new_job_id);
         }
     }
