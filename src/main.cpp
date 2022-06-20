@@ -465,11 +465,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                         myWorkload->load_from_batsim(workload_filename,
                                                      job_json,
                                                      profile_json);
-                        LOG_F(1,"line 468");
+                        LOG_F(INFO,"line 468");
                         myWorkload->_host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                         myWorkloads.insert_workload(workload_name,myWorkload);
                 }
-                LOG_F(1,"line 472");
+                LOG_F(INFO,"line 472");
                 myWorkloads._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
                 myWorkloads._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
                 myWorkloads._MTBF = event_data["config"]["MTBF"].GetDouble();
@@ -477,9 +477,9 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 myWorkloads._repair_time = event_data["config"]["repair_time"].GetDouble();
                 myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 myWorkloads._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
-                LOG_F(1, "before set workloads");
+                LOG_F(INFO, "before set workloads");
                 algo->set_workloads(&myWorkloads);
-            LOG_F(1, "after set workloads");
+            LOG_F(INFO, "after set workloads");
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
