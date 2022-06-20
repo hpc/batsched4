@@ -95,7 +95,7 @@ void ConservativeBackfilling::make_decisions(double date,
 
     // Queue sorting
     _queue->sort_queue(update_info, compare_info);
-    _reservation_queue->sort_queue(update_info,compare_info);
+    //_reservation_queue->sort_queue(update_info,compare_info);
     
     
     //insert reservations into schedule whether jobs have finished or not
