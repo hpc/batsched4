@@ -317,7 +317,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
                                 pit3->allocated_jobs[job] = alloc->used_machines;
                                 pit3->nb_reservations++;
                             if (pit3->nb_reservations == 1)//means a reservation has been added
-                                first_slice_after_split->has_reservation = true;
+                                pit3->has_reservation = true;
                             }
 
                             // Let's split the current time slice if needed
@@ -355,7 +355,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
     JobAlloc failed_alloc;
     failed_alloc.has_been_inserted = false;
     return failed_alloc;
-}
+
 }
 bool Schedule::remove_reservations_if_ready(std::vector<Job *>& jobs_removed)
 {
