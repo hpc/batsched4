@@ -369,9 +369,9 @@ bool Schedule::remove_reservations_if_ready(std::vector<Job *>& jobs_removed)
         if (_profile.begin()->begin == slice->begin)
         {
             //ok they are equal, remove the reservations
-            for (auto it = slice->allocated_jobs.begin(),it != slice->allocated_jobs.end(),it++)
+            for (auto it = slice->allocated_jobs.begin();it != slice->allocated_jobs.end();it++)
             {
-                Job* job = it->first;
+                const Job* job = it->first;
                 if (job->purpose == "reservation")
                     {
                         remove_job_internal(job,slice);
@@ -1313,7 +1313,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             pit->nb_available_machines += job->nb_requested_resources;
             if (job->purpose == "reservation")
             {
-                pit->nb_reservations--
+                pit->nb_reservations--;
                 if (pit->nb_reservations == 0)
                     pit->has_reservation = false;
             }
@@ -1347,7 +1347,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 pit->nb_available_machines += job->nb_requested_resources;
                 if (job->purpose == "reservation")
                 {
-                    pit->nb_reservations--
+                    pit->nb_reservations--;
                     if (pit->nb_reservations == 0)
                         pit->has_reservation = false;
                 }
