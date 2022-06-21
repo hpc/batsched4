@@ -1190,10 +1190,12 @@ void Schedule::output_to_svg(const string &filename_prefix)
     */
    LOG_F(INFO,"%s",to_string().c_str());
     write_svg_to_file(buf);
-    Rational end = (_profile.end()--)->end;
-    if (end > 0 && end != 1e19)
-        _previous_time_end = end;
-
+    if (_profile.size()>1)
+    {
+        Rational end = ((_profile.end()--)--)->end;
+        if (end > 0 && end != 1e19)
+            _previous_time_end = end;
+    }
 
     delete[] buf;
 }
