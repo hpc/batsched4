@@ -22,7 +22,7 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
     slice.available_machines.insert(IntervalSet::ClosedInterval(0, nb_machines - 1));
     slice.nb_available_machines = nb_machines;
     PPK_ASSERT_ERROR(slice.available_machines.size() == (unsigned int)nb_machines);
-    _previous_time_end = 0;
+    
 
     _profile.push_back(slice);
 
@@ -1043,8 +1043,9 @@ string Schedule::to_svg() const
     Rational sim_time = _profile.begin()->begin;
     if(_profile.size() == 1)
         sim_time=_previous_time_end;
-    auto end_slice = _profile.end();
-    end_slice--;
+    auto slice_it = _profile.end();
+    auto end_slice = *(slice_it--);
+
     if(end_slice->end !=1e19)
         _previous_time_end = end_slice->end;
     snprintf(buf, buf_size,
