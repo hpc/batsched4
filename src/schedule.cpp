@@ -22,6 +22,7 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
     slice.available_machines.insert(IntervalSet::ClosedInterval(0, nb_machines - 1));
     slice.nb_available_machines = nb_machines;
     PPK_ASSERT_ERROR(slice.available_machines.size() == (unsigned int)nb_machines);
+    _previous_time_end = 0;
 
     _profile.push_back(slice);
 
