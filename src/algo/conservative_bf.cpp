@@ -64,7 +64,7 @@ void ConservativeBackfilling::make_decisions(double date,
     {
         LOG_F(INFO,"jobs released");
         const Job * new_job = (*_workload)[new_job_id];
-        LOG_F(INFO,"job %s has purpose %s",new_job->id.c_str(),new_job->purpose.c_str());
+        LOG_F(INFO,"job %s has purpose %s  and walltime: %g",new_job->id.c_str(),new_job->purpose.c_str(),(double)new_job->walltime);
         if (new_job->purpose!="reservation")
         {
             if (new_job->nb_requested_resources > _nb_machines)
