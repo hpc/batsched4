@@ -1042,8 +1042,10 @@ string Schedule::to_svg() const
     Rational sim_time = _profile.begin()->begin;
     if(_profile.size() == 1)
         sim_time=_previous_time_end;
-    if(_profile.end()--)->end !=1e19)
-        _previous_time_end = (_profile.end()--)->end;
+    auto end_slice = _profile.end();
+    end_slice--;
+    if(end_slice->end !=1e19)
+        _previous_time_end = end_slice->end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
