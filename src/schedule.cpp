@@ -1029,8 +1029,10 @@ string Schedule::to_svg() const
 
     y0 = 0 * machine_height;
     y1 = _nb_machines * machine_height;
-
-    const Rational width = x1 - x0 + 10;
+    if ((x1 - x0 + 10) < 120)
+        const Rational width = x1 - x0 + 10;
+    else
+        const Rational width = 120;
     const Rational height = y1 - y0;
 
     const int buf_size = 4096;
