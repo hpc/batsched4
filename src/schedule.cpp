@@ -1038,13 +1038,16 @@ string Schedule::to_svg() const
     if (img_width < 120)
         img_width = 120;
     // header
+    Rational sim_time = _profile.begin()->begin;
+    if(_profile.size == 1)
+        sim_time=_profile.begin()->end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
         "<title>Schedule</title>\n"
         "<text x=\"5\" y=\"5\" font-size=\"3pt\" fill=\"black\">Frame: %d</text>\n"
         "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n",
-        (double)img_width, (double)height+20,_output_number,(double)_profile.begin()->begin);
+        (double)img_width, (double)height+20,_output_number,(double)sim_time);
 
 
     string res = buf;
@@ -1132,7 +1135,7 @@ string Schedule::to_svg() const
                     "fill:%s;\"/>\n"
                     " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
                     (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
-                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)(rect_x0+2),(double)(rect_y0+2),(int)2,job_id.c_str());
+                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)(rect_x0+1),(double)(rect_y0+4),(int)2,job_id.c_str());
 
                 res += buf;
             }
