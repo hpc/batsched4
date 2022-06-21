@@ -177,6 +177,8 @@ JobAlloc Schedule::reserve_time_slice(const Job* job){
             
             split_date = pit->begin + job->walltime;
             LOG_F(INFO,"Split date: %g",(double)split_date);
+            LOG_F(INFO,"pit->begin: %g  job->walltime: %g",(double) pit->begin, (double) job->walltime);
+            LOG_F(INFO,"pit==begin:%d pit==end:%d",pit==pit.begin(),pit==pit.end());
             split_slice(pit, split_date, first_slice_after_split, second_slice_after_split);
             // Let's remove the allocated machines from the available machines of the time slice
             first_slice_after_split->available_machines.remove(alloc->used_machines);
