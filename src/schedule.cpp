@@ -1164,7 +1164,7 @@ void Schedule::output_to_svg(const string &filename_prefix)
         f << first_slice->begin;
     f.close();
     */
-   LOG_F(INFO,'%s',to_string());
+   LOG_F(INFO,"%s",to_string().c_str());
     write_svg_to_file(buf);
 
 
