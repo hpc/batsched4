@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <limits>
+#include <loguru.hpp>
 
 #include <rapidjson/document.h>
 
