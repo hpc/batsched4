@@ -1123,13 +1123,16 @@ string Schedule::to_svg() const
                 Rational rect_y1 = ((it->upper() + Rational(1)) * machine_height)
                     - (space_between_machines_ratio * machine_height) - y0;
                 Rational rect_height = rect_y1 - rect_y0;
-
+                std::string job_id = job->id;
+                if (job->purpose=="reservation")
+                    job_id+=" R";
+                    
                 snprintf(buf, buf_size,
                     "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:black; stroke-width=%g; "
                     "fill:%s;\"/>\n"
                     " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
                     (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
-                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)(rect_x0+6),(double)(rect_y0+6),(int)6,job->id.c_str());
+                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)(rect_x0+6),(double)(rect_y0+6),(int)4,job_id.c_str());
 
                 res += buf;
             }
