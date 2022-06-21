@@ -1132,7 +1132,7 @@ string Schedule::to_svg() const
                     "fill:%s;\"/>\n"
                     " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
                     (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
-                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)(rect_x0+6),(double)(rect_y0+6),(int)4,job_id.c_str());
+                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)(rect_x0+2),(double)(rect_y0+2),(int)2,job_id.c_str());
 
                 res += buf;
             }
