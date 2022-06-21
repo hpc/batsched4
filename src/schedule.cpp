@@ -1034,13 +1034,16 @@ string Schedule::to_svg() const
 
     const int buf_size = 4096;
     char *buf = new char[buf_size];
+    //set a minimum width
     Rational img_width = width;
     if (img_width < 120)
         img_width = 120;
     // header
     Rational sim_time = _profile.begin()->begin;
     if(_profile.size() == 1)
-        sim_time=_profile.begin()->end;
+        sim_time=_previous_time_end;
+    if(_profile.end()--)->end !=1e19)
+        _previous_time_end = (_profile.end()--)->end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
