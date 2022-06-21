@@ -102,7 +102,7 @@ void ConservativeBackfilling::make_decisions(double date,
     for (const string & new_job_id : recently_released_reservations)
     {
         const Job * new_job = (*_workload)[new_job_id];
-        LOG_F(INFO,"job %s has start %f and alloc %s",new_job->id.c_str(),new_job->start,new_job->future_allocations.to_string_hyphen(" ","-").c_str());
+        LOG_F(INFO,"job %s has walltime %g  start %f and alloc %s",new_job->id.c_str(),(double)new_job->walltime,new_job->start,new_job->future_allocations.to_string_hyphen(" ","-").c_str());
         Schedule::JobAlloc alloc = _schedule.reserve_time_slice(new_job);
         if (alloc.started_in_first_slice)
             _decision->add_execute_job(new_job->id,alloc.used_machines,date);

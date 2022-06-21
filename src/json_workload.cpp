@@ -143,7 +143,9 @@ Job *Workload::job_from_json_object(const Value &object)
     if (object.HasMember("walltime"))
     {
         PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");
+        
         j->walltime = object["walltime"].GetDouble();
+        LOG_F(INFO,"walltime %g",(double)j->walltime);
     }
 
     PPK_ASSERT_ERROR(j->walltime == -1 || j->walltime > 0,
