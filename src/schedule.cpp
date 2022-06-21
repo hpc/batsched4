@@ -1041,12 +1041,8 @@ string Schedule::to_svg() const
         img_width = 120;
     // header
     Rational sim_time = _profile.begin()->begin;
-    if(_profile.size() == 1)
-        sim_time=_previous_time_end;
-    auto slice_it = _profile.end();
-    auto end_slice = *(slice_it--);
-    if(end_slice.end !=1e19)
-        _previous_time_end = end_slice.end;
+    if (_profile.size()==1)
+        sim_time = _previous_time_end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
@@ -1195,8 +1191,19 @@ void Schedule::output_to_svg(const string &filename_prefix)
     f.close();
     */
    LOG_F(INFO,"%s",to_string().c_str());
+   //update _pre
+    Rational sim_time = _profile.begin()->begin;
+    if(_profile.size() == 1)
+        sim_time=_previous_time_end;
+    
+    
+    
     write_svg_to_file(buf);
-
+    //update _previous_time_end;
+    auto slice_it = _profile.end();
+    auto end_slice = *(slice_it--);
+    if(end_slice.end !=1e19)
+        _previous_time_end = end_slice.end;
 
     delete[] buf;
 }
