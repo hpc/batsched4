@@ -130,7 +130,7 @@ private:
     std::string _svg_prefix;
 
     unsigned int _output_number = 0;
-    Rational _previous_time_end = 0;
+    mutable Rational _previous_time_end = 0;
     std::vector<std::string> _colors;
 };
 
