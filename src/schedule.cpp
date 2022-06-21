@@ -1043,12 +1043,22 @@ string Schedule::to_svg() const
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
         "<title>Schedule</title>\n"
         "<text x=\"5\" y=\"5\" font-size=\"3pt\" fill=\"black\">Frame: %d</text>\n"
-        "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
-        "<g  transform=\"translate(0,10)\">",
+        "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n",
         (double)img_width, (double)height+20,_output_number,(double)_profile.begin()->begin);
 
-    string res = buf;
 
+    string res = buf;
+    for (auto slice_it = _profile.begin(); slice_it != _profile.end(); ++slice_it){
+        Rational line_x0 = slice_it->begin * second_width -x0;
+        snprintf(buf,buf_size,
+        "<line x1=\"%g\" y1=\"8\" x2=\"%g\" y2=\"13\" stroke=\"black\" stroke-width=\".3\"/>\n"
+        "<text x=\"%g\" y=\"11\" font-size=\"1.5pt\" fill=\"black\">%.2f</text>\n",
+        (double)line_x0,(double)line_x0,((double)line_x0)+1,(double)slice_it->begin);
+
+        res+=buf;
+        
+    }
+    res+="<g  transform=\"translate(0,13)\">"
     // machines background color
     for (int i = 0; i < _nb_machines; ++i)
     {
