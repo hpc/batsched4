@@ -22,7 +22,6 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
     slice.available_machines.insert(IntervalSet::ClosedInterval(0, nb_machines - 1));
     slice.nb_available_machines = nb_machines;
     PPK_ASSERT_ERROR(slice.available_machines.size() == (unsigned int)nb_machines);
-    
 
     _profile.push_back(slice);
 
@@ -1035,14 +1034,13 @@ string Schedule::to_svg() const
 
     const int buf_size = 4096;
     char *buf = new char[buf_size];
-    //set a minimum width
     Rational img_width = width;
     if (img_width < 120)
         img_width = 120;
     // header
     Rational sim_time = _profile.begin()->begin;
-    if (_profile.size()==1)
-        sim_time = _previous_time_end;
+    if(_profile.size == 1)
+        sim_time=_previous_time_end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
@@ -1191,19 +1189,8 @@ void Schedule::output_to_svg(const string &filename_prefix)
     f.close();
     */
    LOG_F(INFO,"%s",to_string().c_str());
-   //update _pre
-    Rational sim_time = _profile.begin()->begin;
-    if(_profile.size() == 1)
-        sim_time=_previous_time_end;
-    
-    
-    
     write_svg_to_file(buf);
-    //update _previous_time_end;
-    auto slice_it = _profile.end();
-    auto end_slice = *(slice_it--);
-    if(end_slice.end !=1e19)
-        _previous_time_end = end_slice.end;
+
 
     delete[] buf;
 }
