@@ -123,7 +123,7 @@ int main(int argc, char ** argv)
     args::HelpFlag flag_help(parser, "help", "Display this help menu", {'h', "help"});
     args::CompletionFlag completion(parser, {"complete"});
     
-    args::ValueFlag<double> flag_rjms_delay(parser, "delay", "Sets the expected time that the RJMS takes to do some things like killing a job", {'d', "rjms_delay"}, 5.0);
+    args::ValueFlag<double> flag_rjms_delay(parser, "delay", "Sets the expected time that the RJMS takes to do some things like killing a job", {'d', "rjms_delay"}, 0.0);
     args::ValueFlag<string> flag_selection_policy(parser, "policy", "Sets the resource selection policy. Available values are " + policies_string, {'p', "policy"}, "basic");
     args::ValueFlag<string> flag_socket_endpoint(parser, "endpoint", "Sets the socket endpoint.", {'s', "socket-endpoint"}, "tcp://*:28000");
     args::ValueFlag<string> flag_scheduling_variant(parser, "variant", "Sets the scheduling variant. Available values are " + variants_string, {'v', "variant"}, "filler");
@@ -498,7 +498,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     workload.add_job_from_redis(redis, job_id, current_date);
                 else
                     workload.add_job_from_json_object(event_data["job"], job_id, current_date);
-
+                    Job * ajob = workload[job_id];
+                LOG_F(INFO,"main walltime: %g",(double)ajob->walltime);
                 algo->on_job_release(current_date, {job_id});
             }
             else if (event_type == "JOB_COMPLETED")
