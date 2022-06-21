@@ -1043,11 +1043,10 @@ string Schedule::to_svg() const
     Rational sim_time = _profile.begin()->begin;
     if(_profile.size() == 1)
         sim_time=_previous_time_end;
-    TimeSliceIterator slice_it = _profile.end()--;
-    Rational myEnd = slice_it->end;
-
-    if(myEnd !=1e19)
-        _previous_time_end = myEnd;
+    auto slice_it = _profile.end();
+    auto end_slice = *(slice_it--);
+    if(end_slice.end !=1e19)
+        const_cast<Rational>(this)->_previous_time_end = end_slice.end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
