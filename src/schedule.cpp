@@ -1051,8 +1051,8 @@ string Schedule::to_svg() const
     for (auto slice_it = _profile.begin(); slice_it != _profile.end(); ++slice_it){
         Rational line_x0 = slice_it->begin * second_width -x0;
         snprintf(buf,buf_size,
-        "<line x1=\"%g\" y1=\"8\" x2=\"%g\" y2=\"13\" stroke=\"black\" stroke-width=\".3\"/>\n"
-        "<text x=\"%g\" y=\"11\" font-size=\"1.5pt\" fill=\"black\">%.2f</text>\n",
+        "<line x1=\"%g\" y1=\"8\" x2=\"%g\" y2=\"13\" stroke=\"black\" stroke-width=\".1\"/>\n"
+        "<text x=\"%g\" y=\"11\" font-size=\"1pt\" fill=\"black\">%.2f</text>\n",
         (double)line_x0,(double)line_x0,((double)line_x0)+1,(double)slice_it->begin);
 
         res+=buf;
