@@ -1058,7 +1058,7 @@ string Schedule::to_svg() const
         res+=buf;
         
     }
-    res+="<g  transform=\"translate(0,13)\">"
+    res+="<g  transform=\"translate(0,13)\">";
     // machines background color
     for (int i = 0; i < _nb_machines; ++i)
     {
