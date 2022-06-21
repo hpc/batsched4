@@ -1035,13 +1035,15 @@ string Schedule::to_svg() const
 
     const int buf_size = 4096;
     char *buf = new char[buf_size];
-
+    if (width < 120)
+        width = 120;
     // header
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
         "<title>Schedule</title>\n"
-        "<text x=\"5\" y=\"5\" font-size=\"4pt\" fill=\"black\">Frame: %d  Sim Time: %g seconds</text>\n"
+        "<text x=\"5\" y=\"5\" font-size=\"3pt\" fill=\"black\">Frame: %d</text>\n"
+        "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
         "<g  transform=\"translate(0,10)\">",
         (double)width, (double)height+20,_output_number,(double)_profile.begin()->begin);
 
