@@ -1029,16 +1029,14 @@ string Schedule::to_svg() const
 
     y0 = 0 * machine_height;
     y1 = _nb_machines * machine_height;
-    if ((x1 - x0 + 10) < 120)
-        const Rational width = x1 - x0 + 10;
-    else
-        const Rational width = 120;
+    const Rational width = x1 - x0 + 10;
     const Rational height = y1 - y0;
 
     const int buf_size = 4096;
     char *buf = new char[buf_size];
-    if (width < 120)
-        width = 120;
+    Rational img_width = width;
+    if (img_width < 120)
+        img_width = 120;
     // header
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
@@ -1047,7 +1045,7 @@ string Schedule::to_svg() const
         "<text x=\"5\" y=\"5\" font-size=\"3pt\" fill=\"black\">Frame: %d</text>\n"
         "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
         "<g  transform=\"translate(0,10)\">",
-        (double)width, (double)height+20,_output_number,(double)_profile.begin()->begin);
+        (double)img_width, (double)height+20,_output_number,(double)_profile.begin()->begin);
 
     string res = buf;
 
