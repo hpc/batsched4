@@ -1039,7 +1039,7 @@ string Schedule::to_svg() const
         img_width = 120;
     // header
     Rational sim_time = _profile.begin()->begin;
-    if(_profile.size == 1)
+    if(_profile.size() == 1)
         sim_time=_profile.begin()->end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
