@@ -131,7 +131,7 @@ int main(int argc, char ** argv)
     args::ValueFlag<string> flag_variant_options_filepath(parser, "options-filepath", "Sets the scheduling variant options as the content of the given filepath. Overrides the variant_options options.", {"variant_options_filepath"}, "");
     args::ValueFlag<string> flag_queue_order(parser, "order", "Sets the queue order. Available values are " + queue_orders_string, {'o', "queue_order"}, "fcfs");
     args::ValueFlag<string> flag_verbosity_level(parser, "verbosity-level", "Sets the verbosity level. Available values are " + verbosity_levels_string, {"verbosity"}, "info");
-    args::ValueFlag<string> flag_svg_prefix(parser,"svg_prefix", "Sets the prefix for outputing svg files using Schedule.cpp",{"svg_prefix"},"/tmp/");
+    //args::ValueFlag<string> flag_svg_prefix(parser,"svg_prefix", "Sets the prefix for outputing svg files using Schedule.cpp",{"svg_prefix"},"/tmp/");
     args::ValueFlag<bool> flag_call_make_decisions_on_single_nop(parser, "flag", "If set to true, make_decisions will be called after single NOP messages.", {"call_make_decisions_on_single_nop"}, true);
     args::Flag flag_version(parser, "version", "Shows batsched version", {"version"});
 
@@ -197,7 +197,7 @@ int main(int argc, char ** argv)
     string variant_options = flag_variant_options.Get();
     string variant_options_filepath = flag_variant_options_filepath.Get();
     string verbosity_level = flag_verbosity_level.Get();
-    string svg_prefix = flag_svg_prefix.Get();
+    //string svg_prefix = flag_svg_prefix.Get();
 
     double rjms_delay = flag_rjms_delay.Get();
     bool call_make_decisions_on_single_nop = flag_call_make_decisions_on_single_nop.Get();
@@ -322,7 +322,8 @@ int main(int argc, char ** argv)
         else if (scheduling_variant == "easy_bf_fast2_holdback")
             algo = new easy_bf_fast2_holdback(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "conservative_bf")
-            algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, svg_prefix, &json_doc_variant_options);
+            algo = new ConservativeBackfilling(&w, &decision,queue,selector,rjms_delay,&json_doc_variant_options);
+            //algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, svg_prefix, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "killer")
             algo = new Killer(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
@@ -456,6 +457,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                         myWorkload->_SMTBF = event_data["config"]["SMTBF"].GetDouble();
                         myWorkload->_repair_time = event_data["config"]["repair_time"].GetDouble();
 
+                        
+
                         r::Document myCopy;
                         myCopy.CopyFrom(event_data,myCopy.GetAllocator());
                         r::Value & temp = myCopy["jobs"];
@@ -477,13 +480,21 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 myWorkloads._repair_time = event_data["config"]["repair_time"].GetDouble();
                 myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 myWorkloads._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
+                
+                workload._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
+                workload._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
+                workload._MTBF = event_data["config"]["MTBF"].GetDouble();
+                workload._SMTBF = event_data["config"]["SMTBF"].GetDouble();
+                workload._repair_time = event_data["config"]["repair_time"].GetDouble();
+                workload._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
+                workload._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                 LOG_F(INFO, "before set workloads");
                 algo->set_workloads(&myWorkloads);
             LOG_F(INFO, "after set workloads");
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
-                algo->on_simulation_start(current_date, event_data);
+                algo->on_simulation_start(current_date, event_data["config"]);
             }
             else if (event_type == "SIMULATION_ENDS")
             {
@@ -497,9 +508,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 if (redis_enabled)
                     workload.add_job_from_redis(redis, job_id, current_date);
                 else
-                    workload.add_job_from_json_object(event_data["job"], job_id, current_date);
-                    Job * ajob = workload[job_id];
-                LOG_F(INFO,"main walltime: %g",(double)ajob->walltime);
+                    workload.add_job_from_json_object(event_data,job_id,current_date);
                 algo->on_job_release(current_date, {job_id});
             }
             else if (event_type == "JOB_COMPLETED")

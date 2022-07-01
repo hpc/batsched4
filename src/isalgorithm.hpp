@@ -157,7 +157,6 @@ protected:
     Workload * _workload;
     SchedulingDecision * _decision;
     Queue * _queue;
-    Queue * _reservation_queue;
     ResourceSelector * _selector;
     double _rjms_delay;
     rapidjson::Document * _variant_options;

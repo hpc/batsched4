@@ -4,9 +4,13 @@
 #include <fstream>
 #include <vector>
 #include <limits>
+#include <regex>
 #include <loguru.hpp>
-
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
 
 #include "pempek_assert.hpp"
 
@@ -58,9 +62,10 @@ void Workload::add_job_from_redis(RedisStorage & storage, const string &job_id, 
 
 void Workload::add_job_from_json_object(const Value &object, const string & job_id, double submission_time)
 {
-    Job * job = job_from_json_object(object);
+    Job * job = job_from_json_object(object["job"],object["profile"]);
     job->id = job_id;
     job->submission_time = submission_time;
+
 
     // Let's apply the RJMS delay on the job
     job->walltime += _rjms_delay;
@@ -170,12 +175,37 @@ Job *Workload::job_from_json_object(const Value &object)
         PPK_ASSERT_ERROR(object["start"].IsNumber(), "Invalid json object: 'start' member is not a number");
         j->start = object["start"].GetDouble();
     }
+    if (object.HasMember("profile"))
+    {
+
+    }
     if (object.HasMember("alloc"))
     {
         PPK_ASSERT_ERROR(object["alloc"].IsString(), "Invalid json object: 'alloc' member is not a string");
         j->future_allocations = IntervalSet::from_string_hyphen(object["alloc"].GetString()," ","-");
     }
+    else
+        j->future_allocations = IntervalSet::empty_interval_set(); //make this empty if no allocation
+    
+    if (object.HasMember("submission_times"))
+    {
+        const Value & submission_times = object["submission_times"];
+        for (const auto& time : submission_times.GetArray())
+            j->submission_times.push_back(time.GetDouble());
+    }
+    StringBuffer buffer;
+    rapidjson::Writer<StringBuffer> writer(buffer);
+    object.Accept(writer);
 
+    j->json_description = buffer.GetString();
+    
+    return j;
+}
+Job *Workload::job_from_json_object(const Value &job_object,const Value &profile_object)
+{
+    Job * j = job_from_json_object(job_object);
+    
+    j->profile = myBatsched::Profile::from_json(j->id,profile_object);
     return j;
 }
 

@@ -4,7 +4,9 @@
 #include <string>
 
 #include <intervalset.hpp>
+#include "json_workload.hpp"
 #include "batsched_tools.hpp"
+#include <utility>
 
 class AbstractProtocolWriter;
 class RedisStorage;
@@ -17,6 +19,7 @@ public:
 
     void add_execute_job(const std::string &job_id, const IntervalSet & machine_ids, double date,
                          std::vector<int> executor_to_allocated_resource_mapping = {});
+    void handle_resubmission(std::unordered_map<std::string,double> recently_killed_jobs,Workload * workload,double date);
     void add_reject_job(const std::string &job_id, double date);
     void add_kill_job(const std::vector<std::string> & job_ids, double date);
 
@@ -63,8 +66,20 @@ public:
     double last_date() const;
 
     void set_redis(bool enabled, RedisStorage * redis);
+    std::string to_json_desc(rapidjson::Document * doc);
+
 
 private:
+    void get_meta_data_from_delay(std::pair<std::string,double> killed_map, 
+                                                        rapidjson::Document & profile_doc,
+                                                        rapidjson::Document & job_doc,
+                                                        Workload * w0);
+    void get_meta_data_from_parallel_homogeneous(std::pair<std::string,double> killed_map,
+                                                        rapidjson::Document & profile_doc,
+                                                        rapidjson::Document & job_doc,
+                                                        Workload* w0);
+    
+    
     AbstractProtocolWriter * _proto_writer = nullptr;
     bool _redis_enabled = false;
     RedisStorage * _redis = nullptr;

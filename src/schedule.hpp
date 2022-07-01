@@ -31,11 +31,29 @@ public:
         std::string to_string_allocated_jobs() const;
         std::string to_string(int initial_indent = 0, int indent = 2) const;
     };
+    enum class RESCHEDULE_POLICY{NONE,AFFECTED,ALL};
+    enum class IMPACT_POLICY{NONE,LEAST_KILLING_LARGEST_FIRST,LEAST_KILLING_SMALLEST_FIRST,LEAST_RESCHEDULING};
+    
+    
+    static void convert_policy(std::string policy,RESCHEDULE_POLICY& variable);
+    static void convert_policy(std::string policy, IMPACT_POLICY& variable);
+    
 
     typedef std::list<TimeSlice>::iterator TimeSliceIterator;
     typedef std::list<TimeSlice>::const_iterator TimeSliceConstIterator;
 
     typedef struct JobAlloc JobAlloc;
+
+    struct ReservedTimeSlice{
+        bool success = false;
+        std::vector<const Job*> jobs_affected;
+        std::vector<const Job*> jobs_needed_to_be_killed;
+        std::vector<const Job*> jobs_to_reschedule;
+        TimeSliceIterator slice_begin;
+        TimeSliceIterator slice_end;
+        JobAlloc* alloc;
+        Job * job;
+    };
 
 public:
     Schedule(int nb_machines = 1, Rational initial_time = 0);
@@ -51,7 +69,9 @@ public:
     void remove_job_all_occurences(const Job * job);
     void remove_job_first_occurence(const Job * job);
     void remove_job_last_occurence(const Job * job);
+    void set_output_svg(std::string output_svg);
     void set_svg_prefix(std::string svg_prefix);
+    void set_policies(RESCHEDULE_POLICY r_policy, IMPACT_POLICY i_policy);
     bool remove_reservations_if_ready(std::vector<const Job*>& jobs_removed);
 
     JobAlloc add_current_reservation(const Job * job, ResourceSelector * selector,
@@ -62,7 +82,9 @@ public:
                                                 bool assert_insertion_successful = true);
     JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
-    JobAlloc reserve_time_slice(const Job * job);
+    ReservedTimeSlice reserve_time_slice(const Job * job);
+    void add_reservation(ReservedTimeSlice reservation);
+    void find_least_impactful_fit(JobAlloc * alloc, TimeSliceIterator begin_slice, TimeSliceIterator end_slice,IMPACT_POLICY policy);
     JobAlloc add_job_first_fit_after_time_slice(const Job * job,
                                                 std::list<TimeSlice>::iterator first_time_slice,
                                                 ResourceSelector * selector,
@@ -105,6 +127,7 @@ public:
     std::list<TimeSlice>::iterator end();
     std::list<TimeSlice>::const_iterator begin() const;
     std::list<TimeSlice>::const_iterator end() const;
+    int size();
 
     int nb_slices() const;
 
@@ -125,10 +148,14 @@ private:
 private:
     // The profile is a list of timeslices and a set of job allocations
     std::list<TimeSlice> _profile;
+    int _size = 0;
     int _nb_machines;
     bool _debug = false;
-    std::string _svg_prefix;
-
+    bool _short_debug = false; //make svg's less frequently than _debug
+    std::string _output_svg = "none"; //(none||all||short)  affects _debug and _short_debug
+    std::string _svg_prefix; //the output path of the svg's output when _debug/_short_debug are true
+    RESCHEDULE_POLICY _reschedule_policy = RESCHEDULE_POLICY::AFFECTED;  //whether to reschedule only affected jobs or all the jobs after a reservation addition
+    IMPACT_POLICY _impact_policy = IMPACT_POLICY::LEAST_KILLING_LARGEST_FIRST;
     unsigned int _output_number = 0;
     Rational _previous_time_end = 0;
     std::vector<std::string> _colors;

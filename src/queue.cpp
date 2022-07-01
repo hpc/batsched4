@@ -353,4 +353,10 @@ std::list<SortableJob *>::const_iterator Queue::end() const
 {
     return _jobs.end();
 }
+Queue& Queue::operator=(const Queue&  other){
+    _order = other._order;
+    _jobs = std::list<SortableJob *>(other._jobs);
+    return *this;
+    
+}
 

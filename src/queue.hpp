@@ -133,6 +133,7 @@ public:
 
     std::list<SortableJob *>::const_iterator begin() const;
     std::list<SortableJob *>::const_iterator end() const;
+    Queue &operator=(const Queue& other);
 
 private:
     std::list<SortableJob *> _jobs;
