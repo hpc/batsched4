@@ -112,7 +112,11 @@ void ConservativeBackfilling::make_decisions(double date,
         else
         {
             _reservation_queue->append_job(new_job,update_info);
-            recently_released_reservations.push_back(new_job_id);
+            std::vector<std::string> kills;
+            std::string kill = "w0!1";
+            kills.push_back(kill);
+            _decision->add_kill_job(kill,date);
+           // recently_released_reservations.push_back(new_job_id);
         }
     }
     
@@ -120,7 +124,7 @@ void ConservativeBackfilling::make_decisions(double date,
     // Let's update the schedule's present
     _schedule.update_first_slice(date);
     if (_output_svg == "short")
-        _schedule.output_to_svg();
+        _schedule.output_to_svg("make_decisions");
 
     // Queue sorting
     _queue->sort_queue(update_info, compare_info);
@@ -133,9 +137,10 @@ void ConservativeBackfilling::make_decisions(double date,
     //lifecycle of killed job:
     //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
     // it is the third invocation that this function should run 
+    LOG_F(INFO,"killed_jobs %d",_killed_jobs);
     if (_killed_jobs && !_jobs_released_recently.empty())
     {
-        
+        LOG_F(INFO,"killed_jobs !_jobs_release empty");
         if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::AFFECTED)
         {
             
@@ -150,9 +155,27 @@ void ConservativeBackfilling::make_decisions(double date,
                 
                 for (auto job : reservation.jobs_to_reschedule)
                         all_jobs_to_reschedule.push_back(job);
-                for (auto job : reservation.jobs_needed_to_be_killed)
-                        all_killed_jobs.push_back(job);
+                
             }
+            //have to remove resubmitted jobs since we are taking care of them
+            //store unkilled jobs in recently_queued_jobs2
+            std::vector<std::string> recently_queued_jobs2;
+            //go through recently_queued_jobs and get all the resubmitted ones
+            for (std::string job_id : recently_queued_jobs)
+            {
+                //check if it's a resubmitted job
+                if (job_id.find("#") != std::string::npos)
+                {
+                    
+                    all_killed_jobs.push_back((*_workload)[job_id]);
+
+                }
+                else
+                    recently_queued_jobs2.push_back(job_id);
+            }
+            //set the recently_queued_jobs to a vector without the resubmitted jobs
+            recently_queued_jobs = recently_queued_jobs2;
+
             //define a sort function
             auto sort_function = [](const Job * j1, const Job *j2)->bool{
                 return j1->submission_times[0]<j2->submission_times[0];
@@ -192,6 +215,7 @@ void ConservativeBackfilling::make_decisions(double date,
     //insert reservations into schedule whether jobs have finished or not
     for (const string & new_job_id : recently_released_reservations)
     {
+        LOG_F(INFO,"new reservation: %s queue:%s",new_job_id.c_str(),_queue->to_string().c_str());
         const Job * new_job = (*_workload)[new_job_id];
         LOG_F(INFO,"job %s has walltime %g  start %f and alloc %s",new_job->id.c_str(),(double)new_job->walltime,new_job->start,new_job->future_allocations.to_string_hyphen(" ","-").c_str());
         //reserve a time slice 
@@ -206,7 +230,7 @@ void ConservativeBackfilling::make_decisions(double date,
             for(auto job : reservation.jobs_to_reschedule)
             {
                 LOG_F(INFO,"size of submission times %d",job->submission_times.size());
-                LOG_F(INFO,"job %s  sub times[0] %f",job->id,job->submission_times[0]);
+                LOG_F(INFO,"job %s  sub times[0] %f",job->id.c_str(),job->submission_times[0]);
             }
             if (reservation.success)
             {
@@ -227,6 +251,9 @@ void ConservativeBackfilling::make_decisions(double date,
                     LOG_F(INFO,"DEBUG line 218");
                     //now add the reservation
                     _reservation_queue->append_job(new_job,update_info);
+                    Schedule::ReservedTimeSlice reservation2 = _schedule.reserve_time_slice(new_job);
+                    reservation.slice_begin = reservation2.slice_begin;
+                    reservation.slice_end = reservation2.slice_end;
                     _schedule.add_reservation(reservation);
                     Schedule::JobAlloc alloc;
                     //now add the rescheduled jobs in order
@@ -257,7 +284,9 @@ void ConservativeBackfilling::make_decisions(double date,
                     LOG_F(INFO,"DEBUG line 248");
                     std::vector<std::string> kill_jobs;
                     for(auto job : reservation.jobs_needed_to_be_killed)
+                    {
                         kill_jobs.push_back(job->id);
+                    }
                     _decision->add_kill_job(kill_jobs,date);
                     LOG_F(INFO,"DEBUG line 253");
                     //remove kill jobs from schedule
@@ -272,10 +301,14 @@ void ConservativeBackfilling::make_decisions(double date,
                         _schedule.remove_job(job);
                     LOG_F(INFO,"DEBUG line 261");
                     //we can make the reservation now
+                    Schedule::ReservedTimeSlice reservation2 = _schedule.reserve_time_slice(new_job);
+                    reservation.slice_begin = reservation2.slice_begin;
+                    reservation.slice_end = reservation2.slice_end;
                     _schedule.add_reservation(reservation);
                     //get things ready for once killed_jobs are resubmitted
                     LOG_F(INFO,"DEBUG line 265");
                     _saved_reservations.push_back(reservation);
+                    LOG_F(INFO,"line 307");
                     _killed_jobs = true;
                     _saved_recently_queued_jobs = recently_queued_jobs;
                 }
@@ -288,7 +321,20 @@ void ConservativeBackfilling::make_decisions(double date,
               
     }
     recently_released_reservations.clear();
-   
+   Schedule::JobAlloc alloc;
+   std::vector<const Job *> jobs_removed;
+   LOG_F(INFO,"line 322");
+   if(_schedule.remove_reservations_if_ready(jobs_removed))
+   {
+       LOG_F(INFO,"DEBUG line 323");
+        for(const Job * job : jobs_removed)
+        {
+            LOG_F(INFO,"DEBUG line 326");
+            alloc = _schedule.add_current_reservation(job,_selector);
+            LOG_F(INFO,"DEBUG line 328");
+            _decision->add_execute_job(alloc.job->id,alloc.used_machines,date);
+        }
+    }
     
     // If no resources have been released, we can just insert the new jobs into the schedule
     if (_jobs_ended_recently.empty() && !_killed_jobs)
@@ -299,6 +345,7 @@ void ConservativeBackfilling::make_decisions(double date,
             for (const string & new_job_id : _saved_recently_queued_jobs)
             {
                 const Job * new_job = (*_workload)[new_job_id];
+                LOG_F(INFO,"DEBUG line 321");
                     
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
 
@@ -315,6 +362,7 @@ void ConservativeBackfilling::make_decisions(double date,
             for (const string & new_job_id : recently_queued_jobs)
             {
                 const Job * new_job = (*_workload)[new_job_id];
+                LOG_F(INFO,"DEBUG line 337");
                     
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
 
@@ -336,16 +384,7 @@ void ConservativeBackfilling::make_decisions(double date,
         //   Add j into the schedule
         //   If j should be executed now
         //     Take the decision to run j now
-        Schedule::JobAlloc alloc;
-        std::vector<const Job *> jobs_removed;
-        if(_schedule.remove_reservations_if_ready(jobs_removed))
-        {
-            for(const Job * job : jobs_removed)
-            {
-                alloc = _schedule.add_current_reservation(job,_selector);
-                _decision->add_execute_job(alloc.job->id,alloc.used_machines,date);
-            }
-        }
+        
 
         for (auto job_it = _queue->begin(); job_it != _queue->end(); )
         {
@@ -353,6 +392,7 @@ void ConservativeBackfilling::make_decisions(double date,
             _schedule.remove_job_if_exists(job);
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
+            LOG_F(INFO,"DEBUG line 375");
             Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);

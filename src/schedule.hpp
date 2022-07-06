@@ -132,9 +132,9 @@ public:
     int nb_slices() const;
 
     std::string to_string() const;
-    std::string to_svg() const;
-    void write_svg_to_file(const std::string & filename) const;
-    void output_to_svg(const std::string & filename_prefix = "/tmp/schedule");
+    std::string to_svg(const std::string &message) const;
+    void write_svg_to_file(const std::string & filename, const std::string & message) const;
+    void output_to_svg(const std::string & message);
 
     void dump_to_batsim_jobs_file(const std::string & filename) const;
     void incremental_dump_as_batsim_jobs_file(const std::string & filename_prefix = "/tmp/schedule");

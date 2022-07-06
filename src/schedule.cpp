@@ -274,12 +274,19 @@ void Schedule::find_least_impactful_fit(JobAlloc* alloc,TimeSliceIterator begin_
 }
 Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
     if (_debug)
-        output_to_svg();
+        output_to_svg("top reserve_time_slice");
+    
     // Let's create the job allocation
     Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
          
         //find insertion slice
         auto slice_begin = _profile.begin();
+        bool first_slice_is_suspect = false;
+        if (_profile.begin()->begin == _profile.begin()->end)
+        {
+            first_slice_is_suspect = true;
+            slice_begin++;
+        }
         for(;slice_begin!=_profile.end();slice_begin++)
         {
             //we are at the right slice if it's beginning = the reservation start or the slice ends at a greater point than the reservation start
@@ -288,6 +295,7 @@ Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
             
 
         }
+        
         //PPK_ASSERT_ERROR(slice_begin == _profile.end(), "When inserting reservation '%s', the beginning time slice hit the end of the profile",job->id.c_str());
         //now make an allocation
         Rational beginning = job->start;
@@ -362,10 +370,24 @@ LOG_F(INFO,"DEBUG line 331");
                 {
                     if (job->purpose == "reservation")
                     {
-                        reserved->success = false;
-                        return *reserved;
+                        if (!first_slice_is_suspect || (job->walltime != _profile.begin()->end))
+                        {
+                            reserved->success = false;
+                            return *reserved;
+                        }
+                        else
+                            continue;
                     }
-                    jobs_needed_to_be_killed.push_back(job);
+                    
+                    //jobs in the first time slice may be finished
+                    //unfortunately batsim doesn't always send the submit job
+                    //at the same time as job completed message
+                    //so we must check if now equals the end of the first time slice ie first_slice_is_suspect
+                    //if it is we must check if the job's walltime equals the end of the time slice
+                    if (!first_slice_is_suspect)
+                        jobs_needed_to_be_killed.push_back(job);
+                    else if (job->walltime != _profile.begin()->end)
+                        jobs_needed_to_be_killed.push_back(job);
                 }
                 else
                     jobs_to_reschedule.push_back(job);
@@ -385,9 +407,13 @@ LOG_F(INFO,"DEBUG line 331");
         //now return the reserved time slice
         //will need to act on the object to make it part of the schedule
         LOG_F(INFO,"DEBUG line 380");
+        if (_debug)
+            output_to_svg("bottom reserve_time_slice");
         return *reserved;
 }
 void Schedule::add_reservation(ReservedTimeSlice reservation){
+        if (_debug)
+            output_to_svg("top add_reservation");
         _size++;
         const Job * job = reservation.alloc->job;
         //now update all slices between slice_begin and slice_end
@@ -395,16 +421,20 @@ void Schedule::add_reservation(ReservedTimeSlice reservation){
         LOG_F(INFO,"DEBUG line 395 job id %s",job->id.c_str());
         for (auto slice_it = reservation.slice_begin; slice_it != slice_end_next; ++slice_it)
         {
+            LOG_F(INFO,"DEBUG line 398");
+            LOG_F(INFO,"used machines %s",reservation.alloc->used_machines.to_string_hyphen().c_str());
             slice_it->available_machines -= reservation.alloc->used_machines;
-            LOG_F(INFO,"DEBUG line 399");
+            LOG_F(INFO,"DEBUG line 399+1");
             slice_it->nb_available_machines -= job->nb_requested_resources;
             slice_it->allocated_jobs[job] = reservation.alloc->used_machines;
-            LOG_F(INFO,"DEBUG line 402");
+            LOG_F(INFO,"DEBUG line 402+1");
             slice_it->has_reservation = true;
-            LOG_F(INFO,"DEBUG line 404");
+            LOG_F(INFO,"DEBUG line 404+1");
             (slice_it->nb_reservations)++;
-            LOG_F(INFO,"DEBUG line 406");
+            LOG_F(INFO,"DEBUG line 406+1");
         }
+          if (_debug)
+            output_to_svg("bottom add_reservation");
 }
 
 /* old code for adding reservation
@@ -470,7 +500,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
         LOG_F(1, "Adding job '%s' (size=%d, walltime=%g). Output number %d. %s",
             job->id.c_str(), job->nb_requested_resources, (double)job->walltime,
             _output_number, to_string().c_str());
-        output_to_svg();
+        output_to_svg("top add_current_reservation_after_time_slice");
     }
 
     // Let's scan the profile for an anchor point.
@@ -526,7 +556,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
                     {
                         LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
                             job->nb_requested_resources, (double)job->walltime, _output_number, to_string().c_str());
-                        output_to_svg();
+                        output_to_svg("bottom add_current_reservation_after_time_slice");
                     }
 
                     // The job has been placed, we can leave this function
@@ -593,7 +623,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
                                 LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
                                     job->nb_requested_resources, (double)job->walltime, _output_number,
                                     to_string().c_str());
-                                output_to_svg();
+                                output_to_svg("bottom else add_current_reservation_after_time_slice");
                             }
 
                             // The job has been placed, we can leave this function
@@ -619,15 +649,20 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
     //first check if next timeslice has a reservation
     auto slice = _profile.begin();
     ++slice;
+    if (slice == _profile.end())
+        return false;
+    LOG_F(INFO,"line 634");
     bool ready = false;
     if (slice->has_reservation)
     {
         //ok the next timeslice does have a reservation
         //check if it is ready to copy over to the first slice
+        LOG_F(INFO,"line 640");
         if (_profile.begin()->begin == slice->begin)
         {
             ready = true;
             //ok they are equal, remove the reservations
+            LOG_F(INFO,"line 645");
             for (auto it = slice->allocated_jobs.begin();it != slice->allocated_jobs.end();it++)
             {
                 const Job* job = it->first;
@@ -655,7 +690,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
         LOG_F(1, "Adding job '%s' (size=%d, walltime=%g). Output number %d. %s",
             job->id.c_str(), job->nb_requested_resources, (double)job->walltime,
             _output_number, to_string().c_str());
-        output_to_svg();
+        output_to_svg("top add_job_first_fit_after_time_slice");
     }
     _size++;
 
@@ -710,7 +745,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                     {
                         LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
                             job->nb_requested_resources, (double)job->walltime, _output_number, to_string().c_str());
-                        output_to_svg();
+                        output_to_svg("bottom add_job_first_fit_after_time_slice");
                     }
 
                     // The job has been placed, we can leave this function
@@ -776,7 +811,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                                 LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
                                     job->nb_requested_resources, (double)job->walltime, _output_number,
                                     to_string().c_str());
-                                output_to_svg();
+                                output_to_svg("bottom else add_job_first_fit_after_time_slice");
                             }
 
                             // The job has been placed, we can leave this function
@@ -804,7 +839,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time(
     {
         LOG_F(1, "Adding job '%s' (size=%d, walltime=%g) after date %g. Output number %d. %s", job->id.c_str(),
             job->nb_requested_resources, (double)job->walltime, (double)date, _output_number, to_string().c_str());
-        output_to_svg();
+        output_to_svg("top add_job_first_fit_after_time");
     }
 
     // Let's first search at each time slice the job should be added
@@ -1259,7 +1294,7 @@ string Schedule::to_string() const
     return res;
 }
 
-string Schedule::to_svg() const
+string Schedule::to_svg(const std::string& message) const
 {
     Rational x0, x1, y0, y1;
     x0 = y0 = std::numeric_limits<double>::max();
@@ -1286,8 +1321,8 @@ string Schedule::to_svg() const
     const int buf_size = 4096;
     char *buf = new char[buf_size];
     Rational img_width = width;
-    if (img_width < 120)
-        img_width = 120;
+    if (img_width < 240)
+        img_width = 240;
     // header
     Rational sim_time = _profile.begin()->begin;
     if(_profile.size() < 2)
@@ -1297,8 +1332,9 @@ string Schedule::to_svg() const
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
         "<title>Schedule</title>\n"
         "<text x=\"5\" y=\"5\" font-size=\"3pt\" fill=\"black\">Frame: %d</text>\n"
-        "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n",
-        (double)img_width, (double)height+20,_output_number,(double)sim_time);
+        "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
+        "<text x=\"100\" y=\"5\" font-size=\"2pt\" fill=\"black\">%s</text>\n",
+        (double)img_width, (double)height+20,_output_number,(double)sim_time,message.c_str());
 
 
     string res = buf;
@@ -1414,21 +1450,22 @@ string Schedule::to_svg() const
     return res;
 }
 
-void Schedule::write_svg_to_file(const string &filename) const
+void Schedule::write_svg_to_file(const string &filename,const std::string& message) const
 {
     ofstream f(filename);
 
     if (f.is_open())
-        f << to_svg() << "\n";
+        f << to_svg(message) << "\n";
 
     f.close();
 }
 
-void Schedule::output_to_svg(const string &filename_prefix)
+void Schedule::output_to_svg(const std::string &message)
 {
     const int bufsize = 4096;
     char *buf = new char[bufsize];
     //char *buf2 = new char[bufsize];
+    
 
     snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
     //snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
@@ -1439,8 +1476,8 @@ void Schedule::output_to_svg(const string &filename_prefix)
         f << first_slice->begin;
     f.close();
     */
-   LOG_F(INFO,"%s",to_string().c_str());
-    write_svg_to_file(buf);
+   LOG_F(INFO,"%s \n %s",message.c_str(),to_string().c_str());
+    write_svg_to_file(buf,message);
     if (_profile.size()>1)
     {
         auto slice = _profile.end();
@@ -1584,7 +1621,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
     if (_debug)
     {
         LOG_F(1, "Removing job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
-        output_to_svg();
+        output_to_svg("top remove_job_internal");
     }
 
     // Let's iterate the time slices until the job is found
@@ -1688,7 +1725,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             if (_debug)
             {
                 LOG_F(1, "Removed job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
-                output_to_svg();
+                output_to_svg("bottom remove_job_internal");
             }
 
             return;
