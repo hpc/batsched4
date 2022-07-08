@@ -45,6 +45,7 @@ public:
     typedef struct JobAlloc JobAlloc;
 
     struct ReservedTimeSlice{
+        bool operator==(const ReservedTimeSlice & r) const;
         bool success = false;
         std::vector<const Job*> jobs_affected;
         std::vector<const Job*> jobs_needed_to_be_killed;
@@ -69,6 +70,8 @@ public:
     void remove_job_all_occurences(const Job * job);
     void remove_job_first_occurence(const Job * job);
     void remove_job_last_occurence(const Job * job);
+    void add_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be );
+    void remove_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be);
     void set_output_svg(std::string output_svg);
     void set_svg_prefix(std::string svg_prefix);
     void set_policies(RESCHEDULE_POLICY r_policy, IMPACT_POLICY i_policy);
@@ -132,8 +135,10 @@ public:
     int nb_slices() const;
 
     std::string to_string() const;
-    std::string to_svg(const std::string &message) const;
-    void write_svg_to_file(const std::string & filename, const std::string & message) const;
+    std::string to_svg(const std::string &message, const std::list<ReservedTimeSlice> & svg_reservations) const;
+    void write_svg_to_file(const std::string & filename, 
+                        const std::string & message,
+                        const std::list<ReservedTimeSlice> & svg_reservations) const;
     void output_to_svg(const std::string & message);
 
     void dump_to_batsim_jobs_file(const std::string & filename) const;
@@ -158,6 +163,7 @@ private:
     IMPACT_POLICY _impact_policy = IMPACT_POLICY::LEAST_KILLING_LARGEST_FIRST;
     unsigned int _output_number = 0;
     Rational _previous_time_end = 0;
+    std::list<ReservedTimeSlice> _svg_reservations;
     std::vector<std::string> _colors;
 };
 

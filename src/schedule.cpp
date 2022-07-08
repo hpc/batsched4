@@ -379,15 +379,10 @@ LOG_F(INFO,"DEBUG line 331");
                             continue;
                     }
                     
-                    //jobs in the first time slice may be finished
-                    //unfortunately batsim doesn't always send the submit job
-                    //at the same time as job completed message
-                    //so we must check if now equals the end of the first time slice ie first_slice_is_suspect
-                    //if it is we must check if the job's walltime equals the end of the time slice
-                    if (!first_slice_is_suspect)
-                        jobs_needed_to_be_killed.push_back(job);
-                    else if (job->walltime != _profile.begin()->end)
-                        jobs_needed_to_be_killed.push_back(job);
+                    //this needs to be looked over.  Batsim doesn't always send the completed jobs
+                    //in the same message as submitted jobs 
+                    jobs_needed_to_be_killed.push_back(job);
+                    
                 }
                 else
                     jobs_to_reschedule.push_back(job);
@@ -417,7 +412,8 @@ void Schedule::add_reservation(ReservedTimeSlice reservation){
         _size++;
         const Job * job = reservation.alloc->job;
         //now update all slices between slice_begin and slice_end
-        auto slice_end_next = ++reservation.slice_end;
+        auto slice_end_next = reservation.slice_end;
+        ++slice_end_next;
         LOG_F(INFO,"DEBUG line 395 job id %s",job->id.c_str());
         for (auto slice_it = reservation.slice_begin; slice_it != slice_end_next; ++slice_it)
         {
@@ -663,20 +659,26 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
             ready = true;
             //ok they are equal, remove the reservations
             LOG_F(INFO,"line 645");
-            for (auto it = slice->allocated_jobs.begin();it != slice->allocated_jobs.end();it++)
+            for (auto it = slice->allocated_jobs.begin();it != slice->allocated_jobs.end();++it)
             {
                 const Job* job = it->first;
-                if (job->purpose == "reservation")
+                //first make sure it's a reservation and not currently running (ie in the first slice)
+                if (job->purpose == "reservation" && !_profile.begin()->contains_job(job))
                     {
                         if (slice->nb_reservations > 0)
                             slice->nb_reservations--;
-                        remove_job_if_exists(job);
-                        jobs_removed.push_back(job);                            
+                        LOG_F(INFO,"line 670");
+                        jobs_removed.push_back(job);
+                        LOG_F(INFO,"line 672");
+                                              
                     }
 
             }
-            
+            for (auto job : jobs_removed)
+                remove_job_if_exists(job);
+            return true;   
         }
+
     }
     return false;
 }
@@ -1293,9 +1295,20 @@ string Schedule::to_string() const
 
     return res;
 }
+void Schedule::add_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be ){
+    _svg_reservations.push_back(reservation_to_be);
 
-string Schedule::to_svg(const std::string& message) const
+}
+bool Schedule::ReservedTimeSlice::operator==(const ReservedTimeSlice & r)const {
+    return job->id == r.job->id;
+}
+void Schedule::remove_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be){
+    _svg_reservations.remove(reservation_to_be);
+}
+
+string Schedule::to_svg(const std::string& message, const std::list<ReservedTimeSlice> & svg_reservations) const
 {
+    LOG_F(INFO,"line 1311");
     Rational x0, x1, y0, y1;
     x0 = y0 = std::numeric_limits<double>::max();
     x1 = y1 = std::numeric_limits<double>::min();
@@ -1427,6 +1440,8 @@ string Schedule::to_svg(const std::string& message) const
                 res += buf;
             }
         }
+        
+
 
         set<const Job *> new_jobs;
         set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
@@ -1443,6 +1458,32 @@ string Schedule::to_svg(const std::string& message) const
         for (const Job *job : new_jobs)
             current_jobs.insert(job);
     }
+    LOG_F(INFO,"line 1461");
+    for (const ReservedTimeSlice reservation : svg_reservations)
+    {    const Job * job = reservation.job;
+        Rational rect_x0 = job->start * second_width - x0;
+        Rational rect_x1 = job->walltime * second_width - x0;
+        Rational rect_width = rect_x1 - rect_x0;
+        std::string rect_color = _colors[job->unique_number % (int)_colors.size()];
+        for (auto it = reservation.alloc->used_machines.intervals_begin(); it != reservation.alloc->used_machines.intervals_end(); ++it)
+        {
+            PPK_ASSERT_ERROR(it->lower() <= it->upper());
+            Rational rect_y0 = it->lower() * machine_height - y0;
+            Rational rect_y1 = ((it->upper() + Rational(1)) * machine_height)
+                - (space_between_machines_ratio * machine_height) - y0;
+            Rational rect_height = rect_y1 - rect_y0;
+            std::string job_id = job->id;
+            if (job->purpose=="reservation")
+                job_id+=" R";
+            snprintf(buf, buf_size,
+                "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke-width=\".3\" stroke-dasharray=\"3,3\"" 
+                "style=\"stroke:black; fill:%s; fill-opacity:0.4\"/>\n"
+                " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
+                (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
+                rect_color.c_str(),(double)(rect_x0+1),(double)(rect_y0+4),(int)2,job_id.c_str()); 
+            res += buf;
+        }
+    }
 
     res += "</g></svg>";
 
@@ -1450,12 +1491,14 @@ string Schedule::to_svg(const std::string& message) const
     return res;
 }
 
-void Schedule::write_svg_to_file(const string &filename,const std::string& message) const
+void Schedule::write_svg_to_file(const string &filename,
+                                const std::string& message,
+                                const std::list<ReservedTimeSlice> & svg_reservations) const
 {
     ofstream f(filename);
 
     if (f.is_open())
-        f << to_svg(message) << "\n";
+        f << to_svg(message,svg_reservations) << "\n";
 
     f.close();
 }
@@ -1476,8 +1519,9 @@ void Schedule::output_to_svg(const std::string &message)
         f << first_slice->begin;
     f.close();
     */
+   const std::list<ReservedTimeSlice> svg_reservations = _svg_reservations;
    LOG_F(INFO,"%s \n %s",message.c_str(),to_string().c_str());
-    write_svg_to_file(buf,message);
+    write_svg_to_file(buf,message,svg_reservations);
     if (_profile.size()>1)
     {
         auto slice = _profile.end();
