@@ -53,7 +53,7 @@ public:
         TimeSliceIterator slice_begin;
         TimeSliceIterator slice_end;
         JobAlloc* alloc;
-        Job * job;
+        const Job * job;
     };
 
 public:

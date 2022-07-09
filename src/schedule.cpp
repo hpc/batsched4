@@ -398,6 +398,7 @@ LOG_F(INFO,"DEBUG line 331");
         reserved->slice_begin = slice_begin;
         reserved->slice_end = slice_end;
         reserved->success = true;
+        reserved->job = job;
 
         //now return the reserved time slice
         //will need to act on the object to make it part of the schedule
@@ -1460,9 +1461,13 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
     }
     LOG_F(INFO,"line 1461");
     for (const ReservedTimeSlice reservation : svg_reservations)
-    {    const Job * job = reservation.job;
-        Rational rect_x0 = job->start * second_width - x0;
-        Rational rect_x1 = job->walltime * second_width - x0;
+    {   
+        
+        const Job * job = reservation.job;
+        const double start = job->start;
+        const Rational walltime = job->walltime;
+        Rational rect_x0 = start * second_width - x0;
+        Rational rect_x1 = (start+walltime) * second_width - x0;
         Rational rect_width = rect_x1 - rect_x0;
         std::string rect_color = _colors[job->unique_number % (int)_colors.size()];
         for (auto it = reservation.alloc->used_machines.intervals_begin(); it != reservation.alloc->used_machines.intervals_end(); ++it)
@@ -1473,10 +1478,11 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
                 - (space_between_machines_ratio * machine_height) - y0;
             Rational rect_height = rect_y1 - rect_y0;
             std::string job_id = job->id;
+            
             if (job->purpose=="reservation")
                 job_id+=" R";
             snprintf(buf, buf_size,
-                "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke-width=\".3\" stroke-dasharray=\"3,3\"" 
+                "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke-width=\".3\" stroke-dasharray=\"3,3\" " 
                 "style=\"stroke:black; fill:%s; fill-opacity:0.4\"/>\n"
                 " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
                 (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
@@ -1484,7 +1490,6 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
             res += buf;
         }
     }
-
     res += "</g></svg>";
 
     delete[] buf;
