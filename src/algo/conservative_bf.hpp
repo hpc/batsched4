@@ -21,7 +21,10 @@ public:
     virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
+    void on_machine_instant_down_up(double date);
+    void on_machine_down_for_repair(double date);
     virtual void set_workloads(myBatsched::Workloads * w);
+    virtual void on_requested_call(double date,int id,  batsched_tools::call_me_later_types forWhat);
 
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
@@ -45,5 +48,7 @@ private:
     std::string _dump_prefix = "/tmp/dump";
     myBatsched::Workloads * _myWorkloads;
     bool _checkpointing_on;
+    bool _start_a_reservation=false;
+    b_log *_myBLOG;
 
 };

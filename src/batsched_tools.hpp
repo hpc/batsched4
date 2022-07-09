@@ -7,7 +7,7 @@
 
 
 namespace batsched_tools{
-enum call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE};
+enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START};
 }
 #define BLOG_F(log_type,fmt,...) B_LOG_INSTANCE->blog(log_type,fmt,date,## __VA_ARGS__)
 class b_log{

@@ -98,7 +98,7 @@ void easy_bf_fast2::on_simulation_start(double date,
         if (unif_distribution == nullptr)
             unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
         double number = _myWorkloads->_fixed_failures;
-        _decision->add_call_me_later(batsched_tools::FIXED_FAILURE,1,number+date,date);  
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);  
      }
     if (_myWorkloads->_SMTBF != -1.0)
     {
@@ -109,7 +109,7 @@ void easy_bf_fast2::on_simulation_start(double date,
         distribution->param(new_lambda);
         double number;         
         number = distribution->operator()(generator);
-        _decision->add_call_me_later(batsched_tools::SMTBF,1,number+date,date);
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
     }
     else if (_myWorkloads->_MTBF!=-1.0)
     {
@@ -118,7 +118,7 @@ void easy_bf_fast2::on_simulation_start(double date,
         distribution->param(new_lambda);
         double number;         
         number = distribution->operator()(generator);
-        _decision->add_call_me_later(batsched_tools::MTBF,1,number+date,date);
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
     }
 }      
 void easy_bf_fast2::on_simulation_end(double date){
@@ -186,7 +186,7 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
         //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
         //LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
         //call me back when the repair is done
-        _decision->add_call_me_later(batsched_tools::REPAIR_DONE,number,date+repair_time,date);
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
         //now kill the jobs that are running on machines that need to be repaired.        
         //if there are no running jobs, then there are none to kill
         if (!_running_jobs.empty()){
@@ -236,7 +236,7 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
 {
     
         switch (forWhat){
-            case batsched_tools::SMTBF:
+            case batsched_tools::call_me_later_types::SMTBF:
                         {
                             //Log the failure
                             BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
@@ -247,24 +247,24 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                                         on_machine_instant_down_up(date);
                                     else
                                         on_machine_down_for_repair(date);
-                                    _decision->add_call_me_later(batsched_tools::SMTBF,1,number+date,date);
+                                    _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
                                 }
                         }
                         break;
-            case batsched_tools::MTBF:
+            case batsched_tools::call_me_later_types::MTBF:
                         {
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                             {
                                 double number = distribution->operator()(generator);
                                 on_myKillJob_notify_event(date);
-                                _decision->add_call_me_later(batsched_tools::MTBF,1,number+date,date);
+                                _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
 
                             }
                         
                             
                         }
                         break;
-            case batsched_tools::FIXED_FAILURE:
+            case batsched_tools::call_me_later_types::FIXED_FAILURE:
                         {
                             BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
@@ -274,11 +274,11 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                                         on_machine_instant_down_up(date);
                                     else
                                         on_machine_down_for_repair(date);
-                                    _decision->add_call_me_later(batsched_tools::FIXED_FAILURE,1,number+date,date);
+                                    _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
                                 }
                         }
                         break;
-            case batsched_tools::REPAIR_DONE:
+            case batsched_tools::call_me_later_types::REPAIR_DONE:
                         {
                             BLOG_F(b_log::FAILURES,"REPAIR_DONE");
                             //a repair is done, all that needs to happen is add the machines to available

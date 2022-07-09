@@ -297,13 +297,8 @@ Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
         }
         
         //PPK_ASSERT_ERROR(slice_begin == _profile.end(), "When inserting reservation '%s', the beginning time slice hit the end of the profile",job->id.c_str());
-        //now make an allocation
-        Rational beginning = job->start;
-        alloc->begin = beginning;
-        alloc->end = alloc->begin + job->walltime;
-        alloc->started_in_first_slice = (slice_begin == _profile.begin()) ? true : false;
-        alloc->job = job;
-        alloc->used_machines = job->future_allocations;
+        
+        
         LOG_F(INFO,"DEBUG line 298");
         //slice_begin should point to the correct time slice to insert the job
         //do we need to slice it to start with?
@@ -313,7 +308,16 @@ Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
         Rational split_date = job->start;
         split_slice(slice_begin,split_date,first_slice_after_split,second_slice_after_split);
         LOG_F(INFO,"DEBUG line 306");
-        slice_begin=first_slice_after_split;
+        slice_begin=second_slice_after_split;
+
+        //now make an allocation
+        Rational beginning = job->start;
+        alloc->begin = beginning;
+        alloc->end = alloc->begin + job->walltime;
+        alloc->started_in_first_slice = (slice_begin == _profile.begin()) ? true : false;
+        alloc->job = job;
+        alloc->used_machines = job->future_allocations;
+
         //now find the end slice
         auto slice_end = second_slice_after_split;
         Rational end_time = job->start + job->walltime;
@@ -662,10 +666,15 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
             LOG_F(INFO,"line 645");
             for (auto it = slice->allocated_jobs.begin();it != slice->allocated_jobs.end();++it)
             {
+                
                 const Job* job = it->first;
                 //first make sure it's a reservation and not currently running (ie in the first slice)
                 if (job->purpose == "reservation" && !_profile.begin()->contains_job(job))
                     {
+                        //ok it is a reservation and not currently running
+                        //now make sure the resources are available
+                        if ( !(it->second.is_subset_of(_profile.begin()->available_machines)) )
+                            return false;
                         if (slice->nb_reservations > 0)
                             slice->nb_reservations--;
                         LOG_F(INFO,"line 670");
@@ -1517,7 +1526,7 @@ void Schedule::output_to_svg(const std::string &message)
 
     snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
     //snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
-    ++_output_number %= 10000000;
+    
     /*ofstream f(buf2);
     auto first_slice = _profile.begin();
     if (f.is_open())
@@ -1525,7 +1534,8 @@ void Schedule::output_to_svg(const std::string &message)
     f.close();
     */
    const std::list<ReservedTimeSlice> svg_reservations = _svg_reservations;
-   LOG_F(INFO,"%s \n %s",message.c_str(),to_string().c_str());
+   LOG_F(INFO,"Frame: %06d %s \n %s",_output_number,message.c_str(),to_string().c_str());
+   
     write_svg_to_file(buf,message,svg_reservations);
     if (_profile.size()>1)
     {
@@ -1536,7 +1546,7 @@ void Schedule::output_to_svg(const std::string &message)
         if (end > 0 && end != 1e19)
             _previous_time_end = end;
     }
-
+    ++_output_number %= 10000000;
     delete[] buf;
 }
 
