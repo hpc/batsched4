@@ -6,9 +6,7 @@
 #include <cstdio>
 
 
-namespace batsched_tools{
-enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START};
-}
+
 #define BLOG_F(log_type,fmt,...) B_LOG_INSTANCE->blog(log_type,fmt,date,## __VA_ARGS__)
 class b_log{
     
@@ -23,6 +21,20 @@ void add_log_file(std::string file, logging_type type);
 std::unordered_map<logging_type,FILE*> _files;
 };
 
+
+namespace batsched_tools{
+    enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START};
+    struct id_separation{
+        std::string basename;
+        std::string resubmit_string;
+        int resubmit_number;
+        std::string next_resubmit_string;
+        std::string workload;
+        };
+    struct tools{
+        static id_separation separate_id(const std::string job_id);
+    };
+}
 
 
 #endif

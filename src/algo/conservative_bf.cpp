@@ -426,8 +426,12 @@ void ConservativeBackfilling::make_decisions(double date,
     
     
     
-    for (std::string job_id : _jobs_killed_recently)
-        _resubmitted_jobs.push_back(job_id);
+    for ( auto job_progress_pair : _jobs_killed_recently)
+    {
+        batsched_tools::id_separation separation = batsched_tools::tools::separate_id(job_progress_pair.first);
+        LOG_F(INFO,"next_resubmit_string %s",separation.next_resubmit_string.c_str());
+        _resubmitted_jobs.push_back(separation.next_resubmit_string);
+    }
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
 
     //take care of killed jobs and reschedule jobs
@@ -486,6 +490,7 @@ void ConservativeBackfilling::make_decisions(double date,
             for (auto job : all_killed_jobs)
             {    
                 _resubmitted_jobs.remove(job->id);
+                LOG_F(INFO,"all killed jobs job: %s",job->id.c_str());
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
                 if (alloc.started_in_first_slice)
                 {
@@ -523,6 +528,7 @@ void ConservativeBackfilling::make_decisions(double date,
         }
         if (_resubmitted_jobs.empty())
         {
+            LOG_F(INFO,"Setting _killed_jobs to false");
             _saved_reservations.clear();
             _killed_jobs = false;
         }

@@ -26,3 +26,22 @@ void b_log::blog(logging_type type, std::string fmt, double date, ...){
     }
     
 }
+batsched_tools::id_separation batsched_tools::tools::separate_id(const std::string job_id){
+    batsched_tools::id_separation separation;
+    auto start = job_id.find("!")+1;
+    auto end = job_id.find("#");
+    separation.basename = (end ==std::string::npos) ? job_id.substr(start) : job_id.substr(start,end-start); 
+    separation.workload = job_id.substr(0,start-1);
+    separation.resubmit_number = 1;
+    int next_number = 1;
+    if (end!=std::string::npos) //if job name has # in it...was resubmitted b4
+    {
+            separation.resubmit_number = std::stoi(job_id.substr(end+1));   // then get the resubmitted number
+            next_number = separation.resubmit_number + 1;
+    }
+    separation.resubmit_string = std::to_string(separation.resubmit_number);
+    separation.next_resubmit_string = separation.workload + "!" +
+                                      separation.basename + "#" +
+                                      std::to_string(next_number);
+    return separation;
+}
