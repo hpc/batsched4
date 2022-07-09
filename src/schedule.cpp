@@ -1425,7 +1425,12 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
             PPK_ASSERT_ERROR(slice_it != _profile.begin());
             auto previous_slice_it = slice_it;
             --previous_slice_it;
-
+            std::string job_id = job->id;
+             if (job->purpose=="reservation")
+                {
+                    job_id+=" R";
+                    rect_color = _reservation_colors[job->unique_number %(int)_reservation_colors.size()];
+                }
             IntervalSet job_machines = previous_slice_it->allocated_jobs.at(job);
 
             // Let's create a rectangle for each contiguous part of the allocation
@@ -1436,9 +1441,8 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
                 Rational rect_y1 = ((it->upper() + Rational(1)) * machine_height)
                     - (space_between_machines_ratio * machine_height) - y0;
                 Rational rect_height = rect_y1 - rect_y0;
-                std::string job_id = job->id;
-                if (job->purpose=="reservation")
-                    job_id+=" R";
+                
+               
                     
                 snprintf(buf, buf_size,
                     "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:black; stroke-width=%g; "
@@ -1478,7 +1482,7 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
         Rational rect_x0 = start * second_width - x0;
         Rational rect_x1 = (start+walltime) * second_width - x0;
         Rational rect_width = rect_x1 - rect_x0;
-        std::string rect_color = _colors[job->unique_number % (int)_colors.size()];
+        std::string rect_color = _reservation_colors[job->unique_number % (int)_reservation_colors.size()];
         for (auto it = reservation.alloc->used_machines.intervals_begin(); it != reservation.alloc->used_machines.intervals_end(); ++it)
         {
             PPK_ASSERT_ERROR(it->lower() <= it->upper());
@@ -1649,8 +1653,10 @@ void Schedule::generate_colors(int nb_colors)
 {
     PPK_ASSERT_ERROR(nb_colors > 0);
     _colors.reserve(nb_colors);
+    _reservation_colors.reserve(nb_colors);
 
     double h, s = 1, v = 1, r, g, b;
+    double h2,s2 =1,v2 =1,r2,g2,b2;
     const int color_bufsize = 16;
     char color_buf[color_bufsize];
 
@@ -1667,7 +1673,26 @@ void Schedule::generate_colors(int nb_colors)
         snprintf(color_buf, color_bufsize, "#%02x%02x%02x", red, green, blue);
         _colors.push_back(color_buf);
     }
+    double value_fraction =  1 / (double)(nb_colors); //keep the value higher so we can see it
+    double saturation_fraction = 1 /(double)(nb_colors);
+    h2 = 270; //purple hue
+    for (int i = 0; i < nb_colors; ++i)
+    {
+        v2 = i * value_fraction;
+        LOG_F(INFO,"nb_colors: %d i: %d top: %d value_frac: %g v2: %g",nb_colors,i,(nb_colors -1 +i),value_fraction,v2);
+        s2 = (double)(nb_colors-i) * saturation_fraction;
+        hsvToRgb(h2, s2, v2, r2, g2, b2);
+        
+        unsigned int red = std::max(20, std::min((int)(floor(256 * r2)), 255));
+        unsigned int green = std::max(20, std::min((int)(floor(256 * g2)), 255));
+        unsigned int blue = std::max(20, std::min((int)(floor(256 * b2)), 255));
 
+        snprintf(color_buf, color_bufsize, "#%02x%02x%02x", red, green, blue);
+        _reservation_colors.push_back(color_buf);
+    }
+
+    
+    random_shuffle(_reservation_colors.begin(),_reservation_colors.end());
     random_shuffle(_colors.begin(), _colors.end());
 }
 

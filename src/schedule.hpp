@@ -165,6 +165,7 @@ private:
     Rational _previous_time_end = 0;
     std::list<ReservedTimeSlice> _svg_reservations;
     std::vector<std::string> _colors;
+    std::vector<std::string> _reservation_colors;
 };
 
 /**

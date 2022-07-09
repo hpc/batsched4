@@ -559,6 +559,7 @@ void ConservativeBackfilling::make_decisions(double date,
                     _queue->remove_job(new_job);
                 }
             }
+            _saved_recently_queued_jobs.clear();
         }
         else
         {
