@@ -50,5 +50,6 @@ private:
     bool _checkpointing_on;
     bool _start_a_reservation=false;
     b_log *_myBLOG;
+    std::list<std::string>_resubmitted_jobs;
 
 };

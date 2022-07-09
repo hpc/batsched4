@@ -426,7 +426,8 @@ void ConservativeBackfilling::make_decisions(double date,
     
     
     
-    
+    for (std::string job_id : _jobs_killed_recently)
+        _resubmitted_jobs.push_back(job_id);
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
 
     //take care of killed jobs and reschedule jobs
@@ -434,7 +435,7 @@ void ConservativeBackfilling::make_decisions(double date,
     //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
     // it is the third invocation that this function should run 
     LOG_F(INFO,"killed_jobs %d",_killed_jobs);
-    if (_killed_jobs && !_jobs_released_recently.empty())
+    if (_killed_jobs && !_resubmitted_jobs.empty())
     {
         LOG_F(INFO,"killed_jobs !_jobs_release empty");
         if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::AFFECTED)
@@ -484,7 +485,7 @@ void ConservativeBackfilling::make_decisions(double date,
             //add the killed_jobs first
             for (auto job : all_killed_jobs)
             {    
-                
+                _resubmitted_jobs.remove(job->id);
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
                 if (alloc.started_in_first_slice)
                 {
@@ -493,32 +494,38 @@ void ConservativeBackfilling::make_decisions(double date,
                 }
 
             }
-            //add the reschedule jobs next
-            for(auto job: all_jobs_to_reschedule)
+            //add the reschedule jobs next only after the killed jobs
+            if (_resubmitted_jobs.empty())
             {
-                    Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
-                    if (alloc.started_in_first_slice)
-                    {
-                        _queue->remove_job(job);
-                        _decision->add_execute_job(job->id,alloc.used_machines,date);
-                    }
-            }
-            //everything should be rescheduled, now add callbacks for each reservation
-            for (auto reservation : _saved_reservations)
-            {
-                if (reservation.job->start > date)
-                _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
-                                            reservation.job->unique_number,
-                                            reservation.job->start,
-                                            date );
-                else
-                    _start_a_reservation = true;
+                for(auto job: all_jobs_to_reschedule)
+                {
+                        Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
+                        if (alloc.started_in_first_slice)
+                        {
+                            _queue->remove_job(job);
+                            _decision->add_execute_job(job->id,alloc.used_machines,date);
+                        }
+                }
+                //everything should be rescheduled, now add callbacks for each reservation
+                for (auto reservation : _saved_reservations)
+                {
+                    if (reservation.job->start > date)
+                    _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
+                                                reservation.job->unique_number,
+                                                reservation.job->start,
+                                                date );
+                    else
+                        _start_a_reservation = true;
+                }
             }
             
+            
         }
-    
-        _saved_reservations.clear();
-        _killed_jobs = false;
+        if (_resubmitted_jobs.empty())
+        {
+            _saved_reservations.clear();
+            _killed_jobs = false;
+        }
     }  
      
     
@@ -610,11 +617,12 @@ void ConservativeBackfilling::make_decisions(double date,
 
     if (_dump_provisional_schedules)
         _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-    
+    /*
     LOG_F(INFO,"jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
     _jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
              _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
     LOG_F(INFO,"res_queue %s",_reservation_queue->to_string().c_str());
+    */
     if (_jobs_killed_recently.empty() && _queue->is_empty() && _reservation_queue->is_empty() && _schedule.size() == 0 &&
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
     {
