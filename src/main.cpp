@@ -105,7 +105,7 @@ int main(int argc, char ** argv)
                                       "filler", "killer", "killer2", "random", "rejecter",
                                       "sequencer", "sleeper", "submitter", "waiting_time_estimator"};
     const set<string> policies_set = {"basic", "contiguous"};
-    const set<string> queue_orders_set = {"fcfs", "lcfs", "desc_bounded_slowdown", "desc_slowdown",
+    const set<string> queue_orders_set = {"fcfs", "original_fcfs" ,"lcfs", "desc_bounded_slowdown", "desc_slowdown",
                                           "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
     const set<string> verbosity_levels_set = {"debug", "info", "quiet", "silent"};
 
@@ -224,6 +224,8 @@ int main(int argc, char ** argv)
         // Queue order
         if (queue_order == "fcfs")
             order = new FCFSOrder;
+        else if (queue_order == "original_fcfs")
+            order = new OriginalFCFSOrder;
         else if (queue_order == "lcfs")
             order = new LCFSOrder;
         else if (queue_order == "desc_bounded_slowdown")

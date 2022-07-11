@@ -51,5 +51,6 @@ private:
     bool _start_a_reservation=false;
     b_log *_myBLOG;
     std::list<std::string>_resubmitted_jobs;
+    std::vector<const Job *>_resubmitted_jobs_released;
 
 };

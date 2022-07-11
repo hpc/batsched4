@@ -212,6 +212,14 @@ void ConservativeBackfilling::make_decisions(double date,
     
 
     LOG_F(INFO,"make decisions");
+    //define a sort function for sorting jobs based on original submit times
+    auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
+            if (j1->submission_times[0] == j2->submission_times[0])
+                return j1->id < j2->id;
+            else
+                return j1->submission_times[0] < j2->submission_times[0];
+    };
+    
     // Let's remove finished jobs from the schedule
     // not including killed jobs
     
@@ -263,9 +271,179 @@ void ConservativeBackfilling::make_decisions(double date,
         _schedule.output_to_svg("make_decisions");
     // Queue sorting
     _queue->sort_queue(update_info, compare_info);
+    LOG_F(INFO,"queue: %s",_queue->to_string().c_str());
     _reservation_queue->sort_queue(update_info,compare_info);
      //ok this is if there are reservations to deal with: 
 
+    //take care of killed jobs and reschedule jobs
+    //lifecycle of killed job:
+    //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
+    // it is the third invocation that this function should run 
+    LOG_F(INFO,"killed_jobs %d",_killed_jobs);
+    if (_killed_jobs && !_resubmitted_jobs.empty())
+    {
+        LOG_F(INFO,"killed_jobs !_jobs_release empty");
+        if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::AFFECTED)
+        {
+            //first we take care of sorting out resubmitted jobs from the
+            //regular submitted jobs, since we will be handling the resubmitted jobs                      
+            std::vector<std::string> recently_queued_jobs2;
+            //go through recently_queued_jobs and get all the resubmitted ones
+            for (std::string job_id : recently_queued_jobs)
+            {
+                //check if it's a resubmitted job
+                if (job_id.find("#") != std::string::npos)
+                {
+                   _resubmitted_jobs.remove(job_id);
+                   _resubmitted_jobs_released.push_back((*_workload)[job_id]);
+
+                }
+                else
+                    recently_queued_jobs2.push_back(job_id); // it's a normal job, push it back
+            }
+            //set the recently_queued_jobs to a vector without the resubmitted jobs
+            recently_queued_jobs = recently_queued_jobs2;
+
+            //have all the resubmitted_jobs come back?
+            if (_resubmitted_jobs.empty())
+            {
+                // _resubmitted_jobs_released should now contain all the resubmitted jobs
+                //add the killed_jobs(resubmitted jobs) first
+
+                //first sort all the resubmitted jobs based on their original submit date
+                std::sort(_resubmitted_jobs_released.begin(),_resubmitted_jobs_released.end(),sort_original_submit);
+                //now add the kill jobs
+                for (auto job : _resubmitted_jobs_released)
+                {    
+                    Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
+                    if (alloc.started_in_first_slice)
+                    {
+                        _queue->remove_job(job);
+                        _decision->add_execute_job(job->id,alloc.used_machines,date);
+                    }
+
+                }
+                //now get all jobs to reschedule that weren't killed
+                std::vector<const Job *> all_jobs_to_reschedule;
+                for(auto reservation : _saved_reservations)
+                {
+                
+                    for (auto job : reservation.jobs_to_reschedule)
+                            all_jobs_to_reschedule.push_back(job);
+                
+                }
+                //now sort them based on original_submit_time
+                std::sort(all_jobs_to_reschedule.begin(),all_jobs_to_reschedule.end(),sort_original_submit);
+                //now add them to the schedule
+                for(auto job: all_jobs_to_reschedule)
+                {
+                        Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
+                        if (alloc.started_in_first_slice)
+                        {
+                            _queue->remove_job(job);
+                            _decision->add_execute_job(job->id,alloc.used_machines,date);
+                        }
+                }
+
+                //everything should be rescheduled, now add callbacks for each reservation
+                for (auto reservation : _saved_reservations)
+                {
+                    if (reservation.job->start > date)
+                    _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
+                                                reservation.job->unique_number,
+                                                reservation.job->start,
+                                                date );
+                    else
+                        _start_a_reservation = true;
+                }
+                //make sure to clear the _resubmitted_jobs_released
+                _resubmitted_jobs_released.clear();
+            }
+            
+            
+        }
+        if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::ALL)
+        {
+            LOG_F(INFO,"sched_pol all");
+            //first we take care of sorting out resubmitted jobs from the
+            //regular submitted jobs, since we will be handling the resubmitted jobs                      
+            std::vector<std::string> recently_queued_jobs2;
+            //go through recently_queued_jobs and get all the resubmitted ones
+            for (std::string job_id : recently_queued_jobs)
+            {
+                //check if it's a resubmitted job
+                if (job_id.find("#") != std::string::npos)
+                {
+                   _resubmitted_jobs.remove(job_id);
+                   _resubmitted_jobs_released.push_back((*_workload)[job_id]);
+
+                }
+                else
+                    recently_queued_jobs2.push_back(job_id); // it's a normal job, push it back
+            }
+            //set the recently_queued_jobs to a vector without the resubmitted jobs
+            recently_queued_jobs = recently_queued_jobs2;
+            LOG_F(INFO,"line 385");
+            //have all the resubmitted_jobs come back?
+            if (_resubmitted_jobs.empty())
+            {
+                LOG_F(INFO,"line 389");
+                // _resubmitted_jobs_released should now contain all the resubmitted jobs
+
+                //we have a sorted queue including the resubmitted jobs.   
+                //we should be using the OriginalFCFSOrder on the queue so
+                //the queue should be sorted by original submission time
+                //remove all jobs from the schedule that are in the queue
+                if (_output_svg == "all")
+                        _schedule.output_to_svg("CONSERVATIVE_BF started removing");
+                for (auto job_it = _queue->begin(); job_it != _queue->end();++job_it )
+                {
+                    LOG_F(INFO,"job: %s ",(*job_it)->job->id.c_str());
+                    //jobs that were affected by the reservation won't be in the schedule
+                    //so we must use the _if_exists version
+                    _schedule.remove_job_if_exists((*job_it)->job);
+                }
+                if (_output_svg == "all")
+                        _schedule.output_to_svg("CONSERVATIVE_BF finished removing, adding them back in");
+                LOG_F(INFO,"line 402");
+                //so, only the jobs running right now that weren't affected by the reservation
+                //and the reservation itself and other reservations are still in the schedule
+                //now add everything else back to the schedule
+                for (auto job_it = _queue->begin(); job_it != _queue->end(); )
+                {
+                    const Job * job = (*job_it)->job;
+                    Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   
+                    if (alloc.started_in_first_slice)
+                    {
+                        _decision->add_execute_job(job->id, alloc.used_machines, date);
+                        job_it = _queue->remove_job(job_it);
+                    }
+                    else
+                        ++job_it;
+                }
+                if (_output_svg == "all")
+                        _schedule.output_to_svg("CONSERVATIVE_BF adding them back in finished");
+                //everything should be rescheduled, now add callbacks for each reservation
+                for (auto reservation : _saved_reservations)
+                {
+                    if (reservation.job->start > date)
+                    _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
+                                                reservation.job->unique_number,
+                                                reservation.job->start,
+                                                date );
+                    else
+                        _start_a_reservation = true;
+                }
+                LOG_F(INFO,"line 429");
+            }
+        }
+        if (_resubmitted_jobs.empty())
+        {
+            LOG_F(INFO,"Setting _killed_jobs to false");
+            _saved_reservations.clear();
+            _killed_jobs = false;
+        }
+    }  
     //insert reservations into schedule whether jobs have finished or not
     for (const string & new_job_id : recently_released_reservations)
     {
@@ -277,27 +455,16 @@ void ConservativeBackfilling::make_decisions(double date,
 
         if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::AFFECTED)
         {
-            LOG_F(INFO,"DEBUG line 200");
+            
             Schedule::ReservedTimeSlice reservation = _schedule.reserve_time_slice(new_job);
             _schedule.add_reservation_for_svg_outline(reservation);
-            LOG_F(INFO,"DEBUG line 201");
-            LOG_F(INFO,"size of jobs_to_resch %d",reservation.jobs_to_reschedule.size());
-            for(auto job : reservation.jobs_to_reschedule)
-            {
-                LOG_F(INFO,"size of submission times %d",job->submission_times.size());
-                LOG_F(INFO,"job %s  sub times[0] %f",job->id.c_str(),job->submission_times[0]);
-            }
+           
             if (reservation.success)
             {
                 //sort the jobs to reschedule;
-                auto sort_function = [](const Job * j1,const Job * j2)->bool{
-                    if (j1->submission_times[0] == j2->submission_times[0])
-                        return j1->id < j2->id;
-                    else
-                        return j1->submission_times[0] < j2->submission_times[0];
-                };
-                std::sort(reservation.jobs_to_reschedule.begin(), reservation.jobs_to_reschedule.end(),sort_function);
-                LOG_F(INFO,"DEBUG line 209");
+                
+                std::sort(reservation.jobs_to_reschedule.begin(), reservation.jobs_to_reschedule.end(),sort_original_submit);
+                
                 //we need to wait on rescheduling if jobs are killed
                 //so check if any jobs need to be killed
                 if (reservation.jobs_needed_to_be_killed.empty())
@@ -306,7 +473,7 @@ void ConservativeBackfilling::make_decisions(double date,
                     //remove the jobs in order all at once
                     for(auto job : reservation.jobs_to_reschedule)
                         _schedule.remove_job(job);
-                    LOG_F(INFO,"DEBUG line 218");
+                    
                    
                     Schedule::ReservedTimeSlice reservation2 = _schedule.reserve_time_slice(new_job);
                     reservation.slice_begin = reservation2.slice_begin;
@@ -325,11 +492,10 @@ void ConservativeBackfilling::make_decisions(double date,
                             _decision->add_execute_job(job->id,alloc.used_machines,date);
                         }
                     }
-                    LOG_F(INFO,"DEBUG line 234");
+                   
                     //if reservation started in first slice
                     if (reservation.alloc->started_in_first_slice)
                     {
-                        LOG_F(INFO,"line 447 started first slice?");
                         _reservation_queue->remove_job(new_job);
                         _decision->add_execute_job(new_job->id,reservation.alloc->used_machines,date);
                     }
@@ -346,7 +512,7 @@ void ConservativeBackfilling::make_decisions(double date,
                     //make decisions will run a couple times with the same date:
                     //  right now when job is killed -> when progress comes back and we resubmit -> when notified of resubmit and we reschedule
                     
-                    //first kill jobs
+                    //first kill jobs that need to be killed
                     LOG_F(INFO,"DEBUG line 248");
                     std::vector<std::string> kill_jobs;
                     for(auto job : reservation.jobs_needed_to_be_killed)
@@ -377,13 +543,124 @@ void ConservativeBackfilling::make_decisions(double date,
                     _saved_reservations.push_back(reservation);
                     LOG_F(INFO,"line 307");
                     _killed_jobs = true;
-                    _saved_recently_queued_jobs = recently_queued_jobs;
+                    //we need to add the recently_queued_jobs to the schedule eventually
+                    //but not until the killed jobs come back as resubmitted
+                    for (std::string job : recently_queued_jobs)
+                        _saved_recently_queued_jobs.push_back(job);
                 }
             }
         }
         if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::ALL)
         {
-            
+            Schedule::ReservedTimeSlice reservation = _schedule.reserve_time_slice(new_job);
+            _schedule.add_reservation_for_svg_outline(reservation);
+            if (reservation.success)
+            {
+                // do we need to kill jobs
+                if (reservation.jobs_needed_to_be_killed.empty())
+                {
+                    //we don't need to kill jobs
+                    //remove jobs in the reservation's way
+                    for (auto job : reservation.jobs_to_reschedule)
+                        _schedule.remove_job(job);
+                    //we can make the reservation now
+                    Schedule::ReservedTimeSlice reservation2 = _schedule.reserve_time_slice(new_job);
+                    reservation.slice_begin = reservation2.slice_begin;
+                    reservation.slice_end = reservation2.slice_end;
+                    _schedule.add_reservation(reservation);
+                    _schedule.remove_reservation_for_svg_outline(reservation);
+                    if (_output_svg == "all")
+                        _schedule.output_to_svg("CONSERVATIVE_BF about to remove all jobs in the queue");
+                    //we have a sorted queue including resubmitted jobs.   
+                    //we should be using the OriginalFCFSOrder on the queue so
+                    //the queue should be sorted by original submission time
+                    //remove all jobs from the schedule that are in the queue
+                    for (auto job_it = _queue->begin(); job_it != _queue->end(); ++job_it)
+                    {
+                        //jobs that were affected by the reservation won't be in the schedule
+                        //so we must use the _if_exists version
+                        _schedule.remove_job_if_exists((*job_it)->job);
+                    }
+                    if (_output_svg == "all")
+                        _schedule.output_to_svg("CONSERVATIVE_BF finished removing, adding them back in");
+                    
+                    
+                    //so, only the jobs running right now
+                    //and the reservation itself and other reservations are still in the schedule
+                    //now add everything else back to the schedule
+                    for (auto job_it = _queue->begin(); job_it != _queue->end(); )
+                    {
+                        const Job * job = (*job_it)->job;
+                        Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   
+                        if (alloc.started_in_first_slice)
+                        {
+                            _decision->add_execute_job(job->id, alloc.used_machines, date);
+                            job_it = _queue->remove_job(job_it);
+                        }
+                        else
+                            ++job_it;
+                    }
+                    if (_output_svg == "all")
+                        _schedule.output_to_svg("CONSERVATIVE_BF finished adding them back in");
+                    //take care of reservation that is in first slice
+                    if (reservation.alloc->started_in_first_slice)
+                    {
+                        _reservation_queue->remove_job(new_job);
+                        _decision->add_execute_job(new_job->id,reservation.alloc->used_machines,date);
+                    }
+                    else if (new_job->start > date)
+                        _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
+                                                    new_job->unique_number,
+                                                    new_job->start,
+                                                    date);
+                    else
+                        _start_a_reservation = true;
+
+                }
+                else
+                {
+                    //ok we need to kill jobs
+                    //first kill jobs
+                    LOG_F(INFO,"DEBUG line 248");
+                    std::vector<std::string> kill_jobs;
+                    for(auto job : reservation.jobs_needed_to_be_killed)
+                    {
+                        kill_jobs.push_back(job->id);
+                    }
+                    _decision->add_kill_job(kill_jobs,date);
+                    LOG_F(INFO,"DEBUG line 253");
+                    //make room for the reservation first
+                    //remove kill jobs from schedule
+                    for(auto job : reservation.jobs_needed_to_be_killed)
+                    {
+                        LOG_F(INFO,"DEBUG id %s",job->id.c_str());
+                        _schedule.remove_job(job);
+                    }
+                    LOG_F(INFO,"DEBUG line 257");
+                    //remove jobs to reschedule
+                    for (auto job : reservation.jobs_to_reschedule)
+                        _schedule.remove_job(job);
+                    LOG_F(INFO,"DEBUG line 261");
+                    //we can make the reservation now
+                    Schedule::ReservedTimeSlice reservation2 = _schedule.reserve_time_slice(new_job);
+                    reservation.slice_begin = reservation2.slice_begin;
+                    reservation.slice_end = reservation2.slice_end;
+                    _schedule.add_reservation(reservation);
+                    _schedule.remove_reservation_for_svg_outline(reservation);
+                    //we need this for issuing the callbacks
+                    _saved_reservations.push_back(reservation);
+                    LOG_F(INFO,"line 307");
+                    //we need to signal we are in a killed_jobs event so keep
+                    _killed_jobs = true;
+                    //we don't need to save the recently_queued_jobs
+                    //since once we get the killed jobs resubmitted we are adding in all of the jobs back into the queue
+                    //for (std::string job : recently_queued_jobs)
+                    //    _saved_recently_queued_jobs.push_back(job);
+                    
+                }
+                    
+                
+            }
         }
               
     }
@@ -412,18 +689,6 @@ void ConservativeBackfilling::make_decisions(double date,
         }
         
     }
-
-    
-     
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     
     for ( auto job_progress_pair : _jobs_killed_recently)
@@ -434,105 +699,7 @@ void ConservativeBackfilling::make_decisions(double date,
     }
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
 
-    //take care of killed jobs and reschedule jobs
-    //lifecycle of killed job:
-    //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
-    // it is the third invocation that this function should run 
-    LOG_F(INFO,"killed_jobs %d",_killed_jobs);
-    if (_killed_jobs && !_resubmitted_jobs.empty())
-    {
-        LOG_F(INFO,"killed_jobs !_jobs_release empty");
-        if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::AFFECTED)
-        {
-            
-            //reservations are in place, killed jobs have been re-submitted
-            //now add the jobs back to the schedule
-            //first get all jobs_to_reschedule in one lump so we can sort them
-            //and all the killed jobs
-            std::vector<const Job *> all_jobs_to_reschedule;
-            std::vector<const Job *> all_killed_jobs;
-            for(auto reservation : _saved_reservations)
-            {
-                
-                for (auto job : reservation.jobs_to_reschedule)
-                        all_jobs_to_reschedule.push_back(job);
-                
-            }
-            //have to remove resubmitted jobs since we are taking care of them
-            //store unkilled jobs in recently_queued_jobs2
-            std::vector<std::string> recently_queued_jobs2;
-            //go through recently_queued_jobs and get all the resubmitted ones
-            for (std::string job_id : recently_queued_jobs)
-            {
-                //check if it's a resubmitted job
-                if (job_id.find("#") != std::string::npos)
-                {
-                    
-                    all_killed_jobs.push_back((*_workload)[job_id]);
-
-                }
-                else
-                    recently_queued_jobs2.push_back(job_id);
-            }
-            //set the recently_queued_jobs to a vector without the resubmitted jobs
-            recently_queued_jobs = recently_queued_jobs2;
-
-            //define a sort function
-            auto sort_function = [](const Job * j1, const Job *j2)->bool{
-                if (j1->submission_times[0] == j2->submission_times[0])
-                    return j1->id < j2->id;
-                return j1->submission_times[0]<j2->submission_times[0];
-            };
-            //now sort them based on original_submit_time
-            std::sort(all_jobs_to_reschedule.begin(),all_jobs_to_reschedule.end(),sort_function);
-            std::sort(all_killed_jobs.begin(),all_killed_jobs.end(),sort_function);
-            //add the killed_jobs first
-            for (auto job : all_killed_jobs)
-            {    
-                _resubmitted_jobs.remove(job->id);
-                LOG_F(INFO,"all killed jobs job: %s",job->id.c_str());
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
-                if (alloc.started_in_first_slice)
-                {
-                    _queue->remove_job(job);
-                    _decision->add_execute_job(job->id,alloc.used_machines,date);
-                }
-
-            }
-            //add the reschedule jobs next only after the killed jobs
-            if (_resubmitted_jobs.empty())
-            {
-                for(auto job: all_jobs_to_reschedule)
-                {
-                        Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job,_selector);
-                        if (alloc.started_in_first_slice)
-                        {
-                            _queue->remove_job(job);
-                            _decision->add_execute_job(job->id,alloc.used_machines,date);
-                        }
-                }
-                //everything should be rescheduled, now add callbacks for each reservation
-                for (auto reservation : _saved_reservations)
-                {
-                    if (reservation.job->start > date)
-                    _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
-                                                reservation.job->unique_number,
-                                                reservation.job->start,
-                                                date );
-                    else
-                        _start_a_reservation = true;
-                }
-            }
-            
-            
-        }
-        if (_resubmitted_jobs.empty())
-        {
-            LOG_F(INFO,"Setting _killed_jobs to false");
-            _saved_reservations.clear();
-            _killed_jobs = false;
-        }
-    }  
+    
      
     
     
