@@ -145,6 +145,7 @@ Job *Workload::job_from_json_object(const Value &object)
     j->has_walltime = true;
     j->nb_requested_resources = object["res"].GetInt();
     j->unique_number = _job_number++;
+    j->checkpoint_interval = -1.0;
 
     if (object.HasMember("walltime"))
     {
@@ -192,6 +193,18 @@ Job *Workload::job_from_json_object(const Value &object)
         const Value & submission_times = object["submission_times"];
         for (const auto& time : submission_times.GetArray())
             j->submission_times.push_back(time.GetDouble());
+    }
+    if (object.HasMember("dumptime"))
+    {
+        j->dump_time = object["dumptime"].GetDouble();
+    }
+    if (object.HasMember("readtime"))
+    {
+        j->read_time = object["readtime"].GetDouble();
+    }
+    if (object.HasMember("checkpoint_interval"))
+    {
+        j->checkpoint_interval = object["checkpoint_interval"].GetDouble();
     }
     StringBuffer buffer;
     rapidjson::Writer<StringBuffer> writer(buffer);

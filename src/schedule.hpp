@@ -96,6 +96,8 @@ public:
                                           Rational date,
                                           ResourceSelector * selector,
                                           bool assert_insertion_successful = true);
+    int get_number_of_running_jobs();
+    std::vector<std::string> get_jobs_running_on_machines(IntervalSet machines);
 
   // The coveted query_wait method, bringing an answer (as a double, defined as
   // time away from now) to the question "when will I be able to schedule a job

@@ -9,6 +9,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <utility>
+#include <loguru.hpp>
 
 namespace n = network;
 using namespace std;
@@ -182,7 +183,7 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
         double progress = killed_map.second;
         //get the job that was killed
         Job * job_to_queue =(*w0)[killed_job];
-
+        LOG_F(INFO,"ccu chkpt_interval %f",job_to_queue->checkpoint_interval);
   
     if (w0->_checkpointing_on)
     {
@@ -192,10 +193,12 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
             
             
             progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
-            //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
+
+            LOG_F(INFO,"job %s progress is > 0  progress: %f  progress_time: %f",job_to_queue->id.c_str(),progress,progress_time);
             //LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
             
             bool has_checkpointed = false;
+            
             std::string meta_str = "null";
             int num_checkpoints_completed = 0;
             rapidjson::Document meta_doc;
@@ -209,6 +212,7 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
                 if (meta_doc.HasMember("checkpointed"))
                 {
                     has_checkpointed = meta_doc["checkpointed"].GetBool();
+                  
                     
                 }
             }
@@ -253,7 +257,10 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
             {
                 num_checkpoints_completed = floor(progress_time/(job_to_queue->checkpoint_interval + job_to_queue->dump_time ));
                 progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time);
-                
+                LOG_F(INFO,"line 258 num_checkpoints_completed %d",num_checkpoints_completed);
+                LOG_F(INFO,"progress time %f  checkpoint interval: %f dump time %f  num check: %f",
+                progress_time,job_to_queue->checkpoint_interval,job_to_queue->dump_time,
+                progress_time/(job_to_queue->checkpoint_interval + job_to_queue->dump_time ));
                 
                 //if a checkpoint has completed set the metadata to reflect this
                 if (num_checkpoints_completed > 0)
@@ -282,6 +289,13 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
             //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
             if (num_checkpoints_completed > 0)
             {
+                LOG_F(INFO,"job %s num_checkpoints_completed: %d",job_to_queue->id.c_str(),num_checkpoints_completed);
+                if (job_to_queue->walltime > 0 && job_doc.HasMember("walltime")) //if we have checkpointed, the walltime can be reduced.  Reduce by the num of checkpoints
+                {
+                    LOG_F(INFO,"decision line 288");
+                    job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
+                                         (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time - job_to_queue->read_time)));
+                }
                 double cpu = profile_doc["cpu"].GetDouble();
                 double cpu_time = cpu / one_second;
                 cpu_time = cpu_time - progress_time + job_to_queue->read_time;

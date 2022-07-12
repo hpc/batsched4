@@ -485,11 +485,13 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 
                 workload._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
                 workload._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
+                workload._checkpointing_interval = event_data["config"]["checkpointing_interval"].GetDouble();
                 workload._MTBF = event_data["config"]["MTBF"].GetDouble();
                 workload._SMTBF = event_data["config"]["SMTBF"].GetDouble();
                 workload._repair_time = event_data["config"]["repair_time"].GetDouble();
                 workload._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 workload._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
+                workload._seed_failures = event_data["config"]["seed-failures"].GetBool();
                 LOG_F(INFO, "before set workloads");
                 algo->set_workloads(&myWorkloads);
             LOG_F(INFO, "after set workloads");

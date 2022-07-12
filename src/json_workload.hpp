@@ -82,6 +82,8 @@ public:
     double _repair_time = 0.0;
     double _host_speed;
     double _fixed_failures = -1.0;
+    double _checkpointing_interval = -1.0;
+    bool _seed_failures = false;
 private:
     char * _fileContents = nullptr;
     std::map<std::string, Job*> _jobs;

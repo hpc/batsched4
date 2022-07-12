@@ -75,6 +75,24 @@ void Schedule::convert_policy(std::string policy, IMPACT_POLICY & variable){
         variable = IMPACT_POLICY::NONE;
     return;
 }
+int Schedule::get_number_of_running_jobs(){
+    return _profile.begin()->allocated_jobs.size();
+}
+
+std::vector<std::string> Schedule::get_jobs_running_on_machines(IntervalSet machines){
+    std::vector<std::string> jobs_running_on_machines;
+    for (auto job_interval_pair : _profile.begin()->allocated_jobs)
+    {
+        //is there an intersection between this job in the first slice and the machines in question?
+        if (!(job_interval_pair.second & machines).is_empty())
+        {
+            //yes there is an intersection, add the job id
+            jobs_running_on_machines.push_back(job_interval_pair.first->id);
+
+        }
+    }
+    return jobs_running_on_machines;
+}
 Schedule &Schedule::operator=(const Schedule &other)
 {
     _profile = other._profile;

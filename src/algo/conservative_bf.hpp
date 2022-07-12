@@ -8,6 +8,7 @@
 #include "../locality.hpp"
 #include "../schedule.hpp"
 #include "../batsched_tools.hpp"
+#include <random>
 
 class ConservativeBackfilling : public ISchedulingAlgorithm
 {
@@ -43,6 +44,7 @@ private:
     bool _need_to_send_finished_submitting_jobs = true;
     std::vector<std::string> _saved_recently_queued_jobs;
     std::vector<std::string> _saved_recently_ended_jobs;
+    bool _need_to_compress = false;
     
     bool _dump_provisional_schedules = false;
     std::string _dump_prefix = "/tmp/dump";
@@ -52,5 +54,11 @@ private:
     b_log *_myBLOG;
     std::list<std::string>_resubmitted_jobs;
     std::vector<const Job *>_resubmitted_jobs_released;
+
+    std::mt19937 generator;
+    std::exponential_distribution<double> * distribution;
+    std::mt19937 generator2;
+    std::uniform_int_distribution<int> * unif_distribution;
+    std::vector<std::string> _my_kill_jobs;
 
 };
