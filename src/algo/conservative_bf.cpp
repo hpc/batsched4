@@ -150,28 +150,42 @@ void ConservativeBackfilling::on_machine_instant_down_up(double date){
     int number = unif_distribution->operator()(generator2);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
+    _schedule.add_svg_highlight_machines(machine);
+    if (_output_svg == "all")
+            _schedule.output_to_svg("On Machine Instant Down Up  Machine #: "+std::to_string(number));
     
-    BLOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
+    //BLOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
+    LOG_F(INFO,"instant down up machine number %d",number);
     //if there are no running jobs, then there are none to kill
     if (_schedule.get_number_of_running_jobs() > 0){
         //ok so there are running jobs
+        LOG_F(INFO,"instant down up");
         auto jobs_to_kill = _schedule.get_jobs_running_on_machines(machine);
-        _my_kill_jobs.insert(_my_kill_jobs.end(),
-                            jobs_to_kill.begin(),jobs_to_kill.end());
-        std::string jobs_to_kill_string;
-        if (_output_svg == "all")
-            _schedule.output_to_svg("On Machine Instant Down Up  Machine #: %d",number);
-        //remove jobs to kill from schedule and add to our log string
-        for (auto job_id:jobs_to_kill)
+         LOG_F(INFO,"instant down up");
+        
+        LOG_F(INFO,"instant down up");
+        if (!jobs_to_kill.empty())
         {
-            jobs_to_kill_string += ", " + job_id;
-            _schedule.remove_job_if_exists((*_workload)[job_id]);
+            _killed_jobs = true;
+            _decision->add_kill_job(jobs_to_kill,date);
+            std::string jobs_to_kill_string;
+            //remove jobs to kill from schedule and add to our log string
+             LOG_F(INFO,"instant down up");
+            for (auto job_id:jobs_to_kill)
+            {
+                jobs_to_kill_string += ", " + job_id;
+                _schedule.remove_job_if_exists((*_workload)[job_id]);
 
+            }
+             LOG_F(INFO,"instant down up");
+            //BLOG_F(b_log::FAILURES,"Killing Jobs: %s",jobs_to_kill_string.c_str());
+    
         }
-        BLOG_F(b_log::FAILURES,"Killing Jobs: %s",jobs_to_kill_string.c_str());
             	
 	}
-    
+    _schedule.remove_svg_highlight_machines(machine);
+    if (_output_svg == "all")
+            _schedule.output_to_svg("END On Machine Instant Down Up  Machine #: "+std::to_string(number));
     
 }
 void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
@@ -182,14 +196,14 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
             case batsched_tools::call_me_later_types::SMTBF:
                         {
                             //Log the failure
-                            BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
-                            if (_schedule.get_number_of_running_jobs > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
+                            //BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
+                            if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = distribution->operator()(generator);
                                     if (_workload->_repair_time == 0.0)
-                                        on_machine_instant_down_up(date);
+                                        _on_machine_instant_down_ups++;                                        
                                     else
-                                        on_machine_down_for_repair(date);
+                                        _on_machine_down_for_repairs++;
                                     _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
                                 }
                         }
@@ -211,14 +225,16 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
             */
             case batsched_tools::call_me_later_types::FIXED_FAILURE:
                         {
-                            BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
-                            if (_schedule.get_number_of_running_jobs > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
+                            //BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
+                            LOG_F(INFO,"DEBUG");
+                            if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
+                                    LOG_F(INFO,"DEBUG");
                                     double number = _workload->_fixed_failures;
                                     if (_workload->_repair_time == 0.0)
-                                        on_machine_instant_down_up(date);
+                                        _on_machine_instant_down_ups++;//defer to after make_decisions
                                     else
-                                        on_machine_down_for_repair(date);
+                                        _on_machine_down_for_repairs++;
                                     _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
                                 }
                         }
@@ -319,8 +335,8 @@ void ConservativeBackfilling::make_decisions(double date,
     _queue->sort_queue(update_info, compare_info);
     LOG_F(INFO,"queue: %s",_queue->to_string().c_str());
     _reservation_queue->sort_queue(update_info,compare_info);
-     //ok this is if there are reservations to deal with: 
-
+    
+    
     //take care of killed jobs and reschedule jobs
     //lifecycle of killed job:
     //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
@@ -571,8 +587,7 @@ void ConservativeBackfilling::make_decisions(double date,
                     {
                         kill_jobs.push_back(job->id);
                     }
-                    _my_kill_jobs.insert(_my_kill_jobs.end(),
-                                        kill_jobs.begin(),kill_jobs.end());
+                    _decision->add_kill_job(kill_jobs,date);//as long as kill jobs happen before an execute job we should be good
                     LOG_F(INFO,"DEBUG line 253");
                     //remove kill jobs from schedule
                     for(auto job : reservation.jobs_needed_to_be_killed)
@@ -681,8 +696,7 @@ void ConservativeBackfilling::make_decisions(double date,
                     {
                         kill_jobs.push_back(job->id);
                     }
-                    _my_kill_jobs.insert(_my_kill_jobs.begin(),
-                                        kill_jobs.begin(),kill_jobs.end());
+                    _decision->add_kill_job(kill_jobs,date);
                     LOG_F(INFO,"DEBUG line 253");
                     //make room for the reservation first
                     //remove kill jobs from schedule
@@ -722,12 +736,7 @@ void ConservativeBackfilling::make_decisions(double date,
     recently_released_reservations.clear();
 
 
-    //ok hopefully nothing else kills a job at this point
-    if (!_my_kill_jobs.empty())
-    {
-        _decision->add_kill_job(_my_kill_jobs,date);
-        _killed_jobs = true;
-    }
+    
     if (_start_a_reservation)
     {
         Schedule::JobAlloc alloc;
@@ -750,6 +759,10 @@ void ConservativeBackfilling::make_decisions(double date,
             _start_a_reservation = false;
         }
         
+    }
+    for(_on_machine_instant_down_ups;_on_machine_instant_down_ups > 0;--_on_machine_instant_down_ups)
+    {
+        on_machine_instant_down_up(date);
     }
     
     
@@ -875,6 +888,10 @@ void ConservativeBackfilling::make_decisions(double date,
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
     {
         _decision->add_scheduler_finished_submitting_jobs(date);
+        if (_output_svg == "all" || _output_svg == "short")
+            _schedule.output_to_svg("Simulation Finished");
+        _schedule.set_output_svg("none");
+        _output_svg = "none";
         _need_to_send_finished_submitting_jobs = false;
     }
 

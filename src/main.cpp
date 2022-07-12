@@ -421,6 +421,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             const std::string event_type = event_object["type"].GetString();
             current_date = event_object["timestamp"].GetDouble();
             const r::Value & event_data = event_object["data"];
+            LOG_F(INFO,"DEBUG");
             //LOG_F(INFO,"line 405 main.cpp");
             if (event_type == "SIMULATION_BEGINS")
             {
@@ -507,6 +508,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "JOB_SUBMITTED")
             {
+                LOG_F(INFO,"DEBUG");
                 string job_id = event_data["job_id"].GetString();
 
                 if (redis_enabled)
@@ -533,6 +535,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "JOB_KILLED")
             {
+                LOG_F(INFO,"DEBUG");
                 const r::Value & job_ids_map = event_data["job_progress"];
                 PPK_ASSERT_ERROR(job_ids_map.GetType() == r::kObjectType);
 
@@ -548,6 +551,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "REQUESTED_CALL")
             {
+                LOG_F(INFO,"DEBUG");
                 requested_callback_received = true;
                 algo->on_requested_call(current_date,event_data["id"].GetInt(),(batsched_tools::call_me_later_types)event_data["forWhat"].GetInt());
             }

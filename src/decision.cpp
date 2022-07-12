@@ -294,7 +294,7 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
                 {
                     LOG_F(INFO,"decision line 288");
                     job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
-                                         (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time - job_to_queue->read_time)));
+                                         (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time) - job_to_queue->read_time)));
                 }
                 double cpu = profile_doc["cpu"].GetDouble();
                 double cpu_time = cpu / one_second;

@@ -59,6 +59,8 @@ private:
     std::exponential_distribution<double> * distribution;
     std::mt19937 generator2;
     std::uniform_int_distribution<int> * unif_distribution;
-    std::vector<std::string> _my_kill_jobs;
+    int _on_machine_instant_down_ups=0;
+    int _on_machine_down_for_repairs = 0;
+    
 
 };

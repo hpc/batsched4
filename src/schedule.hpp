@@ -75,6 +75,8 @@ public:
     void set_output_svg(std::string output_svg);
     void set_svg_prefix(std::string svg_prefix);
     void set_policies(RESCHEDULE_POLICY r_policy, IMPACT_POLICY i_policy);
+    void add_svg_highlight_machines(IntervalSet machines);
+    bool remove_svg_highlight_machines(IntervalSet machines);
     bool remove_reservations_if_ready(std::vector<const Job*>& jobs_removed);
 
     JobAlloc add_current_reservation(const Job * job, ResourceSelector * selector,
@@ -98,6 +100,7 @@ public:
                                           bool assert_insertion_successful = true);
     int get_number_of_running_jobs();
     std::vector<std::string> get_jobs_running_on_machines(IntervalSet machines);
+    std::vector<std::string> get_reservations_running_on_machines(IntervalSet machines);
 
   // The coveted query_wait method, bringing an answer (as a double, defined as
   // time away from now) to the question "when will I be able to schedule a job
@@ -166,6 +169,7 @@ private:
     unsigned int _output_number = 0;
     Rational _previous_time_end = 0;
     std::list<ReservedTimeSlice> _svg_reservations;
+    IntervalSet _svg_highlight_machines;
     std::vector<std::string> _colors;
     std::vector<std::string> _reservation_colors;
 };

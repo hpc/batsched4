@@ -26,6 +26,7 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
     _profile.push_back(slice);
 
     generate_colors();
+    _svg_highlight_machines = IntervalSet::empty_interval_set();
 }
 
 Schedule::Schedule(const Schedule &other)
@@ -75,6 +76,20 @@ void Schedule::convert_policy(std::string policy, IMPACT_POLICY & variable){
         variable = IMPACT_POLICY::NONE;
     return;
 }
+void Schedule::add_svg_highlight_machines(IntervalSet machines)
+{
+    _svg_highlight_machines += machines;
+}
+bool Schedule::remove_svg_highlight_machines(IntervalSet machines)
+{
+    if (machines.is_subset_of(_svg_highlight_machines))
+    {
+        _svg_highlight_machines -= machines;
+        return true;
+    }
+    else
+        return false;
+}
 int Schedule::get_number_of_running_jobs(){
     return _profile.begin()->allocated_jobs.size();
 }
@@ -87,11 +102,27 @@ std::vector<std::string> Schedule::get_jobs_running_on_machines(IntervalSet mach
         if (!(job_interval_pair.second & machines).is_empty())
         {
             //yes there is an intersection, add the job id
-            jobs_running_on_machines.push_back(job_interval_pair.first->id);
+            if (job_interval_pair.first->purpose != "reservation")
+                jobs_running_on_machines.push_back(job_interval_pair.first->id);
 
         }
     }
     return jobs_running_on_machines;
+}
+std::vector<std::string> Schedule::get_reservations_running_on_machines(IntervalSet machines){
+    std::vector<std::string> reservations_running_on_machines;
+    for (auto job_interval_pair : _profile.begin()->allocated_jobs)
+    {
+        //is there an intersection between this job in the first slice and the machines in question?
+        if (!(job_interval_pair.second & machines).is_empty())
+        {
+            //yes there is an intersection, add the job id
+            if (job_interval_pair.first->purpose == "reservation")
+                reservations_running_on_machines.push_back(job_interval_pair.first->id);
+
+        }
+    }
+    return reservations_running_on_machines;
 }
 Schedule &Schedule::operator=(const Schedule &other)
 {
@@ -1366,8 +1397,8 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
         img_width = 240;
     // header
     Rational sim_time = _profile.begin()->begin;
-    if(_profile.size() < 2)
-        sim_time=_previous_time_end;
+    //if(_profile.size() == 1 && _profile.begin()->allocated_jobs.empty() )
+    //    sim_time=_previous_time_end;
     snprintf(buf, buf_size,
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
@@ -1520,6 +1551,24 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
                 rect_color.c_str(),(double)(rect_x0+1),(double)(rect_y0+4),(int)2,job_id.c_str()); 
             res += buf;
         }
+
+    }
+    for (auto it = _svg_highlight_machines.elements_begin(); it != _svg_highlight_machines.elements_end(); ++it)
+    {
+        LOG_F(INFO,"DEBUG");
+        // Use operator* to retrieve the element value
+        
+        int i = *it;
+        LOG_F(INFO,"DEBUG");
+        snprintf(buf, buf_size,
+            "<rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke-width=\".3\" stroke-dasharray=\"10,10,5,5,5,10\" " 
+                "style=\"stroke:black; fill:%s; fill-opacity:0.6\"/>\n"
+                " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n", (double)0,
+            (double)(i * machine_height), (double)width, (double)machine_height, "#ce7000",
+            ((double)width)/2 - 10,(double)(i*machine_height)+(double)((machine_height/2.0)+(machine_height/4.0)),(int)(machine_height/2),("m "+std::to_string(i)).c_str());
+        res += buf;
+        LOG_F(INFO,"DEBUG");
+
     }
     res += "</g></svg>";
 
