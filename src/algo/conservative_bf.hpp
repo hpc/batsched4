@@ -54,6 +54,8 @@ private:
     b_log *_myBLOG;
     std::list<std::string>_resubmitted_jobs;
     std::vector<const Job *>_resubmitted_jobs_released;
+    
+
 
     std::mt19937 generator;
     std::exponential_distribution<double> * distribution;
@@ -61,6 +63,7 @@ private:
     std::uniform_int_distribution<int> * unif_distribution;
     int _on_machine_instant_down_ups=0;
     int _on_machine_down_for_repairs = 0;
+   
     
 
 };

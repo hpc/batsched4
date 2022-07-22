@@ -54,6 +54,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     _schedule.set_output_svg(_output_svg);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
+   
     unsigned seed = 0;
     if (_workload->_seed_failures)
         seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -102,45 +103,51 @@ void ConservativeBackfilling::set_workloads(myBatsched::Workloads *w){
 }
 void ConservativeBackfilling::on_machine_down_for_repair(double date){
     (void) date;
-    /* not ready yet TODO
+   
     //get a random number of a machine to kill
     int number = unif_distribution->operator()(generator2);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
+    _schedule.add_svg_highlight_machines(machine);
+    if (_output_svg == "all")
+            _schedule.output_to_svg("On Machine Down For Repairs  Machine #:  "+std::to_string(number));
+    IntervalSet added = _schedule.add_repair_machines(machine);
     //if the machine is already down for repairs ignore it.
     //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-    BLOG_F(b_log::FAILURES,"Machine Repair: %d",number);
-    if ((machine & _repair_machines).is_empty())
+    //BLOG_F(b_log::FAILURES,"Machine Repair: %d",number);
+    if (!added.is_empty() && _schedule.get_reservations_running_on_machines(machine).empty())
     {
-        //ok the machine is not down for repairs
+        //ok the machine is not down for repairs already so it WAS added
+        //the failure/repair will not be happening on a machine that has a reservation on it either
         //it will be going down for repairs now
-        _available_machines-=machine;
-        _unavailable_machines+=machine;
-        _repair_machines+=machine;
-        _nb_available_machines=_available_machines.size();
-
-        double repair_time = _myWorkloads->_repair_time;
-        //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-        //LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
+        
+        double repair_time = _workload->_repair_time;
+        
         //call me back when the repair is done
         _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
-        //now kill the jobs that are running on machines that need to be repaired.        
-        //if there are no running jobs, then there are none to kill
-        if (!_running_jobs.empty()){
-            for(auto key_value : _current_allocations)
-            {
-                if (!((key_value.second & machine).is_empty())){
-                    _my_kill_jobs.push_back((*_workload)[key_value.first]);
-                    BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
-                }
+       
+        if (_schedule.get_number_of_running_jobs() > 0 ){
+            auto jobs_to_kill = _schedule.get_jobs_running_on_machines(machine);
+
+            if (!jobs_to_kill.empty()){
+                _killed_jobs=true;
+                _decision->add_kill_job(jobs_to_kill,date);
+                for (auto job_id:jobs_to_kill)
+                    _schedule.remove_job_if_exists((*_workload)[job_id]);
             }
         }
     }
-    else
-    {
-        BLOG_F(b_log::FAILURES,"Machine Already Being Repaired: %d",number);
+    else{
+        _schedule.remove_repair_machines(machine);
+        _schedule.remove_svg_highlight_machines(machine);
+        if (_output_svg == "all")
+            _schedule.output_to_svg("Finished Machine Down For Repairs, NO REPAIR  Machine #:  "+std::to_string(number));
+    
     }
-    */
+    
+        
+  
+    
 }
 
 
@@ -239,22 +246,24 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                                 }
                         }
                         break;
-            /*
+            
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                         {
-                            BLOG_F(b_log::FAILURES,"REPAIR_DONE");
+                            //BLOG_F(b_log::FAILURES,"REPAIR_DONE");
                             //a repair is done, all that needs to happen is add the machines to available
                             //and remove them from repair machines and add one to the number of available
+                            if (_output_svg == "all")
+                                _schedule.output_to_svg("top Repair Done  Machine #: "+std::to_string(id));
                             IntervalSet machine = id;
-                            _available_machines += machine;
-                            _unavailable_machines -= machine;
-                            _repair_machines -= machine;
-                            _nb_available_machines=_available_machines.size();
-                            _machines_that_became_available_recently += machine;
+                            _schedule.remove_repair_machines(machine);
+                            _schedule.remove_svg_highlight_machines(machine);
+                             if (_output_svg == "all")
+                                _schedule.output_to_svg("bottom Repair Done  Machine #: "+std::to_string(id));
+                            _need_to_compress = true;
                            //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
                         }
                         break;
-            */
+            
             case batsched_tools::call_me_later_types::RESERVATION_START:
                         {
                             _start_a_reservation = true;
@@ -415,8 +424,14 @@ void ConservativeBackfilling::make_decisions(double date,
                                                 reservation.job->unique_number,
                                                 reservation.job->start,
                                                 date );
+                    else if (reservation.alloc->started_in_first_slice)
+                    {
+                        _reservation_queue->remove_job(reservation.job);
+                        _decision->add_execute_job(reservation.job->id,reservation.alloc->used_machines,date);
+                    }
                     else
                         _start_a_reservation = true;
+                        
                 }
                 //make sure to clear the _resubmitted_jobs_released
                 _resubmitted_jobs_released.clear();
@@ -497,6 +512,11 @@ void ConservativeBackfilling::make_decisions(double date,
                                                 reservation.job->unique_number,
                                                 reservation.job->start,
                                                 date );
+                    else if (reservation.alloc->started_in_first_slice)
+                    {
+                        _reservation_queue->remove_job(reservation.job);
+                        _decision->add_execute_job(reservation.job->id,reservation.alloc->used_machines,date);
+                    }
                     else
                         _start_a_reservation = true;
                 }
@@ -509,12 +529,25 @@ void ConservativeBackfilling::make_decisions(double date,
             _saved_reservations.clear();
             _killed_jobs = false;
         }
-    }  
+    } 
+    auto compare_reservations = [this](const std::string j1,const std::string j2)->bool{
+            Job * job1= (*_workload)[j1];
+            Job * job2= (*_workload)[j2];
+            if (job1->future_allocations.is_empty() && job2->future_allocations.is_empty())
+                return j1 < j2;
+            else if (job1->future_allocations.is_empty())
+                return false;  // j1 has no allocation so it must be set up after j2
+            else 
+                return true;
+    };
+
+    //sort reservations with jobs that have allocations coming first            
+    std::sort(recently_released_reservations.begin(),recently_released_reservations.end(),compare_reservations);
     //insert reservations into schedule whether jobs have finished or not
     for (const string & new_job_id : recently_released_reservations)
     {
         LOG_F(INFO,"new reservation: %s queue:%s",new_job_id.c_str(),_queue->to_string().c_str());
-        const Job * new_job = (*_workload)[new_job_id];
+        Job * new_job = (*_workload)[new_job_id];
         LOG_F(INFO,"job %s has walltime %g  start %f and alloc %s",new_job->id.c_str(),(double)new_job->walltime,new_job->start,new_job->future_allocations.to_string_hyphen(" ","-").c_str());
         //reserve a time slice 
         LOG_F(INFO,"resched policy %d",_reschedule_policy);
@@ -523,8 +556,16 @@ void ConservativeBackfilling::make_decisions(double date,
         {
             
             Schedule::ReservedTimeSlice reservation = _schedule.reserve_time_slice(new_job);
+            if (reservation.success == false)
+            {
+                _decision->add_reject_job(new_job_id,date);
+                continue;
+            }
+            if (new_job->future_allocations.is_empty() && reservation.success)
+                new_job->future_allocations = reservation.alloc->used_machines;
+
             _schedule.add_reservation_for_svg_outline(reservation);
-           
+            
             if (reservation.success)
             {
                 //sort the jobs to reschedule;
@@ -621,6 +662,13 @@ void ConservativeBackfilling::make_decisions(double date,
         if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::ALL)
         {
             Schedule::ReservedTimeSlice reservation = _schedule.reserve_time_slice(new_job);
+            if (reservation.success == false)
+            {
+                _decision->add_reject_job(new_job_id,date);
+                continue;
+            }
+            if (new_job->future_allocations.is_empty() && reservation.success)
+                new_job->future_allocations = reservation.alloc->used_machines;
             _schedule.add_reservation_for_svg_outline(reservation);
             if (reservation.success)
             {
@@ -763,6 +811,10 @@ void ConservativeBackfilling::make_decisions(double date,
     for(_on_machine_instant_down_ups;_on_machine_instant_down_ups > 0;--_on_machine_instant_down_ups)
     {
         on_machine_instant_down_up(date);
+    }
+    for(_on_machine_down_for_repairs;_on_machine_down_for_repairs > 0;--_on_machine_down_for_repairs)
+    {
+        on_machine_down_for_repair(date);
     }
     
     

@@ -87,6 +87,8 @@ public:
                                                 bool assert_insertion_successful = true);
     JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
+    IntervalSet add_repair_machines(IntervalSet machines);
+    IntervalSet remove_repair_machines(IntervalSet machines);
     ReservedTimeSlice reserve_time_slice(const Job * job);
     void add_reservation(ReservedTimeSlice reservation);
     void find_least_impactful_fit(JobAlloc * alloc, TimeSliceIterator begin_slice, TimeSliceIterator end_slice,IMPACT_POLICY policy);
@@ -172,6 +174,7 @@ private:
     IntervalSet _svg_highlight_machines;
     std::vector<std::string> _colors;
     std::vector<std::string> _reservation_colors;
+    IntervalSet _repair_machines;
 };
 
 /**

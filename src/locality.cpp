@@ -42,7 +42,7 @@ bool BasicResourceSelector::fit_reservation(const Job *job, const IntervalSet &a
     if (job->nb_requested_resources <= (int) available.size())
     {
         allocated = job->future_allocations;
-        PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources);
+        PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources,"allocated size %d  requested %d",allocated.size(),(unsigned int)job->nb_requested_resources);
         return true;
     }
 

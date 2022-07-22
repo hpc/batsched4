@@ -18,7 +18,7 @@ void b_log::blog(logging_type type, std::string fmt, double date, ...){
     if (_files.size() > 0 && _files.find(type) != _files.end()){
         va_list args;
         va_start(args,date);
-        FILE* file = _files[type];
+        FILE* file = _files[type];                                                                                                                                                           
         std::fprintf(file,"%-60f ||",date);
         fmt=fmt + "\n";
         std::vfprintf(file,fmt.c_str(),args);
@@ -38,7 +38,7 @@ batsched_tools::id_separation batsched_tools::tools::separate_id(const std::stri
     {
             separation.resubmit_number = std::stoi(job_id.substr(end+1));   // then get the resubmitted number
             next_number = separation.resubmit_number + 1;
-    }
+    }                                                                                                                                                                                                                                                                                                                                                                                    
     separation.resubmit_string = std::to_string(separation.resubmit_number);
     separation.next_resubmit_string = separation.workload + "!" +
                                       separation.basename + "#" +

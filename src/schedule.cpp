@@ -27,6 +27,7 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
 
     generate_colors();
     _svg_highlight_machines = IntervalSet::empty_interval_set();
+    _repair_machines.empty_interval_set();
 }
 
 Schedule::Schedule(const Schedule &other)
@@ -89,6 +90,18 @@ bool Schedule::remove_svg_highlight_machines(IntervalSet machines)
     }
     else
         return false;
+}
+IntervalSet Schedule::add_repair_machines(IntervalSet machines){
+    IntervalSet added = machines - _repair_machines;
+    _repair_machines+=machines;
+    return added;
+
+}
+IntervalSet Schedule::remove_repair_machines(IntervalSet machines){
+    IntervalSet removed = _repair_machines & machines;
+    _repair_machines-=machines;
+    return removed;
+
 }
 int Schedule::get_number_of_running_jobs(){
     return _profile.begin()->allocated_jobs.size();
@@ -237,9 +250,11 @@ Schedule::JobAlloc Schedule::add_job_first_fit(
 }
 void Schedule::find_least_impactful_fit(JobAlloc* alloc,TimeSliceIterator begin_slice, TimeSliceIterator end_slice, IMPACT_POLICY policy){
     
+    LOG_F(INFO,"find_least_impactful_fit");
     const Job * job = alloc->job;
     //we will want to use at least these machines
     IntervalSet amdp = available_machines_during_period(begin_slice->begin,end_slice->end);
+    LOG_F(INFO,"amdp %s",amdp.to_string_hyphen().c_str());
     //if the available machines encompass all the requested resources then take a chunk from that and return
     if(amdp.size() >= job->nb_requested_resources){
         alloc->used_machines = amdp.left(job->nb_requested_resources);
@@ -264,14 +279,30 @@ void Schedule::find_least_impactful_fit(JobAlloc* alloc,TimeSliceIterator begin_
         IntervalSet running_machines = IntervalSet::empty_interval_set();
         for ( auto job : jobs)
         {
+
             if (_profile.begin()->contains_job(job))
             {
                 jobs_running.push_back(job);
                 running_machines+= begin_slice->allocated_jobs[job];
             }
         }
-        //can we reserve based on all_machines - running_machines?
+        //now check for reservation conflicts
+        auto slice_after_next = end_slice;
+        slice_after_next++;
+        IntervalSet reservation_machines = IntervalSet::empty_interval_set();
+        for (auto it = begin_slice;it!=slice_after_next;++it)
+        {
+            for (auto job_map : it->allocated_jobs)
+            {
+                if(job_map.first->purpose == "reservation"){
+                    LOG_F(INFO,"job reservation %s",job_map.first->id.c_str());
+                    reservation_machines += it->allocated_jobs[job_map.first];
+                }
+            }
+        }
+        //can we reserve based on all_machines - running_machines - reservation_machines?
         all_machines -=running_machines;
+        all_machines -=reservation_machines;
         if (all_machines.size() >= still_needed )
         {
             alloc->used_machines = all_machines.left(still_needed) + amdp;
@@ -306,7 +337,8 @@ void Schedule::find_least_impactful_fit(JobAlloc* alloc,TimeSliceIterator begin_
         //now incrementally add the resources from running jobs
         for (auto job : jobs_running)
         {
-            all_machines+=begin_slice->allocated_jobs[job];
+            if(job->purpose != "reservation")
+                all_machines+=begin_slice->allocated_jobs[job];
             if (all_machines.size() >= still_needed)
             {
                 alloc->used_machines = all_machines.left(still_needed) + amdp;
@@ -314,6 +346,7 @@ void Schedule::find_least_impactful_fit(JobAlloc* alloc,TimeSliceIterator begin_
             }
                 
         }
+        return;
 
     }
     else if(policy==IMPACT_POLICY::LEAST_RESCHEDULING)
@@ -355,7 +388,11 @@ Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
         TimeSliceIterator first_slice_after_split;
         TimeSliceIterator second_slice_after_split;
         Rational split_date = job->start;
+        if(_debug)
+            output_to_svg("Before split slice");
         split_slice(slice_begin,split_date,first_slice_after_split,second_slice_after_split);
+        if (_debug)
+            output_to_svg("After split slice");
         LOG_F(INFO,"DEBUG line 306");
         slice_begin=second_slice_after_split;
 
@@ -380,7 +417,11 @@ Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
         
         //now split the slice if needed based on the reservation's end
         split_date = job->start+job->walltime;
+        if (_debug)
+            output_to_svg("Before split slice");
         split_slice(slice_end,split_date,first_slice_after_split,second_slice_after_split);
+        if(_debug)
+            output_to_svg("After split slice");
         LOG_F(INFO,"DEBUG line 322");
         slice_end = first_slice_after_split;
         auto slice_end_next = first_slice_after_split;
@@ -390,7 +431,8 @@ Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
         //we need to get an allocation
         if(alloc->used_machines.is_empty())
             find_least_impactful_fit(alloc, slice_begin, slice_end, IMPACT_POLICY::LEAST_KILLING_LARGEST_FIRST); // ok it is empty, get the least_impactful fit
-LOG_F(INFO,"DEBUG line 331");
+        
+LOG_F(INFO,"DEBUG line 331 %s",alloc->used_machines.to_string_hyphen().c_str());
         //now gather jobs affected
         //first iterate through all the time slices this reservation is temporarily taking up
         std::vector<const Job *> jobs_affected;
@@ -451,6 +493,9 @@ LOG_F(INFO,"DEBUG line 331");
         reserved->slice_begin = slice_begin;
         reserved->slice_end = slice_end;
         reserved->success = true;
+        if (alloc->used_machines.is_empty())
+            reserved->success = false;
+        
         reserved->job = job;
 
         //now return the reserved time slice
@@ -745,7 +790,7 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
 Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
     std::list<TimeSlice>::iterator first_time_slice, ResourceSelector *selector, bool assert_insertion_successful)
 {
-    
+
     if (_debug)
     {
         LOG_F(1, "Adding job '%s' (size=%d, walltime=%g). Output number %d. %s",
@@ -754,6 +799,11 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
         output_to_svg("top add_job_first_fit_after_time_slice");
     }
     _size++;
+    if (!_repair_machines.is_empty())
+    {
+        _profile.begin()->nb_available_machines -= _repair_machines.size();
+        _profile.begin()->available_machines -= _repair_machines;
+    }
 
     // Let's scan the profile for an anchor point.
     // An anchor point is a point where enough processors are available to run this job
@@ -786,7 +836,6 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                 {
                     Rational beginning = pit->begin;
                     alloc->begin = beginning;
-                    alloc->end = alloc->begin + job->walltime;
                     alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
                     alloc->job = job;
                     job->allocations[beginning] = alloc;
@@ -810,6 +859,11 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                     }
 
                     // The job has been placed, we can leave this function
+                    if (!_repair_machines.is_empty())
+                    {
+                        _profile.begin()->nb_available_machines += _repair_machines.size();
+                        _profile.begin()->available_machines += _repair_machines;
+                    }
                     return *alloc;
                 }
             }
@@ -876,6 +930,11 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                             }
 
                             // The job has been placed, we can leave this function
+                            if (!_repair_machines.is_empty())
+                            {
+                                _profile.begin()->nb_available_machines += _repair_machines.size();
+                                _profile.begin()->available_machines += _repair_machines;
+                            }
                             return *alloc;
                         }
                     }
@@ -1232,7 +1291,7 @@ Schedule::TimeSliceIterator Schedule::find_last_time_slice_before_date(Rational 
 
         if (slice.begin <= date)
             return slice_it;
-
+ IntervalSet _repair_machines;
     } while (slice_it != _profile.begin());
 
     if (assert_not_found)
@@ -1769,6 +1828,11 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
     PPK_ASSERT_ERROR(removal_point->allocated_jobs.count(job) == 1);
     IntervalSet job_machines = removal_point->allocated_jobs.at(job);
     _size--;
+    if (!_repair_machines.is_empty())
+    {
+        _profile.begin()->nb_available_machines -= _repair_machines.size();
+        _profile.begin()->available_machines -= _repair_machines;
+    }
     if (_debug)
     {
         LOG_F(1, "Removing job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
@@ -1877,6 +1941,11 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             {
                 LOG_F(1, "Removed job '%s'. Output number %d. %s", job->id.c_str(), _output_number, to_string().c_str());
                 output_to_svg("bottom remove_job_internal");
+            }
+            if (!_repair_machines.is_empty())
+            {
+                _profile.begin()->nb_available_machines -= _repair_machines.size();
+                _profile.begin()->available_machines -= _repair_machines;
             }
 
             return;
