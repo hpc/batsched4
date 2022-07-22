@@ -32,6 +32,15 @@ public:
                                 SortableJobOrder::CompareInformation * compare_info);
 
 private:
+    void handle_killed_jobs(std::vector<std::string> & recently_queued_jobs,double date);
+    void handle_reservations(std::vector<std::string> & recently_released_reservations,std::vector<std::string>& recently_queued_jobs,double date);
+    void handle_schedule(std::vector<std::string>& recently_queued_jobs,double date);
+    auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
+            if (j1->submission_times[0] == j2->submission_times[0])
+                return j1->id < j2->id;
+            else
+                return j1->submission_times[0] < j2->submission_times[0];
+    };
     Schedule _schedule;
     Queue * _reservation_queue=nullptr;
     std::string _output_folder;

@@ -284,12 +284,7 @@ void ConservativeBackfilling::make_decisions(double date,
 
     LOG_F(INFO,"make decisions");
     //define a sort function for sorting jobs based on original submit times
-    auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
-            if (j1->submission_times[0] == j2->submission_times[0])
-                return j1->id < j2->id;
-            else
-                return j1->submission_times[0] < j2->submission_times[0];
-    };
+    
     
     // Let's remove finished jobs from the schedule
     // not including killed jobs
@@ -350,6 +345,185 @@ void ConservativeBackfilling::make_decisions(double date,
     //lifecycle of killed job:
     //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
     // it is the third invocation that this function should run 
+    handle_killed_jobs(recently_queued_jobs,date);
+    
+    auto compare_reservations = [this](const std::string j1,const std::string j2)->bool{
+            Job * job1= (*_workload)[j1];
+            Job * job2= (*_workload)[j2];
+            if (job1->future_allocations.is_empty() && job2->future_allocations.is_empty())
+                return j1 < j2;
+            else if (job1->future_allocations.is_empty())
+                return false;  // j1 has no allocation so it must be set up after j2
+            else 
+                return true;
+    };
+
+    //sort reservations with jobs that have allocations coming first            
+    std::sort(recently_released_reservations.begin(),recently_released_reservations.end(),compare_reservations);
+    //insert reservations into schedule whether jobs have finished or not
+    handle_reservations(recently_released_reservations,recently_queued_jobs,date);
+    
+
+    for(_on_machine_instant_down_ups;_on_machine_instant_down_ups > 0;--_on_machine_instant_down_ups)
+    {
+        on_machine_instant_down_up(date);
+    }
+    for(_on_machine_down_for_repairs;_on_machine_down_for_repairs > 0;--_on_machine_down_for_repairs)
+    {
+        on_machine_down_for_repair(date);
+    }
+    
+    for ( auto job_progress_pair : _jobs_killed_recently)
+    {
+        batsched_tools::id_separation separation = batsched_tools::tools::separate_id(job_progress_pair.first);
+        LOG_F(INFO,"next_resubmit_string %s",separation.next_resubmit_string.c_str());
+        _resubmitted_jobs.push_back(separation.next_resubmit_string);
+    }
+    _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
+
+    handle_schedule(recently_queued_jobs,date);
+   
+
+
+
+
+
+    // And now let's see if we can estimate some waiting times
+    
+    for (const std::string & job_id : _jobs_whose_waiting_time_estimation_has_been_requested_recently)
+    {
+        const Job * new_job = (*_workload)[job_id];
+        double answer = _schedule.query_wait(new_job->nb_requested_resources, new_job->walltime, _selector);
+            _decision->add_answer_estimate_waiting_time(job_id, answer, date);
+    }
+
+    if (_dump_provisional_schedules)
+        _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
+    /*
+    LOG_F(INFO,"jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
+    _jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
+             _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
+    LOG_F(INFO,"res_queue %s",_reservation_queue->to_string().c_str());
+    */
+    if (_jobs_killed_recently.empty() && _queue->is_empty() && _reservation_queue->is_empty() && _schedule.size() == 0 &&
+             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
+    {
+        _decision->add_scheduler_finished_submitting_jobs(date);
+        if (_output_svg == "all" || _output_svg == "short")
+            _schedule.output_to_svg("Simulation Finished");
+        _schedule.set_output_svg("none");
+        _output_svg = "none";
+        _need_to_send_finished_submitting_jobs = false;
+    }
+
+    
+}
+
+
+
+
+
+
+
+void ConservativeBackfilling::handle_schedule(std::vector<std::string> & recently_queued_jobs,double date)
+{
+// If no resources have been released, we can just insert the new jobs into the schedule
+    if (_jobs_ended_recently.empty() && !_killed_jobs)
+    {
+        //if there were some saved queued jobs from killing jobs take care of them
+        if (recently_queued_jobs.empty() && !_saved_recently_queued_jobs.empty())
+        {
+            if(_output_svg == "all")
+                _schedule.output_to_svg("CONSERVATIVE_BF saved queued ADDING");
+            for (const string & new_job_id : _saved_recently_queued_jobs)
+            {
+                const Job * new_job = (*_workload)[new_job_id];
+                LOG_F(INFO,"DEBUG line 321");
+                    
+                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
+
+                // If the job should start now, let's say it to the resource manager
+                if (alloc.started_in_first_slice)
+                {
+                    _decision->add_execute_job(new_job->id, alloc.used_machines, date);
+                    _queue->remove_job(new_job);
+                }
+            }
+            if(_output_svg == "all")
+                _schedule.output_to_svg("CONSERVATIVE_BF saved queued ADDING DONE");
+            _saved_recently_queued_jobs.clear();
+        }
+        else
+        {
+            if(_output_svg == "all")
+                _schedule.output_to_svg("CONSERVATIVE_BF recent queued ADDING");
+            for (const string & new_job_id : recently_queued_jobs)
+            {
+                const Job * new_job = (*_workload)[new_job_id];
+                LOG_F(INFO,"DEBUG line 337");
+                    
+                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
+
+                // If the job should start now, let's say it to the resource manager
+                if (alloc.started_in_first_slice)
+                {
+                    _decision->add_execute_job(new_job->id, alloc.used_machines, date);
+                    _queue->remove_job(new_job);
+                }
+            }
+            if(_output_svg == "all")
+                _schedule.output_to_svg("CONSERVATIVE_BF recent queued ADDING DONE");
+        }
+    }
+    if ((!_jobs_ended_recently.empty() || _need_to_compress) && !_killed_jobs)
+    {
+        // Since some resources have been freed,
+        // Let's compress the schedule following conservative backfilling rules:
+        // For each non running job j
+        //   Remove j from the schedule
+        //   Add j into the schedule
+        //   If j should be executed now
+        //     Take the decision to run j now
+        if (_output_svg == "all")
+            _schedule.output_to_svg("CONSERVATIVE_BF  " + std::string( _need_to_compress? "needed":"") + " compress");
+                
+        for (auto job_it = _queue->begin(); job_it != _queue->end(); )
+        {
+            const Job * job = (*job_it)->job;
+            _schedule.remove_job_if_exists(job);
+    //            if (_dump_provisional_schedules)
+    //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
+            LOG_F(INFO,"DEBUG line 375");
+            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   
+    //            if (_dump_provisional_schedules)
+    //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
+
+            if (alloc.started_in_first_slice)
+            {
+                _decision->add_execute_job(job->id, alloc.used_machines, date);
+                job_it = _queue->remove_job(job_it);
+            }
+            else
+                ++job_it;
+        }
+        if (_output_svg == "all")
+            _schedule.output_to_svg("CONSERVATIVE_BF  " + std::string(_need_to_compress? "needed":"") + "compress, DONE");
+        _need_to_compress = false;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & recently_queued_jobs, double date)
+{
     LOG_F(INFO,"killed_jobs %d",_killed_jobs);
     if (_killed_jobs && !_resubmitted_jobs.empty())
     {
@@ -530,20 +704,28 @@ void ConservativeBackfilling::make_decisions(double date,
             _killed_jobs = false;
         }
     } 
-    auto compare_reservations = [this](const std::string j1,const std::string j2)->bool{
-            Job * job1= (*_workload)[j1];
-            Job * job2= (*_workload)[j2];
-            if (job1->future_allocations.is_empty() && job2->future_allocations.is_empty())
-                return j1 < j2;
-            else if (job1->future_allocations.is_empty())
-                return false;  // j1 has no allocation so it must be set up after j2
-            else 
-                return true;
-    };
+}
 
-    //sort reservations with jobs that have allocations coming first            
-    std::sort(recently_released_reservations.begin(),recently_released_reservations.end(),compare_reservations);
-    //insert reservations into schedule whether jobs have finished or not
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void ConservativeBackfilling::handle_reservations(std::vector<std::string> & recently_released_reservations, std::vector<std::string> &recently_released_jobs, double date)
+{
     for (const string & new_job_id : recently_released_reservations)
     {
         LOG_F(INFO,"new reservation: %s queue:%s",new_job_id.c_str(),_queue->to_string().c_str());
@@ -782,8 +964,6 @@ void ConservativeBackfilling::make_decisions(double date,
               
     }
     recently_released_reservations.clear();
-
-
     
     if (_start_a_reservation)
     {
@@ -808,145 +988,5 @@ void ConservativeBackfilling::make_decisions(double date,
         }
         
     }
-    for(_on_machine_instant_down_ups;_on_machine_instant_down_ups > 0;--_on_machine_instant_down_ups)
-    {
-        on_machine_instant_down_up(date);
-    }
-    for(_on_machine_down_for_repairs;_on_machine_down_for_repairs > 0;--_on_machine_down_for_repairs)
-    {
-        on_machine_down_for_repair(date);
-    }
-    
-    
-    for ( auto job_progress_pair : _jobs_killed_recently)
-    {
-        batsched_tools::id_separation separation = batsched_tools::tools::separate_id(job_progress_pair.first);
-        LOG_F(INFO,"next_resubmit_string %s",separation.next_resubmit_string.c_str());
-        _resubmitted_jobs.push_back(separation.next_resubmit_string);
-    }
-    _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
-
-    
-     
-    
-    
-   
-    
-    
-    // If no resources have been released, we can just insert the new jobs into the schedule
-    if (_jobs_ended_recently.empty() && !_killed_jobs)
-    {
-        //if there were some saved queued jobs from killing jobs take care of them
-        if (recently_queued_jobs.empty() && !_saved_recently_queued_jobs.empty())
-        {
-            if(_output_svg == "all")
-                _schedule.output_to_svg("CONSERVATIVE_BF saved queued ADDING");
-            for (const string & new_job_id : _saved_recently_queued_jobs)
-            {
-                const Job * new_job = (*_workload)[new_job_id];
-                LOG_F(INFO,"DEBUG line 321");
-                    
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
-
-                // If the job should start now, let's say it to the resource manager
-                if (alloc.started_in_first_slice)
-                {
-                    _decision->add_execute_job(new_job->id, alloc.used_machines, date);
-                    _queue->remove_job(new_job);
-                }
-            }
-            if(_output_svg == "all")
-                _schedule.output_to_svg("CONSERVATIVE_BF saved queued ADDING DONE");
-            _saved_recently_queued_jobs.clear();
-        }
-        else
-        {
-            if(_output_svg == "all")
-                _schedule.output_to_svg("CONSERVATIVE_BF recent queued ADDING");
-            for (const string & new_job_id : recently_queued_jobs)
-            {
-                const Job * new_job = (*_workload)[new_job_id];
-                LOG_F(INFO,"DEBUG line 337");
-                    
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
-
-                // If the job should start now, let's say it to the resource manager
-                if (alloc.started_in_first_slice)
-                {
-                    _decision->add_execute_job(new_job->id, alloc.used_machines, date);
-                    _queue->remove_job(new_job);
-                }
-            }
-            if(_output_svg == "all")
-                _schedule.output_to_svg("CONSERVATIVE_BF recent queued ADDING DONE");
-        }
-    }
-    if ((!_jobs_ended_recently.empty() || _need_to_compress) && !_killed_jobs)
-    {
-        // Since some resources have been freed,
-        // Let's compress the schedule following conservative backfilling rules:
-        // For each non running job j
-        //   Remove j from the schedule
-        //   Add j into the schedule
-        //   If j should be executed now
-        //     Take the decision to run j now
-        if (_output_svg == "all")
-            _schedule.output_to_svg("CONSERVATIVE_BF  " + std::string( _need_to_compress? "needed":"") + " compress");
-                
-        for (auto job_it = _queue->begin(); job_it != _queue->end(); )
-        {
-            const Job * job = (*job_it)->job;
-            _schedule.remove_job_if_exists(job);
-    //            if (_dump_provisional_schedules)
-    //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-            LOG_F(INFO,"DEBUG line 375");
-            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);   
-    //            if (_dump_provisional_schedules)
-    //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-
-            if (alloc.started_in_first_slice)
-            {
-                _decision->add_execute_job(job->id, alloc.used_machines, date);
-                job_it = _queue->remove_job(job_it);
-            }
-            else
-                ++job_it;
-        }
-        if (_output_svg == "all")
-            _schedule.output_to_svg("CONSERVATIVE_BF  " + std::string(_need_to_compress? "needed":"") + "compress, DONE");
-        _need_to_compress = false;
-    }
-    
-      
-
-    // And now let's see if we can estimate some waiting times
-    
-    for (const std::string & job_id : _jobs_whose_waiting_time_estimation_has_been_requested_recently)
-    {
-        const Job * new_job = (*_workload)[job_id];
-        double answer = _schedule.query_wait(new_job->nb_requested_resources, new_job->walltime, _selector);
-            _decision->add_answer_estimate_waiting_time(job_id, answer, date);
-    }
-
-    if (_dump_provisional_schedules)
-        _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-    /*
-    LOG_F(INFO,"jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
-    _jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
-             _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
-    LOG_F(INFO,"res_queue %s",_reservation_queue->to_string().c_str());
-    */
-    if (_jobs_killed_recently.empty() && _queue->is_empty() && _reservation_queue->is_empty() && _schedule.size() == 0 &&
-             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
-    {
-        _decision->add_scheduler_finished_submitting_jobs(date);
-        if (_output_svg == "all" || _output_svg == "short")
-            _schedule.output_to_svg("Simulation Finished");
-        _schedule.set_output_svg("none");
-        _output_svg = "none";
-        _need_to_send_finished_submitting_jobs = false;
-    }
-
-    
 }
 
