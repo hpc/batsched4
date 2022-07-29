@@ -6,7 +6,6 @@
 #include <map>
 
 #include <rapidjson/document.h>
-
 #include <intervalset.hpp>
 #include "batsched_tools.hpp"
 
@@ -92,7 +91,7 @@ public:
      *                    Must be in the RUNNING state (COMPLETED jobs are ignored).
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_kill_job(const std::vector<std::string> & job_ids,
+    virtual void append_kill_job(const std::vector<batsched_tools::Job_Message *> & job_msgs,
                                  double date) = 0;
 
     /**
@@ -247,7 +246,7 @@ public:
      *                    Must be in the RUNNING state (COMPLETED jobs are ignored).
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_kill_job(const std::vector<std::string> & job_ids,
+    void append_kill_job(const std::vector<batsched_tools::Job_Message *> & job_msgs,
                          double date);
 
     /**

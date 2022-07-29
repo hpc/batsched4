@@ -263,26 +263,33 @@ void JsonProtocolWriter::append_reject_job(const string &job_id,
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_kill_job(const vector<string> &job_ids,
+void JsonProtocolWriter::append_kill_job(const vector<batsched_tools::Job_Message *> &job_msgs,
                                          double date)
 {
     /* {
       "timestamp": 10.0,
       "type": "KILL_JOB",
-      "data": {"job_ids": ["w0!1", "w0!2"]}
+      "data": {"job_ids": [{"id":"w0!1","forWhat": 1},{"id":"w0!2","forWhat": 3}]}
     } */
 
     PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
-    Value job_ids_array(rapidjson::kArrayType);
-    job_ids_array.Reserve(job_ids.size(), _alloc);
-    for (const string & job_id : job_ids)
-        job_ids_array.PushBack(Value().SetString(job_id.c_str(), _alloc), _alloc);
+    Value job_msgs_array(rapidjson::kArrayType);
+    //not sure how this next line works, so not doing it
+    //job_ids_array.Reserve(job_msgs.size(), _alloc);
+    for (batsched_tools::Job_Message * job_msg : job_msgs)
+    {
+        Value job_msg_json(rapidjson::kObjectType);
+        job_msg_json.AddMember("id",Value().SetString(job_msg->id.c_str(),_alloc),_alloc);
+        job_msg_json.AddMember("forWhat",Value().SetInt(static_cast<int>(job_msg->forWhat)),_alloc);
+        job_msgs_array.PushBack(job_msg_json, _alloc);
+
+    }
 
     Value data(rapidjson::kObjectType);
-    data.AddMember("job_ids", job_ids_array, _alloc);
+    data.AddMember("job_msgs", job_msgs_array, _alloc);
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);

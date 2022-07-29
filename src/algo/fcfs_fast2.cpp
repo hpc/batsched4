@@ -11,7 +11,9 @@
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <chrono>
+#include <utility>
 #include "../batsched_tools.hpp"
+
 
 #define B_LOG_INSTANCE _myBLOG
 namespace myB = myBatsched;
@@ -39,6 +41,7 @@ FCFSFast2::~FCFSFast2()
 void FCFSFast2::on_simulation_start(double date,
     const rapidjson::Value &batsim_event_data)
 {
+    LOG_F(INFO,"On simulation start");
     bool seedFailures = false;
     bool logBLog = false;
     const rapidjson::Value & batsim_config = batsim_event_data["config"];
@@ -123,7 +126,7 @@ void FCFSFast2::on_simulation_end(double date){
     (void) date;
 }
     
- void FCFSFast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
+ /*void FCFSFast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
     //LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
     _unavailable_machines+=machines;
     _available_machines-=machines;
@@ -134,6 +137,7 @@ void FCFSFast2::on_simulation_end(double date){
     }
     
 }
+*/
 void FCFSFast2::set_workloads(myBatsched::Workloads *w){
     _myWorkloads = w;
     _checkpointing_on = w->_checkpointing_on;
@@ -155,7 +159,10 @@ void FCFSFast2::on_machine_state_changed(double date, IntervalSet machines, int 
 void FCFSFast2::on_myKillJob_notify_event(double date){
     
     if (!_running_jobs.empty()){
-        _my_kill_jobs.push_back((*_workload)[*_running_jobs.begin()]);
+        batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
+        msg->id = *_running_jobs.begin();
+        msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+        _my_kill_jobs.insert(std::make_pair((*_workload)[*_running_jobs.begin()], msg));
     }
         
     
@@ -188,10 +195,15 @@ void FCFSFast2::on_machine_down_for_repair(double date){
         //now kill the jobs that are running on machines that need to be repaired.        
         //if there are no running jobs, then there are none to kill
         if (!_running_jobs.empty()){
+            //ok there are jobs to kill
             for(auto key_value : _current_allocations)
             {
                 if (!((key_value.second & machine).is_empty())){
-                    _my_kill_jobs.push_back((*_workload)[key_value.first]);
+                    Job * job_ref = (*_workload)[key_value.first];
+                    batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
+                    msg->id = key_value.first;
+                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                    _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                     BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
                 }
             }
@@ -215,13 +227,17 @@ void FCFSFast2::on_machine_instant_down_up(double date){
         for(auto key_value : _current_allocations)   
 	{
 		if (!((key_value.second & machine).is_empty())){
-                	_my_kill_jobs.push_back((*_workload)[key_value.first]);
+                    Job * job_ref = (*_workload)[key_value.first];
+                    batsched_tools::Job_Message* msg = new batsched_tools::Job_Message;
+                    msg->id = key_value.first;
+                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                    _my_kill_jobs.insert(std::make_pair(job_ref,msg));
 	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
             	}
 	}
     }
 }
-void FCFSFast2::on_job_fault_notify_event(double date, std::string job){
+/*void FCFSFast2::on_job_fault_notify_event(double date, std::string job){
     std::unordered_set<std::string>::const_iterator found = _running_jobs.find(job);
   //LOG_F(INFO,"on_job_fault_notify_event called");
   if ( found != _running_jobs.end() )    
@@ -229,6 +245,7 @@ void FCFSFast2::on_job_fault_notify_event(double date, std::string job){
   else
       LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
 }
+*/
 
 void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
 {
@@ -365,7 +382,7 @@ void FCFSFast2::make_decisions(double date,
                 _nb_available_machines += finished_job->nb_requested_resources;
                 _current_allocations.erase(ended_job_id);
                 _running_jobs.erase(ended_job_id);
-                _my_kill_jobs.remove((*_workload)[ended_job_id]);
+                _my_kill_jobs.erase((*_workload)[ended_job_id]);
         }
     }
     
@@ -375,9 +392,11 @@ void FCFSFast2::make_decisions(double date,
     //Handle new jobs to kill
    
     if(!_my_kill_jobs.empty()){
-         std::vector<std::string> kills;
-        for( Job* kill:_my_kill_jobs)
-            kills.push_back(kill->id);
+         std::vector<batsched_tools::Job_Message *> kills;
+        for( auto job_msg_pair:_my_kill_jobs)
+        {
+            kills.push_back(job_msg_pair.second);
+        }
         _decision->add_kill_job(kills,date);
         _my_kill_jobs.clear();
     }
@@ -713,7 +732,7 @@ void FCFSFast2::handle_resubmission(double date)
  for(const auto & killed_map:_jobs_killed_recently)
     {
         std::string killed_job=killed_map.first;
-        double progress = killed_map.second;
+        double progress = killed_map.second->progress;
         //LOG_F(INFO,"REPAIR  progress: %f",progress);
         auto start = killed_job.find("!")+1;
         auto end = killed_job.find("#");

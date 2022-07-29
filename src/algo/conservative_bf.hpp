@@ -8,6 +8,7 @@
 #include "../locality.hpp"
 #include "../schedule.hpp"
 #include "../batsched_tools.hpp"
+#include "../machine.hpp"
 #include <random>
 
 class ConservativeBackfilling : public ISchedulingAlgorithm
@@ -19,12 +20,13 @@ public:
                             double rjms_delay, rapidjson::Document * variant_options);
     virtual ~ConservativeBackfilling();
 
-    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_config);
+    virtual void on_simulation_start(double date, const rapidjson::Value & batsim_event);
 
     virtual void on_simulation_end(double date);
-    void on_machine_instant_down_up(double date);
-    void on_machine_down_for_repair(double date);
+    void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date);
+    void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date);
     virtual void set_workloads(myBatsched::Workloads * w);
+    virtual void set_machines(Machines *m);
     virtual void on_requested_call(double date,int id,  batsched_tools::call_me_later_types forWhat);
 
     virtual void make_decisions(double date,
@@ -33,14 +35,11 @@ public:
 
 private:
     void handle_killed_jobs(std::vector<std::string> & recently_queued_jobs,double date);
-    void handle_reservations(std::vector<std::string> & recently_released_reservations,std::vector<std::string>& recently_queued_jobs,double date);
+    void handle_reservations(std::vector<std::string> & recently_released_reservations,
+                            std::vector<std::string>& recently_queued_jobs,
+                            double date);
     void handle_schedule(std::vector<std::string>& recently_queued_jobs,double date);
-    auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
-            if (j1->submission_times[0] == j2->submission_times[0])
-                return j1->id < j2->id;
-            else
-                return j1->submission_times[0] < j2->submission_times[0];
-    };
+    
     Schedule _schedule;
     Queue * _reservation_queue=nullptr;
     std::string _output_folder;
@@ -53,6 +52,7 @@ private:
     bool _need_to_send_finished_submitting_jobs = true;
     std::vector<std::string> _saved_recently_queued_jobs;
     std::vector<std::string> _saved_recently_ended_jobs;
+    IntervalSet _recently_under_repair_machines;
     bool _need_to_compress = false;
     
     bool _dump_provisional_schedules = false;
@@ -61,8 +61,8 @@ private:
     bool _checkpointing_on;
     bool _start_a_reservation=false;
     b_log *_myBLOG;
-    std::list<std::string>_resubmitted_jobs;
-    std::vector<const Job *>_resubmitted_jobs_released;
+    std::map<std::string,batsched_tools::KILL_TYPES>_resubmitted_jobs;
+    std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>>_resubmitted_jobs_released;
     
 
 
@@ -70,8 +70,8 @@ private:
     std::exponential_distribution<double> * distribution;
     std::mt19937 generator2;
     std::uniform_int_distribution<int> * unif_distribution;
-    int _on_machine_instant_down_ups=0;
-    int _on_machine_down_for_repairs = 0;
+    std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups;
+    std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs;
    
     
 

@@ -61,6 +61,7 @@ public:
     Schedule(const Schedule & other);
 
     Schedule & operator=(const Schedule & other);
+    void set_now(Rational now);
 
     void update_first_slice(Rational current_time);
     void update_first_slice_removing_remaining_jobs(Rational current_time);
@@ -101,7 +102,11 @@ public:
                                           ResourceSelector * selector,
                                           bool assert_insertion_successful = true);
     int get_number_of_running_jobs();
-    std::vector<std::string> get_jobs_running_on_machines(IntervalSet machines);
+    void get_jobs_running_on_machines(IntervalSet machines, std::vector<std::string>& jobs_running_on_machines);
+    void get_jobs_running_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_running_on_machines);
+    void get_jobs_affected_on_machines(IntervalSet machines, std::vector<std::string>& jobs_affected_on_machines);
+    void get_jobs_affected_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_affected_on_machines);
+    IntervalSet which_machines_are_allocated_in_time_slice(TimeSliceIterator slice,IntervalSet machine);
     std::vector<std::string> get_reservations_running_on_machines(IntervalSet machines);
 
   // The coveted query_wait method, bringing an answer (as a double, defined as
@@ -138,6 +143,7 @@ public:
     std::list<TimeSlice>::const_iterator begin() const;
     std::list<TimeSlice>::const_iterator end() const;
     int size();
+    int nb_jobs_size();
 
     int nb_slices() const;
 
@@ -159,8 +165,10 @@ private:
 
 private:
     // The profile is a list of timeslices and a set of job allocations
+    Rational _now = 0;
     std::list<TimeSlice> _profile;
     int _size = 0;
+    int _nb_jobs_size = 0;
     int _nb_machines;
     bool _debug = false;
     bool _short_debug = false; //make svg's less frequently than _debug

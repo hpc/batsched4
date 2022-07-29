@@ -38,9 +38,9 @@ void SchedulingDecision::add_reject_job(const std::string & job_id, double date)
     _proto_writer->append_reject_job(job_id, date);
 }
 
-void SchedulingDecision::add_kill_job(const vector<string> &job_ids, double date)
+void SchedulingDecision::add_kill_job(const vector<batsched_tools::Job_Message *> &job_msgs, double date)
 {
-    _proto_writer->append_kill_job(job_ids, date);
+    _proto_writer->append_kill_job(job_msgs, date);
 }
 
 void SchedulingDecision::add_submit_job(const string & workload_name,
@@ -70,7 +70,7 @@ void SchedulingDecision::add_submit_job(const string & workload_name,
                                          profile_json_description,
                                          send_profile);
 }
-void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,double> jobs_killed_recently,
+void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,batsched_tools::Job_Message *> jobs_killed_recently,
                                             Workload *w0,
                                             double date)
 {
@@ -78,6 +78,7 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,doub
     for(const auto & killed_map:jobs_killed_recently)
     {
         std::string killed_job=killed_map.first;
+        
     
         Job * job_to_queue = (*w0)[killed_job];
 
@@ -173,14 +174,14 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
 
 }
  
- void SchedulingDecision::get_meta_data_from_parallel_homogeneous(std::pair<std::string,double> killed_map,
+ void SchedulingDecision::get_meta_data_from_parallel_homogeneous(std::pair<std::string,batsched_tools::Job_Message *> killed_map,
                                                                 rapidjson::Document & profile_doc,
                                                                 rapidjson::Document & job_doc,
                                                                 Workload* w0)
  {
         double one_second = w0->_host_speed;
         std::string killed_job = killed_map.first;
-        double progress = killed_map.second;
+        double progress = killed_map.second->progress;
         //get the job that was killed
         Job * job_to_queue =(*w0)[killed_job];
         LOG_F(INFO,"ccu chkpt_interval %f",job_to_queue->checkpoint_interval);
@@ -308,14 +309,14 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
     
     }
 }
-void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,double> killed_map,
+void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched_tools::Job_Message *> killed_map,
                                                 rapidjson::Document & profile_doc,
                                                 rapidjson::Document & job_doc,
                                                 Workload * w0)
 {
     double one_second = w0->_host_speed;
     std::string killed_job = killed_map.first;
-    double progress = killed_map.second;
+    double progress = killed_map.second->progress;
     //get the job that was killed
     Job * job_to_queue =(*w0)[killed_job];
 

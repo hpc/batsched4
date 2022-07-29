@@ -7,6 +7,7 @@
 #include "queue.hpp"
 #include "external/batsched_workload.hpp"
 #include "batsched_tools.hpp"
+#include "machine.hpp"
 
 /**
  * @brief The base abstract class of (scheduling & machine state) decision algorithms
@@ -64,7 +65,7 @@ public:
      * @param[in] date The date at which the jobs have been killed
      * @param[in] job_ids The identifiers of the jobs which have been finished
      */
-    virtual void on_job_killed(double date, const std::unordered_map<std::string,double> & job_ids);
+    virtual void on_job_killed(double date, const std::unordered_map<std::string,batsched_tools::Job_Message *> & job_msgs);
 
     /**
      * @brief This function is called when the power state of some machines have been changed
@@ -151,10 +152,13 @@ public:
      */
     void clear_recent_data_structures();
     virtual void set_workloads(myBatsched::Workloads *w);
+    virtual void set_machines(Machines *m);
     
 
 protected:
+    
     Workload * _workload;
+    Machines * _machines;
     SchedulingDecision * _decision;
     Queue * _queue;
     ResourceSelector * _selector;
@@ -168,7 +172,7 @@ protected:
 protected:
     std::vector<std::string> _jobs_released_recently;
     std::vector<std::string> _jobs_ended_recently;
-    std::unordered_map<std::string, double> _jobs_killed_recently;
+    std::unordered_map<std::string, batsched_tools::Job_Message *> _jobs_killed_recently;
     std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently;
     std::map<int, IntervalSet> _machines_whose_pstate_changed_recently;
     IntervalSet _machines_that_became_available_recently;

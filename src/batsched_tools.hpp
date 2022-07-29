@@ -24,6 +24,7 @@ std::unordered_map<logging_type,FILE*> _files;
 
 namespace batsched_tools{
     enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START};
+    enum class KILL_TYPES {NONE,FIXED_FAILURE,SMTBF,MTBF,RESERVATION};
     struct id_separation{
         std::string basename;
         std::string resubmit_string;
@@ -31,6 +32,12 @@ namespace batsched_tools{
         std::string next_resubmit_string;
         std::string workload;
         };
+    struct Job_Message{
+        std::string id;
+        std::string progress_str;
+        double progress;
+        batsched_tools::KILL_TYPES forWhat = batsched_tools::KILL_TYPES::NONE;
+    };
     struct tools{
         static id_separation separate_id(const std::string job_id);
     };

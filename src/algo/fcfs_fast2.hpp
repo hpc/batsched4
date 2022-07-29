@@ -28,9 +28,9 @@ public:
         const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
-    virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);
+    //virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);
     virtual void on_machine_available_notify_event(double date, IntervalSet machines);
-    virtual void on_job_fault_notify_event(double date, std::string job);
+    //virtual void on_job_fault_notify_event(double date, std::string job);
     virtual void on_myKillJob_notify_event(double date);
     virtual void on_requested_call(double date,int id,  batsched_tools::call_me_later_types forWhat);
     virtual void set_workloads(myBatsched::Workloads * w);
@@ -57,7 +57,7 @@ private:
 
     // Pending jobs (queue)
     std::list<Job *> _pending_jobs;
-    std::list<Job *> _my_kill_jobs;
+    std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
     std::unordered_set<std::string> _running_jobs;
     myBatsched::Workloads * _myWorkloads;
     double _oldDate=-1;

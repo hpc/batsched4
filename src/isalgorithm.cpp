@@ -66,11 +66,11 @@ void ISchedulingAlgorithm::on_job_end(double date, const vector<string> &job_ids
 
 
 
-void ISchedulingAlgorithm::on_job_killed(double date, const std::unordered_map<std::string,double> &job_ids)
+void ISchedulingAlgorithm::on_job_killed(double date, const std::unordered_map<std::string,batsched_tools::Job_Message *> &job_msgs)
 {
     (void) date;
-    _jobs_killed_recently.insert(job_ids.begin(),
-                                 job_ids.end());
+    _jobs_killed_recently.insert(job_msgs.begin(),
+                                 job_msgs.end());
 }
 
 void ISchedulingAlgorithm::on_machine_state_changed(double date, IntervalSet machines, int new_state)
@@ -115,6 +115,9 @@ void ISchedulingAlgorithm::on_machine_available_notify_event(double date, Interv
 }
 void ISchedulingAlgorithm::set_workloads(myBatsched::Workloads *w){
     (void) w;
+}
+void ISchedulingAlgorithm::set_machines(Machines *m){
+    (void) m;
 }
 
 void ISchedulingAlgorithm::on_machine_unavailable_notify_event(double date, IntervalSet machines)

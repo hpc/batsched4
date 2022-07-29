@@ -84,6 +84,7 @@ public:
     double _fixed_failures = -1.0;
     double _checkpointing_interval = -1.0;
     bool _seed_failures = false;
+    int _queue_depth = -1;
 private:
     char * _fileContents = nullptr;
     std::map<std::string, Job*> _jobs;
@@ -91,3 +92,4 @@ private:
     int _job_number = 0;
    
 };
+

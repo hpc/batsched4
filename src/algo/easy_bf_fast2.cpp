@@ -125,7 +125,7 @@ void easy_bf_fast2::on_simulation_end(double date){
     (void) date;
 }
     
- void easy_bf_fast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
+ /*void easy_bf_fast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
     //LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
     _unavailable_machines+=machines;
     _available_machines-=machines;
@@ -136,6 +136,7 @@ void easy_bf_fast2::on_simulation_end(double date){
     }
     
 }
+*/
 void easy_bf_fast2::set_workloads(myBatsched::Workloads *w){
     _myWorkloads = w;
     _checkpointing_on = w->_checkpointing_on;
@@ -157,7 +158,10 @@ void easy_bf_fast2::on_machine_state_changed(double date, IntervalSet machines, 
 void easy_bf_fast2::on_myKillJob_notify_event(double date){
     
     if (!_running_jobs.empty()){
-        _my_kill_jobs.push_back((*_workload)[*_running_jobs.begin()]);
+       auto msg = new batsched_tools::Job_Message;
+        msg->id = *_running_jobs.begin();
+        msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+        _my_kill_jobs.insert(std::make_pair((*_workload)[*_running_jobs.begin()],msg));
     }
         
     
@@ -193,7 +197,12 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
             for(auto key_value : _current_allocations)
             {
                 if (!((key_value.second.machines & machine).is_empty())){
-                    _my_kill_jobs.push_back((*_workload)[key_value.first]);
+                    Job * job_ref = (*_workload)[key_value.first];
+                    auto msg = new batsched_tools::Job_Message;
+                    msg->id = key_value.first;
+                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                    _my_kill_jobs.insert(std::make_pair(job_ref,msg));
+                   
                     BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
                 }
             }
@@ -217,13 +226,18 @@ void easy_bf_fast2::on_machine_instant_down_up(double date){
         for(auto key_value : _current_allocations)   
 	    {
 		    if (!((key_value.second.machines & machine).is_empty())){
-                	_my_kill_jobs.push_back((*_workload)[key_value.first]);
+                     Job * job_ref = (*_workload)[key_value.first];
+                    auto msg = new batsched_tools::Job_Message;
+                    msg->id = key_value.first;
+                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                    _my_kill_jobs.insert(std::make_pair(job_ref,msg));
+                	
 	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
             }
 	    }
     }
 }
-void easy_bf_fast2::on_job_fault_notify_event(double date, std::string job){
+/*void easy_bf_fast2::on_job_fault_notify_event(double date, std::string job){
     std::unordered_set<std::string>::const_iterator found = _running_jobs.find(job);
   //LOG_F(INFO,"on_job_fault_notify_event called");
   if ( found != _running_jobs.end() )    
@@ -231,6 +245,7 @@ void easy_bf_fast2::on_job_fault_notify_event(double date, std::string job){
   else
       LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
 }
+*/
 
 void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
 {
@@ -441,7 +456,7 @@ bool easy_bf_fast2::handle_newly_finished_jobs()
                 _nb_available_machines += finished_job->nb_requested_resources;
                 _current_allocations.erase(ended_job_id);
                 _running_jobs.erase(ended_job_id);
-                _my_kill_jobs.remove((*_workload)[ended_job_id]);
+                _my_kill_jobs.erase((*_workload)[ended_job_id]);
                 _horizons.erase(alloc.horizon_it);
         }
     }
@@ -460,9 +475,11 @@ bool easy_bf_fast2::handle_newly_finished_jobs()
 void easy_bf_fast2::handle_new_jobs_to_kill(double date)
 {
      if(!_my_kill_jobs.empty()){
-         std::vector<std::string> kills;
-        for( Job* kill:_my_kill_jobs)
-            kills.push_back(kill->id);
+        std::vector<batsched_tools::Job_Message *> kills;
+        for( auto job_msg_pair:_my_kill_jobs)
+        {
+            kills.push_back(job_msg_pair.second);
+        }
         _decision->add_kill_job(kills,date);
         _my_kill_jobs.clear();
     }
@@ -1023,7 +1040,8 @@ void easy_bf_fast2::handle_resubmission(double date)
  for(const auto & killed_map:_jobs_killed_recently)
     {
         std::string killed_job=killed_map.first;
-        double progress = killed_map.second;
+        batsched_tools::Job_Message * msg = killed_map.second;
+        double progress = msg->progress;
         //LOG_F(INFO,"REPAIR  progress: %f",progress);
         auto start = killed_job.find("!")+1;
         auto end = killed_job.find("#");

@@ -19,9 +19,9 @@ public:
 
     void add_execute_job(const std::string &job_id, const IntervalSet & machine_ids, double date,
                          std::vector<int> executor_to_allocated_resource_mapping = {});
-    void handle_resubmission(std::unordered_map<std::string,double> recently_killed_jobs,Workload * workload,double date);
+    void handle_resubmission(std::unordered_map<std::string,batsched_tools::Job_Message *> recently_killed_jobs,Workload * workload,double date);
     void add_reject_job(const std::string &job_id, double date);
-    void add_kill_job(const std::vector<std::string> & job_ids, double date);
+    void add_kill_job(const std::vector<batsched_tools::Job_Message *> & job_msgs, double date);
 
     /**
      * @brief add_submit_jobs
@@ -70,11 +70,11 @@ public:
 
 
 private:
-    void get_meta_data_from_delay(std::pair<std::string,double> killed_map, 
+    void get_meta_data_from_delay(std::pair<std::string,batsched_tools::Job_Message *> killed_map, 
                                                         rapidjson::Document & profile_doc,
                                                         rapidjson::Document & job_doc,
                                                         Workload * w0);
-    void get_meta_data_from_parallel_homogeneous(std::pair<std::string,double> killed_map,
+    void get_meta_data_from_parallel_homogeneous(std::pair<std::string,batsched_tools::Job_Message *> killed_map,
                                                         rapidjson::Document & profile_doc,
                                                         rapidjson::Document & job_doc,
                                                         Workload* w0);

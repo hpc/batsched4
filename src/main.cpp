@@ -6,12 +6,15 @@
 #include <unordered_map>
 #include <fstream>
 #include <set>
+#include <utility>
 
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 
 #include <rapidjson/document.h>
+
+#include <rapidjson/writer.h>
 
 #include <loguru.hpp>
 
@@ -30,6 +33,7 @@
 #include "pempek_assert.hpp"
 #include "data_storage.hpp"
 #include "batsched_tools.hpp"
+#include "machine.hpp"
 
 
 /*
@@ -484,6 +488,13 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 myWorkloads._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                 
+                Machines * machines = new Machines;
+                LOG_F(INFO,"line 489");
+                for(const rapidjson::Value & resource : event_data["compute_resources"].GetArray())
+                {
+                    machines->add_machine_from_json_object(resource);
+                }
+                algo->set_machines(machines);
                 workload._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
                 workload._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
                 workload._checkpointing_interval = event_data["config"]["checkpointing_interval"].GetDouble();
@@ -493,13 +504,14 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 workload._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                 workload._seed_failures = event_data["config"]["seed-failures"].GetBool();
+                workload._queue_depth = event_data["config"]["scheduler-queue-depth"].GetInt();
                 LOG_F(INFO, "before set workloads");
                 algo->set_workloads(&myWorkloads);
             LOG_F(INFO, "after set workloads");
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
-                algo->on_simulation_start(current_date, event_data["config"]);
+                algo->on_simulation_start(current_date, event_data);
             }
             else if (event_type == "SIMULATION_ENDS")
             {
@@ -510,12 +522,14 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             {
                 LOG_F(INFO,"DEBUG");
                 string job_id = event_data["job_id"].GetString();
-
+                 LOG_F(INFO,"DEBUG");
                 if (redis_enabled)
                     workload.add_job_from_redis(redis, job_id, current_date);
                 else
                     workload.add_job_from_json_object(event_data,job_id,current_date);
+                 LOG_F(INFO,"DEBUG");
                 algo->on_job_release(current_date, {job_id});
+                 LOG_F(INFO,"DEBUG");
             }
             else if (event_type == "JOB_COMPLETED")
             {
@@ -536,18 +550,45 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             else if (event_type == "JOB_KILLED")
             {
                 LOG_F(INFO,"DEBUG");
-                const r::Value & job_ids_map = event_data["job_progress"];
-                PPK_ASSERT_ERROR(job_ids_map.GetType() == r::kObjectType);
+                const r::Value & job_msgs = event_data["job_msgs"];
+                PPK_ASSERT_ERROR(event_data["job_msgs"].IsArray());
+                LOG_F(INFO,"DEBUG");
+                std::unordered_map<std::string,batsched_tools::Job_Message *> job_msgs_map;
 
-                std::unordered_map<std::string,double> job_ids;
-
-                for (auto itr = job_ids_map.MemberBegin(); itr != job_ids_map.MemberEnd(); ++itr)
+                for (auto itr = job_msgs.Begin(); itr != job_msgs.End(); ++itr)
                 {
-                    string job_id = itr->name.GetString();
-                    job_ids.insert({job_id,itr->value["progress"].GetDouble()});
+                    LOG_F(INFO,"DEBUG");
+                    batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
+                    msg->id = (*itr)["id"].GetString();
+                    LOG_F(INFO,"DEBUG");
+                    msg->forWhat = static_cast<batsched_tools::KILL_TYPES>((*itr)["forWhat"].GetInt());
+                    const r::Value & job_progress = (*itr)["job_progress"];
+                    r::StringBuffer sb;
+                    r::Writer<r::StringBuffer> writer(sb);
+                    job_progress.Accept(writer);
+                    msg->progress_str = sb.GetString();
+                    
+                    
+                    LOG_F(INFO,"DEBUG");
+                    LOG_F(INFO,"DEBUG");
+                    //job_progress.CopyFrom( itr->value["job_progress"].,doc.GetAllocator());                    
+                    r::Document d;
+                    d.Parse(sb.GetString());
+                    LOG_F(INFO,"DEBUG");
+
+                    while( !(d.HasMember("progress")))
+                    {
+                        PPK_ASSERT_ERROR(d.HasMember("current_task"),"While traversing the job_progress rapidjson of a JOB_KILLED event there was no 'progress' or 'current_task'");
+                        d["current_task"].Accept(writer);
+                        
+                        d.Parse(sb.GetString());
+                    }
+                    LOG_F(INFO,"DEBUG");
+                    msg->progress = d["progress"].GetDouble();
+                    job_msgs_map.insert(std::make_pair(msg->id,msg));
                 }
 
-                algo->on_job_killed(current_date, job_ids);
+                algo->on_job_killed(current_date, job_msgs_map);
             }
             else if (event_type == "REQUESTED_CALL")
             {
