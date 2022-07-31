@@ -38,8 +38,8 @@ void Machines::add_machine_from_json_object(const rapidjson::Value & object){
     }
     PPK_ASSERT_ERROR(m.size()==2,"Machine name should be any characters followed by at least one letter followed by numbers.  This should generate a regex match of size 2.  "
         "This is not the case with machine '%s'",new_machine->name.c_str());
-    new_machine->id = std::stoi(m.str());
-    new_machine->prefix = new_machine->name.substr(0,m.position());
+    new_machine->id = std::stoi(m[1]);
+    new_machine->prefix = new_machine->name.substr(0,m.position(1));
     
 
 
