@@ -21,7 +21,11 @@ void Machines::add_machine_from_json_object(const rapidjson::Value & object){
     PPK_ASSERT_ERROR(object.HasMember("name"),"machine has no name");
     new_machine->name = object["name"].GetString();
     
-    std::regex r("[0-9]+");
+    std::regex r(".*[a-zA-Z]+([0-9]+)");//all characters then at least one letter, then capture all numbers
+    //matches m[0](m[1])[not matched]  a30b(109)  @d(309)   b(12)   ab(309)[bc] 
+    //non-matches [1089]  --no characters
+    //non-matches [bbb@], [ccbb]  --no numbers
+    
     std::smatch m;
     //std::regex_match(new_machine->name, m, r);
     //new_machine->id = std::stoi(m.str(m.size()));
@@ -32,6 +36,8 @@ void Machines::add_machine_from_json_object(const rapidjson::Value & object){
     {
         m = *i;
     }
+    PPK_ASSERT_ERROR(m.size()==2,"Machine name should be any characters followed by at least one letter followed by numbers.  This should generate a regex match of size 2.  "
+        "This is not the case with machine '%s'",new_machine->name.c_str());
     new_machine->id = std::stoi(m.str());
     new_machine->prefix = new_machine->name.substr(0,m.position());
     
@@ -46,7 +52,26 @@ void Machines::add_machine_from_json_object(const rapidjson::Value & object){
     PPK_ASSERT_ERROR(object.HasMember("repair-time"),"machine %s has no repair-time",new_machine->name.c_str());
     new_machine->repair_time = object["repair-time"].GetDouble();
 
-    _machinesM[new_machine->name] = new_machine;
-    _machinesV.push_back(new_machine);
+    _machinesM[new_machine->name] = new_machine; //all machines in a map.  Can get the machine if you know the machine name
+    _machinesV.push_back(new_machine);//all machines in a vector.  can get machines by index.
+    //_machinesByPrefix  // all machines separated by prefix name into maps separated by machine id.
+    //check if the prefix has already been made
+    if (_machinesByPrefix.count(new_machine->prefix) == 1)
+    {
+        //the prefix has already been made
+        //get the map associated with that prefix and add the machine
+        std::map<int,Machine *>* aMap=_machinesByPrefix.at(new_machine->prefix);
+        (*aMap)[new_machine->id]=new_machine;
+
+    }
+    else
+    {
+        //the prefix has not already been made
+        //make a new map and add the machine to that map
+        std::map<int,Machine *> * aMap = new std::map<int,Machine *>;
+        (*aMap)[new_machine->id]=new_machine;
+        _machinesByPrefix[new_machine->prefix]=aMap;
+
+    }
 }
     

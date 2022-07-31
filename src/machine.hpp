@@ -27,6 +27,7 @@ class Machines{
             void add_machine_from_json_object(const rapidjson::Value & object);
     private:
         std::map<std::string,Machine *> _machinesM;
+        std::map<std::string,std::map<int,Machine *> *> _machinesByPrefix;
         std::vector<Machine *> _machinesV;
 
 };
