@@ -505,6 +505,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                 workload._seed_failures = event_data["config"]["seed-failures"].GetBool();
                 workload._queue_depth = event_data["config"]["scheduler-queue-depth"].GetInt();
+                workload._subtract_progress_from_walltime = event_data["config"]["subtract-progress-from-walltime"].GetBool();
                 LOG_F(INFO, "before set workloads");
                 algo->set_workloads(&myWorkloads);
             LOG_F(INFO, "after set workloads");

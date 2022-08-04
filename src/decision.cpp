@@ -291,7 +291,8 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
             if (num_checkpoints_completed > 0)
             {
                 LOG_F(INFO,"job %s num_checkpoints_completed: %d",job_to_queue->id.c_str(),num_checkpoints_completed);
-                if (job_to_queue->walltime > 0 && job_doc.HasMember("walltime")) //if we have checkpointed, the walltime can be reduced.  Reduce by the num of checkpoints
+                //if we have checkpointed, the walltime can be reduced.  Reduce by the num of checkpoints. if _subtract_progress_from_walltime is false, skip
+                if (job_to_queue->walltime > 0 && job_doc.HasMember("walltime") && w0->_subtract_progress_from_walltime) 
                 {
                     LOG_F(INFO,"decision line 288");
                     job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
@@ -416,7 +417,12 @@ void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched
             //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
             if (num_checkpoints_completed > 0)
             {
-                
+                //if we have checkpointed, the walltime can be reduced.  Reduce by the num of checkpoints. if _subtract_progress_from_walltime is false, skip
+                if (job_to_queue->walltime > 0 && job_doc.HasMember("walltime") && w0->_subtract_progress_from_walltime) 
+                {
+                    job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
+                                         (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time) - job_to_queue->read_time));
+                }
                 double delay = profile_doc["delay"].GetDouble() - progress_time + job_to_queue->read_time;
                 //LOG_F(INFO,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
                 profile_doc["delay"].SetDouble(delay);

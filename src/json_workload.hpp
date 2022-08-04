@@ -85,6 +85,7 @@ public:
     double _checkpointing_interval = -1.0;
     bool _seed_failures = false;
     int _queue_depth = -1;
+    bool _subtract_progress_from_walltime = false;
 private:
     char * _fileContents = nullptr;
     std::map<std::string, Job*> _jobs;
