@@ -308,7 +308,7 @@ Schedule &Schedule::operator=(const Schedule &other)
 
 void Schedule::update_first_slice(Rational current_time)
 {
-    double epsilon = 1e-5;
+    double epsilon = 1e-2;
     auto slice = _profile.begin();
 
     PPK_ASSERT_ERROR(
