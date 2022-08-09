@@ -110,7 +110,7 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,bats
         }
         
         job_doc["subtime"]=date;
-        auto myAlloc = job_doc.GetAllocator();
+        rapidjson::Document::AllocatorType & myAlloc(job_doc.GetAllocator());
         job_doc["submission_times"].PushBack(date,myAlloc);
         
                 
