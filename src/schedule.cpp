@@ -30,6 +30,7 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
     _repair_machines.empty_interval_set();
 }
 
+
 Schedule::Schedule(const Schedule &other)
 {
     *this = other;
@@ -50,6 +51,35 @@ void Schedule::set_now(Rational now){
     
     _now = now;
     }
+}
+void Schedule::set_smallest_and_largest_time_slice_length(Rational length){
+    //first set the smallest and largest to init values
+
+    if (_smallest_time_slice_length == 0 && _largest_time_slice_length == 1e19)
+    {        
+        _smallest_time_slice_length = length;
+        _largest_time_slice_length = length;
+        return;
+    }
+    else
+    {
+        //ok _smallest is no longer 0 and _largest is no longer 1e19
+        if (length < _smallest_time_slice_length && length != 0)
+            _smallest_time_slice_length = length;
+        if (length > _largest_time_slice_length && length < 3.1536e7) // length must be less than a year's seconds, ie not the last time slice
+            _largest_time_slice_length = length;
+        return;
+            
+    }
+    
+    
+}
+Rational Schedule::get_smallest_time_slice_length(){
+    return _smallest_time_slice_length;
+}
+Rational Schedule::get_largest_time_slice_length()
+{
+    return _largest_time_slice_length;
 }
 void Schedule::set_output_svg(std::string output_svg){
     _output_svg = output_svg;
@@ -278,16 +308,18 @@ Schedule &Schedule::operator=(const Schedule &other)
 
 void Schedule::update_first_slice(Rational current_time)
 {
+    double epsilon = 1e-5;
     auto slice = _profile.begin();
 
     PPK_ASSERT_ERROR(
-        current_time >= slice->begin, "current_time=%g, slice->begin=%g", (double)current_time, (double)slice->begin);
+        (current_time + epsilon)>= slice->begin, "current_time=%g, slice->begin=%g", (double)current_time+epsilon, (double)slice->begin);
     PPK_ASSERT_ERROR(
-        current_time <= slice->end, "current_time=%g, slice->end=%g", (double)current_time, (double)slice->end);
+        current_time <= (slice->end+epsilon), "current_time=%g, slice->end=%g", (double)current_time, (double)slice->end+epsilon);
 
     Rational old_time = slice->begin;
     slice->begin = current_time;
     slice->length = slice->end - slice->begin;
+
     for (auto it = slice->allocated_jobs.begin(); it != slice->allocated_jobs.end(); ++it)
     {
         const Job *job_ref = (it->first);
@@ -1326,11 +1358,13 @@ bool Schedule::split_slice(Schedule::TimeSliceIterator slice_to_split, Rational 
 
         new_slice.begin = date;
         new_slice.length = new_slice.end - new_slice.begin;
+        set_smallest_and_largest_time_slice_length(new_slice.length);
         PPK_ASSERT_ERROR(new_slice.length > 0);
 
         // Let's reduce the existing slice length
         slice_to_split->end = date;
         slice_to_split->length = slice_to_split->end - slice_to_split->begin;
+        set_smallest_and_largest_time_slice_length(slice_to_split->length);
         PPK_ASSERT_ERROR(slice_to_split->length > 0);
 
         // Let's insert the new_slice just after slice_to_split
@@ -1594,8 +1628,17 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
     auto last_finite_slice = _profile.end();
     --last_finite_slice;
 
-    const Rational second_width = 10;
-    const Rational machine_height = 10;
+    Rational second_width = 8;
+    const Rational smallest_length = _smallest_time_slice_length;
+    const Rational total_seconds = last_finite_slice->begin - _profile.begin()->begin;
+    if ((total_seconds* second_width) > 4000)
+        second_width = 8.0/smallest_length;
+    if ((total_seconds * second_width) > 10000)
+        second_width = 10000.0/total_seconds;
+    Rational machine_height = 10;
+    if ((_nb_machines * machine_height) > 4000){
+        machine_height = 3;
+    }
     const Rational space_between_machines_ratio(1, 8);
     PPK_ASSERT_ERROR(space_between_machines_ratio >= 0 && space_between_machines_ratio <= 1);
 
@@ -1620,10 +1663,11 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
         "<title>Schedule</title>\n"
+        "<!-- %g-->\n"
         "<text x=\"5\" y=\"5\" font-size=\"3pt\" fill=\"black\">Frame: %d</text>\n"
         "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
         "<text x=\"100\" y=\"5\" font-size=\"2pt\" fill=\"black\">%s</text>\n",
-        (double)img_width, (double)height+20,_output_number,(double)sim_time,message.c_str());
+        (double)img_width, (double)height+20,(double)smallest_length,_output_number,(double)sim_time,message.c_str());
 
 
     string res = buf;
@@ -1649,7 +1693,7 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
             machine_color = "#DDDDDD";
 
         snprintf(buf, buf_size,
-            "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:none; fill:%s;\"/>\n" , (double)0,
+            "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke=\"none\" fill=\"%s\"/>\n" , (double)0,
             (double)(i * machine_height), (double)width, (double)machine_height, machine_color.c_str());
         res += buf;
     }
@@ -1692,6 +1736,7 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
             auto previous_slice_it = slice_it;
             --previous_slice_it;
             std::string job_id = job->id;
+            job_id = job_id.substr(job_id.find("!")+1,job_id.size());
              if (job->purpose=="reservation")
                 {
                     job_id+=" R";
@@ -1708,14 +1753,14 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
                     - (space_between_machines_ratio * machine_height) - y0;
                 Rational rect_height = rect_y1 - rect_y0;
                 
-               
+                double stroke_width = (double)std::min(std::max((Rational)(std::min(second_width, machine_height) / 10),(Rational)0.1),(Rational)0.5);//nothing less than 0.1, nothing greater than 0.5
                     
                 snprintf(buf, buf_size,
-                    "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" style=\"stroke:black; stroke-width=%g; "
-                    "fill:%s;\"/>\n"
+                    "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke=\"black\" stroke-width=\"%g\" "
+                    "fill=\"%s\"/>\n"
                     " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
                     (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
-                    (double)(std::min(second_width, machine_height) / 10), rect_color.c_str(),(double)(rect_x0+1),(double)(rect_y0+4),(int)2,job_id.c_str());
+                    stroke_width, rect_color.c_str(),(double)(rect_x0+1),(double)(rect_y0+2),(int)2,job_id.c_str());
 
                 res += buf;
             }
@@ -1757,15 +1802,16 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
                 - (space_between_machines_ratio * machine_height) - y0;
             Rational rect_height = rect_y1 - rect_y0;
             std::string job_id = job->id;
+            job_id = job_id.substr(job_id.find("!")+1);
             
             if (job->purpose=="reservation")
                 job_id+=" R";
             snprintf(buf, buf_size,
                 "  <rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke-width=\".3\" stroke-dasharray=\"3,3\" " 
-                "style=\"stroke:black; fill:%s; fill-opacity:0.4\"/>\n"
+                "stroke=\"black\" fill=\"%s\" fill-opacity=\"0.4\"/>\n"
                 " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n",
                 (double)rect_x0, (double)rect_y0, (double)rect_width, (double)rect_height,
-                rect_color.c_str(),(double)(rect_x0+1),(double)(rect_y0+4),(int)2,job_id.c_str()); 
+                rect_color.c_str(),(double)(rect_x0+1),(double)(rect_y0+2),(int)2,job_id.c_str()); 
             res += buf;
         }
 
@@ -1779,7 +1825,7 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
         LOG_F(INFO,"DEBUG");
         snprintf(buf, buf_size,
             "<rect x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\" stroke-width=\".3\" stroke-dasharray=\"10,10,5,5,5,10\" " 
-                "style=\"stroke:black; fill:%s; fill-opacity:0.6\"/>\n"
+                "stroke=\"black\" fill=\"%s\" fill-opacity=\"0.6\"/>\n"
                 " <text x=\"%g\" y=\"%g\" font-size=\"%dpx\">%s</text>\n", (double)0,
             (double)(i * machine_height), (double)width, (double)machine_height, "#ce7000",
             ((double)width)/2 - 10,(double)(i*machine_height)+(double)((machine_height/2.0)+(machine_height/4.0)),(int)(machine_height/2),("m "+std::to_string(i)).c_str());
@@ -2043,6 +2089,8 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
 
                     pit->begin = previous->begin;
                     pit->length = pit->end - pit->begin;
+                    set_smallest_and_largest_time_slice_length(pit->length);
+                    
 
                     // pit is updated to ensure --pit points to a valid location after erasure
                     pit = _profile.erase(previous);
@@ -2077,6 +2125,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
 
                         pit->begin = previous->begin;
                         pit->length = pit->end - pit->begin;
+                        set_smallest_and_largest_time_slice_length(pit->length);
 
                         // pit is updated to ensure --pit points to a valid location after erasure
                         pit = _profile.erase(previous);
@@ -2103,6 +2152,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
 
                         pit->begin = previous->begin;
                         pit->length = pit->end - pit->begin;
+                        set_smallest_and_largest_time_slice_length(pit->length);
 
                         // pit is updated to ensure --pit points to a valid location after erasure
                         pit = _profile.erase(previous);

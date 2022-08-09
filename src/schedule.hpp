@@ -71,6 +71,28 @@ public:
     void remove_job_all_occurences(const Job * job);
     void remove_job_first_occurence(const Job * job);
     void remove_job_last_occurence(const Job * job);
+   
+    
+    JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
+                               bool assert_insertion_successful = true);
+    
+    
+    
+    //CCU-LANL additions start
+    
+    IntervalSet add_repair_machines(IntervalSet machines);
+    IntervalSet remove_repair_machines(IntervalSet machines);
+    ReservedTimeSlice reserve_time_slice(const Job * job);
+    void add_reservation(ReservedTimeSlice reservation);
+    void find_least_impactful_fit(JobAlloc * alloc, TimeSliceIterator begin_slice, TimeSliceIterator end_slice,IMPACT_POLICY policy);
+    JobAlloc add_job_first_fit_after_time_slice(const Job * job,
+                                                std::list<TimeSlice>::iterator first_time_slice,
+                                                ResourceSelector * selector,
+                                                bool assert_insertion_successful = true);
+    JobAlloc add_job_first_fit_after_time(const Job * job,
+                                          Rational date,
+                                          ResourceSelector * selector,
+                                          bool assert_insertion_successful = true);
     void add_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be );
     void remove_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be);
     void set_output_svg(std::string output_svg);
@@ -86,28 +108,19 @@ public:
                                                 std::list<TimeSlice>::iterator first_time_slice,
                                                 ResourceSelector * selector,
                                                 bool assert_insertion_successful = true);
-    JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
-                               bool assert_insertion_successful = true);
-    IntervalSet add_repair_machines(IntervalSet machines);
-    IntervalSet remove_repair_machines(IntervalSet machines);
-    ReservedTimeSlice reserve_time_slice(const Job * job);
-    void add_reservation(ReservedTimeSlice reservation);
-    void find_least_impactful_fit(JobAlloc * alloc, TimeSliceIterator begin_slice, TimeSliceIterator end_slice,IMPACT_POLICY policy);
-    JobAlloc add_job_first_fit_after_time_slice(const Job * job,
-                                                std::list<TimeSlice>::iterator first_time_slice,
-                                                ResourceSelector * selector,
-                                                bool assert_insertion_successful = true);
-    JobAlloc add_job_first_fit_after_time(const Job * job,
-                                          Rational date,
-                                          ResourceSelector * selector,
-                                          bool assert_insertion_successful = true);
     int get_number_of_running_jobs();
     void get_jobs_running_on_machines(IntervalSet machines, std::vector<std::string>& jobs_running_on_machines);
     void get_jobs_running_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_running_on_machines);
     void get_jobs_affected_on_machines(IntervalSet machines, std::vector<std::string>& jobs_affected_on_machines);
     void get_jobs_affected_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_affected_on_machines);
+    Rational get_smallest_time_slice_length();
+    Rational get_largest_time_slice_length();
+    void set_smallest_and_largest_time_slice_length(Rational length);
     IntervalSet which_machines_are_allocated_in_time_slice(TimeSliceIterator slice,IntervalSet machine);
     std::vector<std::string> get_reservations_running_on_machines(IntervalSet machines);
+
+    //CCU-LANL additions end
+
 
   // The coveted query_wait method, bringing an answer (as a double, defined as
   // time away from now) to the question "when will I be able to schedule a job
@@ -164,8 +177,9 @@ private:
     void remove_job_internal(const Job * job, TimeSliceIterator removal_point);
 
 private:
-    // The profile is a list of timeslices and a set of job allocations
+    
     Rational _now = 0;
+    // The profile is a list of timeslices and a set of job allocations
     std::list<TimeSlice> _profile;
     int _size = 0;
     int _nb_jobs_size = 0;
@@ -183,6 +197,8 @@ private:
     std::vector<std::string> _colors;
     std::vector<std::string> _reservation_colors;
     IntervalSet _repair_machines;
+    Rational _smallest_time_slice_length=0;
+    Rational _largest_time_slice_length=1e19;
 };
 
 /**
