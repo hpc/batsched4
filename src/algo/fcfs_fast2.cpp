@@ -71,6 +71,7 @@ void FCFSFast2::on_simulation_start(double date,
     generator.seed(seed);
     generator2.seed(seed);
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
+    LOG_F(INFO,"_available_machines %d",_available_machines.size());
     _nb_available_machines = _nb_machines;
     //LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
@@ -204,6 +205,7 @@ void FCFSFast2::on_machine_down_for_repair(double date){
                     msg->id = key_value.first;
                     msg->forWhat = batsched_tools::KILL_TYPES::NONE;
                     _my_kill_jobs.insert(std::make_pair(job_ref,msg));
+                    LOG_F(INFO,"Killing Job: %s",key_value.first.c_str());
                     BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
                 }
             }
@@ -331,7 +333,7 @@ void FCFSFast2::make_decisions(double date,
     SortableJobOrder::UpdateInformation *update_info,
     SortableJobOrder::CompareInformation *compare_info)
 {
-   //LOG_F(INFO,"Line 322   fcfs_fast2.cpp");
+   LOG_F(INFO,"Line 322   fcfs_fast2.cpp");
     (void) update_info;
     (void) compare_info;
     std::vector<int> mapping = {0};
@@ -378,8 +380,12 @@ void FCFSFast2::make_decisions(double date,
         }
             // was not a 1 resource job, do things normally
         else{
-                _available_machines.insert(_current_allocations[ended_job_id]);
-                _nb_available_machines += finished_job->nb_requested_resources;
+                IntervalSet machines_to_add = _current_allocations[ended_job_id];
+                machines_to_add-=_unavailable_machines;
+                _available_machines.insert(machines_to_add);
+
+                _available_machines-=_unavailable_machines;
+                _nb_available_machines += machines_to_add.size();
                 _current_allocations.erase(ended_job_id);
                 _running_jobs.erase(ended_job_id);
                 _my_kill_jobs.erase((*_workload)[ended_job_id]);
@@ -395,6 +401,7 @@ void FCFSFast2::make_decisions(double date,
          std::vector<batsched_tools::Job_Message *> kills;
         for( auto job_msg_pair:_my_kill_jobs)
         {
+            LOG_F(INFO,"adding kill job %s",job_msg_pair.first->id.c_str());
             kills.push_back(job_msg_pair.second);
         }
         _decision->add_kill_job(kills,date);
@@ -448,6 +455,7 @@ void FCFSFast2::make_decisions(double date,
                 {
                     
                     //first get a machine
+                    LOG_F(INFO,"here");
                     IntervalSet machines = _available_machines.left(1);
                     
                     _decision->add_execute_job(pending_job_id,machines,date,mapping);
@@ -467,6 +475,7 @@ void FCFSFast2::make_decisions(double date,
             }
             else if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
+                LOG_F(INFO,"here");
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
                 _decision->add_execute_job(pending_job->id,
@@ -542,8 +551,9 @@ void FCFSFast2::make_decisions(double date,
                 // there were no available core machines to put it on, try to put on a new core machine
                 if (found == false && _nb_available_machines > 0)
                 {
-                    //LOG_F(INFO,"Line 519  fcfs_fast2.cpp");
+                    LOG_F(INFO,"Line 519  fcfs_fast2.cpp");
                     //first get a machine
+                    
                     IntervalSet machines = _available_machines.left(1);
                     //LOG_F(INFO,"Line 522  fcfs_fast2.cpp");
                     _decision->add_execute_job(pending_job_id,machines,date,mapping);
@@ -569,7 +579,7 @@ void FCFSFast2::make_decisions(double date,
             }
             else if (pending_job->nb_requested_resources <= _nb_available_machines)
             {
-                //LOG_F(INFO,"Line 543  fcfs_fast2.cpp"); 
+                LOG_F(INFO,"Line 543  fcfs_fast2.cpp"); 
                 IntervalSet machines = _available_machines.left(
                     pending_job->nb_requested_resources);
                 _decision->add_execute_job(pending_job->id,
@@ -658,6 +668,7 @@ void FCFSFast2::make_decisions(double date,
                 {
                     
                     //first get a machine
+                    LOG_F(INFO,"here");
                     IntervalSet machines = _available_machines.left(1);
                     
                     _decision->add_execute_job(new_job_id,machines,date,mapping);
@@ -679,6 +690,7 @@ void FCFSFast2::make_decisions(double date,
             } // do things normally, we don't have share-packing or job isn't 1 resource
             else if (new_job->nb_requested_resources <= _nb_available_machines)
             {
+                LOG_F(INFO,"here");
                 IntervalSet machines = _available_machines.left(
                     new_job->nb_requested_resources);
                 _decision->add_execute_job(new_job->id,

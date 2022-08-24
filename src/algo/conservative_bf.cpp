@@ -5,6 +5,7 @@
 #include "../pempek_assert.hpp"
 #include "../batsched_tools.hpp"
 #include <chrono>
+#include <ctime>
 #define B_LOG_INSTANCE _myBLOG
 using namespace std;
 
@@ -404,11 +405,13 @@ void ConservativeBackfilling::make_decisions(double date,
     
     // Let's remove finished jobs from the schedule
     // not including killed jobs
-    
+    time_t start = time(NULL);
     for (const string & ended_job_id : _jobs_ended_recently)
     {
         _schedule.remove_job_if_exists((*_workload)[ended_job_id]);
     }
+    time_t end = time(NULL);
+    
     
     LOG_F(INFO,"after jobs ended");
     // Let's handle recently released jobs
@@ -453,7 +456,7 @@ void ConservativeBackfilling::make_decisions(double date,
         _schedule.output_to_svg("make_decisions");
     // Queue sorting
     _queue->sort_queue(update_info, compare_info);
-    LOG_F(INFO,"queue: %s",_queue->to_string().c_str());
+    //LOG_F(INFO,"queue: %s",_queue->to_string().c_str());
     _reservation_queue->sort_queue(update_info,compare_info);
     for ( auto job_message_pair : _jobs_killed_recently)
     {
@@ -462,12 +465,16 @@ void ConservativeBackfilling::make_decisions(double date,
         _resubmitted_jobs[separation.next_resubmit_string]=job_message_pair.second->forWhat;
     }
     
+   
+    
     //take care of killed jobs and reschedule jobs
     //lifecycle of killed job:
     //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
     // it is the third invocation that this function should run 
+    
     handle_killed_jobs(recently_queued_jobs,date);
     
+   // LOG_F(ERROR,"handle_killed_jobs time: %d",end-start);
     auto compare_reservations = [this](const std::string j1,const std::string j2)->bool{
             Job * job1= (*_workload)[j1];
             Job * job2= (*_workload)[j2];
@@ -484,11 +491,13 @@ void ConservativeBackfilling::make_decisions(double date,
     //insert reservations into schedule whether jobs have finished or not
     handle_reservations(recently_released_reservations,recently_queued_jobs,date);
     
-
+    
     for(batsched_tools::KILL_TYPES forWhat : _on_machine_instant_down_ups)
     {
         on_machine_instant_down_up(forWhat,date);
     }
+    
+    //LOG_F(ERROR,"on_machine_instant_down_up time: %d",end-start);
     _on_machine_instant_down_ups.clear();
     for(batsched_tools::KILL_TYPES forWhat : _on_machine_down_for_repairs)
     {
@@ -497,9 +506,13 @@ void ConservativeBackfilling::make_decisions(double date,
     _on_machine_down_for_repairs.clear();
     
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
+    //end=time(NULL);
+    //LOG_F(ERROR,"resubmission time: %d",end-start);
+    //start=time(NULL);
 
     handle_schedule(recently_queued_jobs,date);
-   
+   //end=time(NULL);
+   //LOG_F(ERROR,"handle_schedule time: %d",end-start);
 
 
 
@@ -518,14 +531,14 @@ void ConservativeBackfilling::make_decisions(double date,
         _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
     /*
     
-    LOG_F(INFO,"res_queue %s",_reservation_queue->to_string().c_str());
+    //LOG_F(INFO,"res_queue %s",_reservation_queue->to_string().c_str());
     */
 
    //this is what normally has to happen to end the simulation
     if (!_killed_jobs && _jobs_killed_recently.empty() && _queue->is_empty() && _reservation_queue->is_empty() && _schedule.size() == 0 &&
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
     {
-        LOG_F(INFO,"finished_submitting_jobs sent");
+      //  LOG_F(INFO,"finished_submitting_jobs sent");
         _decision->add_scheduler_finished_submitting_jobs(date);
         if (_output_svg == "all" || _output_svg == "short")
             _schedule.output_to_svg("Simulation Finished");
@@ -533,36 +546,36 @@ void ConservativeBackfilling::make_decisions(double date,
         _output_svg = "none";
         _need_to_send_finished_submitting_jobs = false;
     }
-    LOG_F(INFO,"!killed= %d  jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
-    !_killed_jobs,_jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
-             _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
+    //LOG_F(INFO,"!killed= %d  jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
+    //!_killed_jobs,_jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
+    //         _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
     //if there are jobs that can't run then we need to start rejecting them at this point
     if (!_killed_jobs && _jobs_killed_recently.empty() && _reservation_queue->is_empty() && _schedule.size() == 0 &&
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
     {
-        LOG_F(INFO,"here");
+      //  LOG_F(INFO,"here");
         bool able=false; //this will stay false unless there is a job that can run
         auto previous_to_end = _schedule.end();
         previous_to_end--;
         for (auto itr = _queue->begin();itr!=_queue->end();++itr)
         {
-             LOG_F(INFO,"here");
+        //     LOG_F(INFO,"here");
             
             if ((*itr)->job->nb_requested_resources <= previous_to_end->available_machines.size())
                 able=true;
-             LOG_F(INFO,"here");
+          //   LOG_F(INFO,"here");
         }
         if (!able)
         {
-             LOG_F(INFO,"here");
+            // LOG_F(INFO,"here");
             //ok we are not able to run things, start rejecting the jobs
             for ( auto itr = _queue->begin();itr!=_queue->end();++itr)
             {
-                 LOG_F(INFO,"here");
-                LOG_F(INFO,"Rejecting job %s",(*itr)->job->id.c_str());
+              //   LOG_F(INFO,"here");
+              //  LOG_F(INFO,"Rejecting job %s",(*itr)->job->id.c_str());
                 _decision->add_reject_job((*itr)->job->id,date);
                 itr=_queue->remove_job(itr);
-                 LOG_F(INFO,"here");
+                // LOG_F(INFO,"here");
             }
         }
         
@@ -603,7 +616,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
                     break;
                 
                 const Job * new_job = (*_workload)[new_job_id];
-                LOG_F(INFO,"DEBUG line 321");
+                //LOG_F(INFO,"DEBUG line 321");
                     
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector,false);
 
@@ -634,7 +647,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
                 if (_workload->_queue_depth != -1 && scheduled >=_workload->_queue_depth)
                     break;
                 const Job * new_job = (*_workload)[new_job_id];
-                LOG_F(INFO,"DEBUG line 337");
+                //LOG_F(INFO,"DEBUG line 337");
                     
                 Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector,false);
 
@@ -675,7 +688,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
             _schedule.remove_job_if_exists(job);
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
-            LOG_F(INFO,"DEBUG line 375");
+            //LOG_F(INFO,"DEBUG line 375");
             Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector,false);   
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
@@ -724,17 +737,17 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
             else
                 return j1.first->submission_times[0] < j2.first->submission_times[0];
     };
-    LOG_F(INFO,"killed_jobs %d",_killed_jobs);
+    //LOG_F(INFO,"killed_jobs %d",_killed_jobs);
     LOG_F(INFO,"line 385 _resubmitted_jobs.size %d",_resubmitted_jobs.size());
             std::string resub_jobs_str;
             for( auto mypair : _resubmitted_jobs)
             {
                 resub_jobs_str += mypair.first +",";
             }
-            LOG_F(INFO,"line 811 resub_jobs: %s",resub_jobs_str.c_str());
+    //        LOG_F(INFO,"line 811 resub_jobs: %s",resub_jobs_str.c_str());
     if (_killed_jobs && !_resubmitted_jobs.empty())
     {
-        LOG_F(INFO,"killed_jobs !_jobs_release empty");
+      //  LOG_F(INFO,"killed_jobs !_jobs_release empty");
         if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::AFFECTED)
         {
             //first we take care of sorting out resubmitted jobs from the
@@ -852,7 +865,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
         }
         if (_reschedule_policy == Schedule::RESCHEDULE_POLICY::ALL)
         {
-            LOG_F(INFO,"handle killed jobs sched_policy all");
+        //    LOG_F(INFO,"handle killed jobs sched_policy all");
             //first we take care of sorting out resubmitted jobs from the
             //regular submitted jobs, since we will be handling the resubmitted jobs                      
             std::vector<std::string> recently_queued_jobs2;
@@ -872,17 +885,17 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
             }
             //set the recently_queued_jobs to a vector without the resubmitted jobs
             recently_queued_jobs = recently_queued_jobs2;
-            LOG_F(INFO,"line 385 _resubmitted_jobs.size %d",_resubmitted_jobs.size());
+          //  LOG_F(INFO,"line 385 _resubmitted_jobs.size %d",_resubmitted_jobs.size());
             
             for( auto mypair : _resubmitted_jobs)
             {
                 resub_jobs_str += mypair.first +",";
             }
-            LOG_F(INFO,"line 811 resub_jobs: %s",resub_jobs_str.c_str());
+            //LOG_F(INFO,"line 811 resub_jobs: %s",resub_jobs_str.c_str());
             //have all the resubmitted_jobs come back?
             if (_resubmitted_jobs.empty())
             {
-                LOG_F(INFO,"line 389");
+              //  LOG_F(INFO,"line 389");
                 // _resubmitted_jobs_released should now contain all the resubmitted jobs
 
                 //we have a sorted queue including the resubmitted jobs.   
@@ -893,14 +906,14 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                         _schedule.output_to_svg("CONSERVATIVE_BF started removing");
                 for (auto job_it = _queue->begin(); job_it != _queue->end();++job_it )
                 {
-                    LOG_F(INFO,"job: %s ",(*job_it)->job->id.c_str());
+                //    LOG_F(INFO,"job: %s ",(*job_it)->job->id.c_str());
                     //jobs that were affected by the reservation won't be in the schedule
                     //so we must use the _if_exists version
                     _schedule.remove_job_if_exists((*job_it)->job);
                 }
                 if (_output_svg == "all")
                         _schedule.output_to_svg("CONSERVATIVE_BF finished removing, adding them back in");
-                LOG_F(INFO,"line 402");
+                //LOG_F(INFO,"line 402");
                 //so, only the jobs running right now that weren't affected by the reservation
                 //and the reservation itself and other reservations are still in the schedule
                 //now add everything else back to the schedule
@@ -947,12 +960,12 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                     else
                         _start_a_reservation = true;
                 }
-                LOG_F(INFO,"line 429");
+                //LOG_F(INFO,"line 429");
             }
         }
         if (_resubmitted_jobs.empty())
         {
-            LOG_F(INFO,"Setting _killed_jobs to false");
+            //LOG_F(INFO,"Setting _killed_jobs to false");
             _saved_reservations.clear();
             _killed_jobs = false;
         }
