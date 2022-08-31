@@ -38,7 +38,9 @@
 
 /*
 #include "algo/crasher.hpp"
+*/
 #include "algo/easy_bf.hpp"
+/*
 #include "algo/easy_bf_fast.hpp"
 #include "algo/easy_bf_plot_liquid_load_horizon.hpp"
 #include "algo/energy_bf.hpp"
@@ -295,8 +297,10 @@ int main(int argc, char ** argv)
         
         else if (scheduling_variant == "crasher")
             algo = new Crasher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
-        else if (scheduling_variant == "easy_bf")
+        */
+        if (scheduling_variant == "easy_bf")
             algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        /*
         else if (scheduling_variant == "easy_bf_fast")
             algo = new EasyBackfillingFast(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf_plot_liquid_load_horizon")
@@ -389,7 +393,7 @@ int main(int argc, char ** argv)
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
          Workload & workload, bool call_make_decisions_on_single_nop)
 {
-    //LOG_F(INFO,"line 371 main.cpp");
+    LOG_F(INFO,"line 371 main.cpp");
     bool simulation_finished = false;
     myB::Workloads myWorkloads;
     // Redis creation
@@ -399,7 +403,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
     //LOG_F(INFO,"line 378 main.cpp");
     while (!simulation_finished)
     {
-        //LOG_F(INFO,"line 381 main.cpp");
+        LOG_F(INFO,"line 381 main.cpp");
         string received_message;
         n.read(received_message);
         //LOG_F(INFO,"line 384 main.cpp");

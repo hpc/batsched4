@@ -32,10 +32,10 @@ batsched_deps = [
 #    'src/algo/conservative_bf.hpp',
 #    'src/algo/crasher.cpp',
 #    'src/algo/crasher.hpp',
-#    'src/algo/easy_bf.cpp',
+    
 #    'src/algo/easy_bf_fast.cpp',
 #    'src/algo/easy_bf_fast.hpp',
-#    'src/algo/easy_bf.hpp',
+    
 #    'src/algo/easy_bf_plot_liquid_load_horizon.cpp',
 #    'src/algo/easy_bf_plot_liquid_load_horizon.hpp',
 #    'src/algo/energy_bf.cpp',
@@ -82,6 +82,8 @@ batsched_deps = [
 #    'src/algo/conservative_bf.hpp',
 
 src = [
+    'src/algo/easy_bf.cpp',
+    'src/algo/easy_bf.hpp',
     'src/algo/easy_bf_fast2.cpp',
     'src/algo/easy_bf_fast2.hpp',
     'src/algo/easy_bf_fast2_holdback.cpp',
