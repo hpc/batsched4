@@ -484,7 +484,7 @@ void ConservativeBackfilling::make_decisions(double date,
         
     }
 
-    _schedule.output_to_svg("make_decisions - before update_first_slice");
+    
     if (_output_svg == "short")
         _schedule.output_to_svg("make_decisions");
     // Queue sorting
