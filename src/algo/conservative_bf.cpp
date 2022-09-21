@@ -449,9 +449,42 @@ void ConservativeBackfilling::make_decisions(double date,
         }
     }
     
+    //before we update the first slice make sure we have jobs in the schedule other than reservations
+
+    //int schedule_size = _schedule.size() - _schedule.nb_reservations_size();
+    //if (!_killed_jobs && _jobs_killed_recently.empty() && _reservation_queue->is_empty && schedule_size > 0 && _no_more_static_job_to_submit_received)
     
+    //if we have a reservation that needs to be run, first make sure 
+  
     // Let's update the schedule's present
+    
     _schedule.update_first_slice(date);
+    //check if the first slice has a reservation to run
+    if (_start_a_reservation)
+    {
+        Schedule::JobAlloc alloc;
+        std::vector<const Job *> jobs_removed;
+        LOG_F(INFO,"line 322");
+        if(_schedule.remove_reservations_if_ready(jobs_removed))
+        {
+            LOG_F(INFO,"DEBUG line 323");
+                for(const Job * job : jobs_removed)
+                {
+                    LOG_F(INFO,"DEBUG line 326");
+                    alloc = _schedule.add_current_reservation(job,_selector);
+                    LOG_F(INFO,"DEBUG line 328");
+                    _reservation_queue->remove_job(job);
+                    _decision->add_execute_job(alloc.job->id,alloc.used_machines,date);
+                    
+                }
+            //only set this to false if we  remove and execute some reservations
+            //keep true in case it comes back around after a job completes
+            _start_a_reservation = false;
+        }
+        
+    }
+
+    _schedule.output_to_svg("make_decisions - before update_first_slice");
     if (_output_svg == "short")
         _schedule.output_to_svg("make_decisions");
     // Queue sorting
@@ -476,21 +509,33 @@ void ConservativeBackfilling::make_decisions(double date,
     
    // LOG_F(ERROR,"handle_killed_jobs time: %d",end-start);
     auto compare_reservations = [this](const std::string j1,const std::string j2)->bool{
+            
             Job * job1= (*_workload)[j1];
             Job * job2= (*_workload)[j2];
             if (job1->future_allocations.is_empty() && job2->future_allocations.is_empty())
                 return j1 < j2;
             else if (job1->future_allocations.is_empty())
                 return false;  // j1 has no allocation so it must be set up after j2
-            else 
+            else if (job2->future_allocations.is_empty())
                 return true;
-    };
+            else
+                return j1 < j2;
 
-    //sort reservations with jobs that have allocations coming first            
-    std::sort(recently_released_reservations.begin(),recently_released_reservations.end(),compare_reservations);
+    };
+LOG_F(INFO,"here");
+    //sort reservations with jobs that have allocations coming first 
+    if (!recently_released_reservations.empty())           
+    {
+        LOG_F(INFO,"here size: %d",recently_released_reservations.size());
+        for(std::string resv:recently_released_reservations)
+            LOG_F(INFO,"resv: %s",resv.c_str());
+        std::sort(recently_released_reservations.begin(),recently_released_reservations.end(),compare_reservations);
+        handle_reservations(recently_released_reservations,recently_queued_jobs,date);
+    }
+    LOG_F(INFO,"here");
     //insert reservations into schedule whether jobs have finished or not
-    handle_reservations(recently_released_reservations,recently_queued_jobs,date);
     
+    LOG_F(INFO,"here");
     
     for(batsched_tools::KILL_TYPES forWhat : _on_machine_instant_down_ups)
     {
@@ -504,6 +549,7 @@ void ConservativeBackfilling::make_decisions(double date,
         on_machine_down_for_repair(forWhat,date);
     }
     _on_machine_down_for_repairs.clear();
+    LOG_F(INFO,"here");
     
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
     //end=time(NULL);
@@ -515,7 +561,7 @@ void ConservativeBackfilling::make_decisions(double date,
    //LOG_F(ERROR,"handle_schedule time: %d",end-start);
 
 
-
+LOG_F(INFO,"here");
 
 
     // And now let's see if we can estimate some waiting times
@@ -546,6 +592,7 @@ void ConservativeBackfilling::make_decisions(double date,
         _output_svg = "none";
         _need_to_send_finished_submitting_jobs = false;
     }
+    LOG_F(INFO,"here");
     //LOG_F(INFO,"!killed= %d  jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
     //!_killed_jobs,_jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
     //         _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
@@ -745,6 +792,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                 resub_jobs_str += mypair.first +",";
             }
     //        LOG_F(INFO,"line 811 resub_jobs: %s",resub_jobs_str.c_str());
+    LOG_F(INFO,"here");
     if (_killed_jobs && !_resubmitted_jobs.empty())
     {
       //  LOG_F(INFO,"killed_jobs !_jobs_release empty");

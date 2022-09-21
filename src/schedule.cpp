@@ -1,4 +1,5 @@
 #include "schedule.hpp"
+#include <cstdlib>
 
 #include <boost/algorithm/string/join.hpp>
 #include <fstream>
@@ -308,9 +309,11 @@ Schedule &Schedule::operator=(const Schedule &other)
 
 void Schedule::update_first_slice(Rational current_time)
 {
+    
+    
     double epsilon = 1e-5;
     auto slice = _profile.begin();
-
+ 
     PPK_ASSERT_ERROR(
         (current_time + epsilon)>= slice->begin, "current_time=%g, slice->begin=%g", (double)current_time+epsilon, (double)slice->begin);
     PPK_ASSERT_ERROR(
@@ -353,6 +356,9 @@ int Schedule::size(){
 }
 int Schedule::nb_jobs_size(){
     return _nb_jobs_size;
+}
+int Schedule::nb_reservations_size(){
+    return _nb_reservations_size;
 }
 
 void Schedule::remove_job(const Job *job)
@@ -675,6 +681,7 @@ void Schedule::add_reservation(ReservedTimeSlice reservation){
             output_to_svg("top add_reservation "+reservation.job->id);
         
         _size++;
+        _nb_reservations_size++;
         //LOG_F(INFO,"sched_size++ %d",_size);
         const Job * job = reservation.alloc->job;
         //now update all slices between slice_begin and slice_end
@@ -929,7 +936,8 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
         //ok the next timeslice does have a reservation
         //check if it is ready to copy over to the first slice
       //  LOG_F(INFO,"line 640");
-        if (_profile.begin()->begin == slice->begin)
+      Rational epsilon =1e-5;
+        if (abs(_profile.begin()->begin - slice->begin)<=epsilon)
         {
             ready = true;
             //ok they are equal, remove the reservations
@@ -1868,7 +1876,7 @@ void Schedule::output_to_svg(const std::string &message)
     f.close();
     */
    const std::list<ReservedTimeSlice> svg_reservations = _svg_reservations;
-   //LOG_F(INFO,"Frame: %06d %s Sec: %.1f \n %s",_output_number,(double)_profile.begin()->begin,message.c_str(),to_string().c_str());
+   LOG_F(INFO,"Frame: %06d %s Sec: %.1f \n %s",_output_number,(double)_profile.begin()->begin,message.c_str(),to_string().c_str());
    
     write_svg_to_file(buf,message,svg_reservations);
     if (_profile.size()>1)
@@ -2043,6 +2051,8 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
     _size--;
     if (job->purpose!="reservation")
         _nb_jobs_size--;
+    else
+        _nb_reservations_size--;
     //LOG_F(INFO,"sched_size-- %d",_size);
     /*
     //Doing this in the add_repair_machines() function so no longer needed

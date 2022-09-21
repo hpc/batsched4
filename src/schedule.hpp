@@ -156,6 +156,7 @@ public:
     std::list<TimeSlice>::const_iterator begin() const;
     std::list<TimeSlice>::const_iterator end() const;
     int size();
+    int nb_reservations_size();
     int nb_jobs_size();
 
     int nb_slices() const;
@@ -182,6 +183,7 @@ private:
     // The profile is a list of timeslices and a set of job allocations
     std::list<TimeSlice> _profile;
     int _size = 0;
+    int _nb_reservations_size = 0;
     int _nb_jobs_size = 0;
     int _nb_machines;
     bool _debug = false;
