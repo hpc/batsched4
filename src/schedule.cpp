@@ -311,7 +311,7 @@ void Schedule::update_first_slice(Rational current_time)
 {
     
     
-    double epsilon = 1e-5;
+    double epsilon = 1e-4;
     auto slice = _profile.begin();
  
     PPK_ASSERT_ERROR(
@@ -936,7 +936,7 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
         //ok the next timeslice does have a reservation
         //check if it is ready to copy over to the first slice
       //  LOG_F(INFO,"line 640");
-      Rational epsilon =1e-5;
+      Rational epsilon =1e-4;
         if (abs(_profile.begin()->begin - slice->begin)<=epsilon)
         {
             ready = true;
