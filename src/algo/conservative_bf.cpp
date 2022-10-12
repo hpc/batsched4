@@ -45,7 +45,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     
     _output_folder=batsim_config["output-folder"].GetString();
     
-    _output_folder.replace(_output_folder.find("/out"), std::string("/out").size(), "");
+    _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
     
     LOG_F(INFO,"output folder %s",_output_folder.c_str());
     

@@ -1867,14 +1867,14 @@ void Schedule::output_to_svg(const std::string &message)
     
 
     snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
-    //snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
+    snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
     
-    /*ofstream f(buf2);
+    ofstream f(buf2);
     auto first_slice = _profile.begin();
     if (f.is_open())
         f << first_slice->begin;
     f.close();
-    */
+    
    const std::list<ReservedTimeSlice> svg_reservations = _svg_reservations;
    LOG_F(INFO,"Frame: %06d %s Sec: %.1f \n %s",_output_number,(double)_profile.begin()->begin,message.c_str(),to_string().c_str());
    
