@@ -1863,7 +1863,7 @@ void Schedule::output_to_svg(const std::string &message)
 {
     const int bufsize = 4096;
     char *buf = new char[bufsize];
-    //char *buf2 = new char[bufsize];
+    char *buf2 = new char[bufsize];
     
 
     snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
