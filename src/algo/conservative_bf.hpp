@@ -44,6 +44,10 @@ private:
     Queue * _reservation_queue=nullptr;
     std::string _output_folder;
     std::string _output_svg;
+    long _svg_frame_start;
+    long _svg_frame_end;
+    long _svg_output_start;
+    long _svg_output_end;
     Schedule::RESCHEDULE_POLICY _reschedule_policy;
     Schedule::IMPACT_POLICY _impact_policy;
     double _previous_date;
@@ -72,6 +76,7 @@ private:
     std::uniform_int_distribution<int> * unif_distribution;
     std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups;
     std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs;
+
    
     
 

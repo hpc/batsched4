@@ -41,6 +41,10 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     const rapidjson::Value & batsim_config = batsim_event["config"];
     LOG_F(INFO,"ON simulation start");
     _output_svg=batsim_config["output-svg"].GetString();
+    _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
+    _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
+    _svg_output_start = batsim_config["svg-output-start"].GetInt64();
+    _svg_output_end = batsim_config["svg-output-end"].GetInt64();
     LOG_F(INFO,"output svg %s",_output_svg.c_str());
     
     _output_folder=batsim_config["output-folder"].GetString();
@@ -54,6 +58,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
 
     _schedule = Schedule(_nb_machines, date);
     _schedule.set_output_svg(_output_svg);
+    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
    
@@ -1078,6 +1083,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                 
                 //we need to wait on rescheduling if jobs are killed
                 //so check if any jobs need to be killed
+                LOG_F(INFO,"here");
                 if (reservation.jobs_needed_to_be_killed.empty())
                 {//ok no jobs need to be killed, reschedule
                     
@@ -1093,6 +1099,19 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                     _schedule.remove_reservation_for_svg_outline(reservation);
                     Schedule::JobAlloc alloc;
                     //now add the rescheduled jobs in order
+                    LOG_F(INFO,"here vec");
+                    std::stringstream ss;
+                    bool skip=true;
+                    for(auto job : reservation.jobs_to_reschedule)
+                    { 
+                        if(skip)
+                        { 
+                            ss<<" ";
+                            skip=false;
+                        }
+                        ss<< job->id;
+                    }
+                    LOG_F(INFO,"jobs to reschedule: %s",ss.str().c_str());
                     for(auto job : reservation.jobs_to_reschedule)
                     {
                         alloc = _schedule.add_job_first_fit(job,_selector,false);
@@ -1106,7 +1125,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                             }
                         }
                     }
-                   
+                   LOG_F(INFO,"here");
                     //if reservation started in first slice
                     if (reservation.alloc->started_in_first_slice)
                     {

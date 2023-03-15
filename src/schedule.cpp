@@ -8,6 +8,8 @@
 #include <loguru.hpp>
 
 #include "pempek_assert.hpp"
+#include <filesystem>
+
 
 using namespace std;
 
@@ -38,6 +40,8 @@ Schedule::Schedule(const Schedule &other)
 }
 void Schedule::set_svg_prefix(std::string svg_prefix){
     _svg_prefix = svg_prefix;
+    namespace fs = std::filesystem;
+    fs::create_directories(_svg_prefix);
     
 }
 void Schedule::set_now(Rational now){
@@ -95,6 +99,12 @@ void Schedule::set_output_svg(std::string output_svg){
         _debug = false;
         _short_debug = true;
     }
+}
+void Schedule::set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end){
+    _svg_frame_start = frame_start;
+    _svg_frame_end = frame_end;
+    _svg_output_start = output_start;
+    _svg_output_end = output_end;
 }
 void Schedule::set_policies(RESCHEDULE_POLICY r_policy,IMPACT_POLICY i_policy){
     _reschedule_policy = r_policy;
@@ -1672,10 +1682,11 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%g\" height=\"%g\">\n"
         "<title>Schedule</title>\n"
         "<!-- %g-->\n"
-        "<text x=\"5\" y=\"5\" font-size=\"3pt\" fill=\"black\">Frame: %d</text>\n"
-        "<text x=\"50\" y=\"5\" font-size=\"3pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
-        "<text x=\"100\" y=\"5\" font-size=\"2pt\" fill=\"black\">%s</text>\n",
-        (double)img_width, (double)height+20,(double)smallest_length,_output_number,(double)sim_time,message.c_str());
+        "<text x=\"5\" y=\"5\" font-size=\"1pt\" fill=\"black\">Frame: %d</text>\n"
+        "<text x=\"50\" y=\"5\" font-size=\"1pt\" fill=\"black\">Output: %d</text>\n"
+        "<text x=\"100\" y=\"5\" font-size=\"1pt\" fill=\"black\">Sim Time: %g seconds</text>\n"
+        "<text x=\"150\" y=\"5\" font-size=\"1pt\" fill=\"black\">%s</text>\n",
+        (double)img_width, (double)height+20,(double)smallest_length,_frame_number,_output_number,(double)sim_time,message.c_str());
 
 
     string res = buf;
@@ -1861,35 +1872,44 @@ void Schedule::write_svg_to_file(const string &filename,
 
 void Schedule::output_to_svg(const std::string &message)
 {
-    const int bufsize = 4096;
-    char *buf = new char[bufsize];
-    char *buf2 = new char[bufsize];
-    
+    if (_frame_number >= _svg_frame_start && (_frame_number <= _svg_frame_end || _svg_frame_end == -1)){
+        if (_output_number >= _svg_output_start && (_output_number < _svg_output_end || _svg_output_end == -1)){
+            const int bufsize = 4096;
+            char *buf = new char[bufsize];
+            char *buf2 = new char[bufsize];
+            
 
-    snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
-    snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
-    
-    ofstream f(buf2);
-    auto first_slice = _profile.begin();
-    if (f.is_open())
-        f << first_slice->begin;
-    f.close();
-    
-   const std::list<ReservedTimeSlice> svg_reservations = _svg_reservations;
-   LOG_F(INFO,"Frame: %06d %s Sec: %.1f \n %s",_output_number,(double)_profile.begin()->begin,message.c_str(),to_string().c_str());
-   
-    write_svg_to_file(buf,message,svg_reservations);
-    if (_profile.size()>1)
-    {
-        auto slice = _profile.end();
-        slice--;
-        slice--;
-        Rational end = slice->end;
-        if (end > 0 && end != 1e19)
-            _previous_time_end = end;
+            snprintf(buf, bufsize, "%s%06d.svg", _svg_prefix.c_str(), _output_number);
+            snprintf(buf2,bufsize, "%s%06d.txt",_svg_prefix.c_str(),_output_number);
+            
+            ofstream f(buf2);
+            auto first_slice = _profile.begin();
+            if (f.is_open())
+                f << first_slice->begin;
+            f.close();
+            
+            const std::list<ReservedTimeSlice> svg_reservations = _svg_reservations;
+            LOG_F(INFO,"Frame: %06d Output: %06d Sec: %.1f Msg: %s \n %s",_frame_number, _output_number,(double)_profile.begin()->begin,message.c_str(),to_string().c_str());
+        
+            write_svg_to_file(buf,message,svg_reservations);
+            if (_profile.size()>1)
+            {
+                auto slice = _profile.end();
+                slice--;
+                slice--;
+                Rational end = slice->end;
+                if (end > 0 && end != 1e19)
+                    _previous_time_end = end;
+            }
+            
+
+            delete[] buf;
+        }
     }
-    ++_output_number %= 10000000;
-    delete[] buf;
+    if (message=="make_decisions")
+        ++_frame_number %=1000000000;
+    ++_output_number %= 1000000000;
+
 }
 
 void Schedule::dump_to_batsim_jobs_file(const string &filename) const

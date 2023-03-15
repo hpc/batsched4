@@ -97,6 +97,7 @@ public:
     void remove_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be);
     void set_output_svg(std::string output_svg);
     void set_svg_prefix(std::string svg_prefix);
+    void set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end);
     void set_policies(RESCHEDULE_POLICY r_policy, IMPACT_POLICY i_policy);
     void add_svg_highlight_machines(IntervalSet machines);
     bool remove_svg_highlight_machines(IntervalSet machines);
@@ -192,7 +193,8 @@ private:
     std::string _svg_prefix; //the output path of the svg's output when _debug/_short_debug are true
     RESCHEDULE_POLICY _reschedule_policy = RESCHEDULE_POLICY::AFFECTED;  //whether to reschedule only affected jobs or all the jobs after a reservation addition
     IMPACT_POLICY _impact_policy = IMPACT_POLICY::LEAST_KILLING_LARGEST_FIRST;
-    unsigned int _output_number = 0;
+    unsigned int _output_number = 1;
+    unsigned int _frame_number = 1;
     Rational _previous_time_end = 0;
     std::list<ReservedTimeSlice> _svg_reservations;
     IntervalSet _svg_highlight_machines;
@@ -201,6 +203,10 @@ private:
     IntervalSet _repair_machines;
     Rational _smallest_time_slice_length=0;
     Rational _largest_time_slice_length=1e19;
+    long _svg_frame_start = 1;
+    long _svg_frame_end = -1;
+    long _svg_output_start = 1;
+    long _svg_output_end = -1;
 };
 
 /**
