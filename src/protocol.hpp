@@ -60,6 +60,7 @@ public:
                                       const std::string & profile_name,
                                       const std::string & profile_description,
                                       double date) = 0;
+    virtual void append_generic_notification(const std::string &type,const std::string &notify_data,double date) = 0;
 
     /**
      * @brief Appends an EXECUTE_JOB event.
@@ -76,6 +77,7 @@ public:
                                     const IntervalSet & allocated_resources,
                                     double date,
                                     const std::vector<int> & executor_to_allocated_resource_mapping = {}) = 0;
+    
 
     /**
      * @brief Appends a REJECT_JOB event.
@@ -210,6 +212,7 @@ public:
                            const std::string & job_description = "",
                            const std::string & profile_description = "",
                            bool send_profile = true);
+    void append_generic_notification(const std::string &type,const std::string &notify_data,double date);
 
     void append_register_profile(const std::string & workload_name,
                                           const std::string & profile_name,

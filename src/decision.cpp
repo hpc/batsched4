@@ -464,6 +464,11 @@ void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types f
     _proto_writer->append_call_me_later(forWhat,id, future_date, date);
 }
 
+void SchedulingDecision::add_generic_notification(const std::string &type,const std::string & notify_data,double date)
+{
+    _proto_writer->append_generic_notification(type,notify_data,date);
+}
+
 void SchedulingDecision::add_scheduler_finished_submitting_jobs(double date)
 {
     _proto_writer->append_scheduler_finished_submitting_jobs(date);

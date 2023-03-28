@@ -379,6 +379,30 @@ void JsonProtocolWriter::append_call_me_later(batsched_tools::call_me_later_type
 
     _events.PushBack(event, _alloc);
 }
+void JsonProtocolWriter::append_generic_notification(const std::string &type,const std::string &notify_data,double date)
+{
+  /* {
+      "timestamp": 42.0,
+      "type": "NOTIFY",
+      "data": { "type": "queue_size","data":"12" }
+    } */
+    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
+    _last_date = date;
+    _is_empty = false;
+
+    Value data(rapidjson::kObjectType);
+    data.AddMember("type", Value().SetString(type.c_str(), _alloc), _alloc);
+    data.AddMember("data", Value().SetString(notify_data.c_str(), _alloc), _alloc);
+
+    Value event(rapidjson::kObjectType);
+    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
+    event.AddMember("type", Value().SetString("NOTIFY"), _alloc);
+    event.AddMember("data", data, _alloc);
+
+    _events.PushBack(event, _alloc);
+
+
+}
 
 void JsonProtocolWriter::append_scheduler_finished_submitting_jobs(double date)
 {

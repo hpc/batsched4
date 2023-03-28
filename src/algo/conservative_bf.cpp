@@ -633,7 +633,7 @@ LOG_F(INFO,"here");
         
     }
 
-    
+    _decision->add_generic_notification("queue_size",std::to_string(_queue->nb_jobs()),date);
 }
 
 

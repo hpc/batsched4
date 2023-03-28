@@ -54,6 +54,7 @@ public:
     void add_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double future_date, double date);
     void add_scheduler_finished_submitting_jobs(double date);
     void add_scheduler_continue_submitting_jobs(double date);
+    void add_generic_notification(const std::string &type,const std::string &notify_data,double date);
 
     void add_query_energy_consumption(double date);
     void add_answer_estimate_waiting_time(const std::string & job_id,

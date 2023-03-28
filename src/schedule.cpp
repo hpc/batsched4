@@ -1872,6 +1872,7 @@ void Schedule::write_svg_to_file(const string &filename,
 
 void Schedule::output_to_svg(const std::string &message)
 {
+    LOG_F(ERROR,"output_to_svg",message.c_str());
     if (_frame_number >= _svg_frame_start && (_frame_number <= _svg_frame_end || _svg_frame_end == -1)){
         if (_output_number >= _svg_output_start && (_output_number < _svg_output_end || _svg_output_end == -1)){
             const int bufsize = 4096;
