@@ -22,6 +22,7 @@ public:
         IntervalSet available_machines;
         int nb_available_machines;
         std::map<const Job *, IntervalSet, JobComparator> allocated_jobs;
+        //std::map<const Job *, IntervalSet, JobComparator> allocated_reservations;
 
         bool contains_job(const Job * job) const;
         bool contains_matching_job(std::function<bool(const Job *)> matching_function) const;
@@ -116,6 +117,11 @@ public:
     void get_jobs_affected_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_affected_on_machines);
     Rational get_smallest_time_slice_length();
     Rational get_largest_time_slice_length();
+    int get_number_of_running_machines();
+    double get_utilization();
+    double get_utilization_no_resv();
+    IntervalSet get_machines_running_reservations();
+    IntervalSet get_machines_running_reservations_on_slice(TimeSliceIterator slice);
     void set_smallest_and_largest_time_slice_length(Rational length);
     IntervalSet which_machines_are_allocated_in_time_slice(TimeSliceIterator slice,IntervalSet machine);
     std::vector<std::string> get_reservations_running_on_machines(IntervalSet machines);

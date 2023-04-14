@@ -201,6 +201,21 @@ IntervalSet Schedule::which_machines_are_allocated_in_time_slice(TimeSliceIterat
 int Schedule::get_number_of_running_jobs(){
     return _profile.begin()->allocated_jobs.size();
 }
+int Schedule::get_number_of_running_machines(){
+    return int(_nb_machines - _profile.begin()->nb_available_machines );
+}
+double Schedule::get_utilization(){
+    return double(get_number_of_running_machines()) / double(_nb_machines);
+}
+double Schedule::get_utilization_no_resv(){
+    //if first slice has reservations take those machines out of the equation
+    if (_profile.begin()->has_reservation){
+        int resv_machines = get_machines_running_reservations().size();
+        return double(get_number_of_running_machines()-resv_machines)/double(_nb_machines);
+    }
+    else
+        return -1;
+}
 
 void Schedule::get_jobs_running_on_machines(IntervalSet machines,std::vector<std::string>& jobs_running_on_machines){
     for (auto job_interval_pair : _profile.begin()->allocated_jobs)
@@ -306,6 +321,18 @@ std::vector<std::string> Schedule::get_reservations_running_on_machines(Interval
         }
     }
     return reservations_running_on_machines;
+}
+IntervalSet Schedule::get_machines_running_reservations(){
+    return get_machines_running_reservations_on_slice(_profile.begin());
+}
+IntervalSet Schedule::get_machines_running_reservations_on_slice(TimeSliceIterator slice){
+    IntervalSet machines;
+    for (auto job_interval_pair : slice->allocated_jobs)
+    {
+            if (job_interval_pair.first->purpose == "reservation")
+                machines+=job_interval_pair.second;
+    }
+    return machines;
 }
 Schedule &Schedule::operator=(const Schedule &other)
 {
@@ -1872,7 +1899,6 @@ void Schedule::write_svg_to_file(const string &filename,
 
 void Schedule::output_to_svg(const std::string &message)
 {
-    LOG_F(ERROR,"output_to_svg",message.c_str());
     if (_frame_number >= _svg_frame_start && (_frame_number <= _svg_frame_end || _svg_frame_end == -1)){
         if (_output_number >= _svg_output_start && (_output_number < _svg_output_end || _svg_output_end == -1)){
             const int bufsize = 4096;

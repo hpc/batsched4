@@ -314,7 +314,8 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
 }
 void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
 {
-        _schedule.set_now((Rational)date);
+        if (_output_svg != "none")
+            _schedule.set_now((Rational)date);
         switch (forWhat){
             
             case batsched_tools::call_me_later_types::SMTBF:
@@ -398,7 +399,8 @@ void ConservativeBackfilling::make_decisions(double date,
                                              SortableJobOrder::CompareInformation *compare_info)
 {
     
-    _schedule.set_now((Rational)date);
+    if (_output_svg != "none")
+        _schedule.set_now((Rational)date);
     LOG_F(INFO,"make decisions");
     //define a sort function for sorting jobs based on original submit times
     auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
@@ -635,6 +637,9 @@ LOG_F(INFO,"here");
 
     _decision->add_generic_notification("queue_size",std::to_string(_queue->nb_jobs()),date);
     _decision->add_generic_notification("schedule_size",std::to_string(_schedule.size()),date);
+    _decision->add_generic_notification("number_running_jobs",std::to_string(_schedule.get_number_of_running_jobs()),date);
+    _decision->add_generic_notification("utilization",std::to_string(_schedule.get_utilization()),date);
+    _decision->add_generic_notification("utilization_no_resv",std::to_string(_schedule.get_utilization_no_resv()),date);
 }
 
 
@@ -660,7 +665,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
         if (recently_queued_jobs.empty() && !_saved_recently_queued_jobs.empty())
         {
             
-            int scheduled = _schedule.nb_jobs_size();
+            int scheduled = _schedule.nb_jobs_size() - _schedule.get_number_of_running_jobs();
             if(_output_svg == "all")
                 _schedule.output_to_svg("CONSERVATIVE_BF saved queued ADDING");
             for (const string & new_job_id : _saved_recently_queued_jobs)
@@ -692,7 +697,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
         }
         else
         {
-            int scheduled = _schedule.nb_jobs_size();
+            int scheduled = _schedule.nb_jobs_size() - _schedule.get_number_of_running_jobs();
             if(_output_svg == "all")
                 _schedule.output_to_svg("CONSERVATIVE_BF recent queued ADDING");
             for (const string & new_job_id : recently_queued_jobs)
@@ -854,7 +859,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
 
                 //now add the kill jobs
                 int queue_size = _queue->nb_jobs();
-                int scheduled = _schedule.nb_jobs_size();
+                int scheduled = _schedule.nb_jobs_size()-_schedule.get_number_of_running_jobs();
                 for (auto job_forWhat_pair : _resubmitted_jobs_released)
                 {   
                     if (_workload->_queue_depth != -1 && scheduled >=_workload->_queue_depth)
