@@ -8,7 +8,13 @@
 #include <loguru.hpp>
 
 #include "pempek_assert.hpp"
+#if __has_include(<filesystem>)
 #include <filesystem>
+namespace fs = std::fileystem;
+#elif __has_include(<experimental/filesystem>)
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#endif
 
 
 using namespace std;
@@ -40,7 +46,6 @@ Schedule::Schedule(const Schedule &other)
 }
 void Schedule::set_svg_prefix(std::string svg_prefix){
     _svg_prefix = svg_prefix;
-    namespace fs = std::filesystem;
     fs::create_directories(_svg_prefix);
     
 }
