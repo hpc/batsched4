@@ -4,8 +4,13 @@
 #include <fstream>
 #include <vector>
 #include <limits>
-
+#include <regex>
+#include <loguru.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
 
 #include "pempek_assert.hpp"
 
@@ -41,9 +46,10 @@ void Workload::set_rjms_delay(Rational rjms_delay)
 
 void Workload::add_job_from_json_object(const Value &object, const string & job_id, double submission_time)
 {
-    Job * job = job_from_json_object(object);
+    Job * job = job_from_json_object(object["job"],object["profile"]);
     job->id = job_id;
     job->submission_time = submission_time;
+
 
     // Let's apply the RJMS delay on the job
     job->walltime += _rjms_delay;
@@ -123,11 +129,14 @@ Job *Workload::job_from_json_object(const Value &object)
     j->has_walltime = true;
     j->nb_requested_resources = object["res"].GetInt();
     j->unique_number = _job_number++;
+    j->checkpoint_interval = -1.0;
 
     if (object.HasMember("walltime"))
     {
         PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");
+        
         j->walltime = object["walltime"].GetDouble();
+        LOG_F(INFO,"walltime %g",(double)j->walltime);
     }
 
     PPK_ASSERT_ERROR(j->walltime == -1 || j->walltime > 0,
@@ -136,7 +145,64 @@ Job *Workload::job_from_json_object(const Value &object)
 
     if (j->walltime == -1)
         j->has_walltime = false;
+    if (object.HasMember("cores"))
+    {
+        PPK_ASSERT_ERROR(object["cores"].IsInt(), "Invalid json object: 'cores' member is not an integer");
+        j->cores = object["cores"].GetInt();
+    }
+    if (object.HasMember("purpose"))
+    {
+        PPK_ASSERT_ERROR(object["purpose"].IsString(), "Invalid json object: 'purpose' member is not a string");
+        j->purpose = object["purpose"].GetString();
+    }
+    if (object.HasMember("start"))
+    {
+        PPK_ASSERT_ERROR(object["start"].IsNumber(), "Invalid json object: 'start' member is not a number");
+        j->start = object["start"].GetDouble();
+    }
+    if (object.HasMember("profile"))
+    {
 
+    }
+    if (object.HasMember("alloc"))
+    {
+        PPK_ASSERT_ERROR(object["alloc"].IsString(), "Invalid json object: 'alloc' member is not a string");
+        j->future_allocations = IntervalSet::from_string_hyphen(object["alloc"].GetString()," ","-");
+    }
+    else
+        j->future_allocations = IntervalSet::empty_interval_set(); //make this empty if no allocation
+    
+    if (object.HasMember("submission_times"))
+    {
+        const Value & submission_times = object["submission_times"];
+        for (const auto& time : submission_times.GetArray())
+            j->submission_times.push_back(time.GetDouble());
+    }
+    if (object.HasMember("dumptime"))
+    {
+        j->dump_time = object["dumptime"].GetDouble();
+    }
+    if (object.HasMember("readtime"))
+    {
+        j->read_time = object["readtime"].GetDouble();
+    }
+    if (object.HasMember("checkpoint_interval"))
+    {
+        j->checkpoint_interval = object["checkpoint_interval"].GetDouble();
+    }
+    StringBuffer buffer;
+    rapidjson::Writer<StringBuffer> writer(buffer);
+    object.Accept(writer);
+
+    j->json_description = buffer.GetString();
+    
+    return j;
+}
+Job *Workload::job_from_json_object(const Value &job_object,const Value &profile_object)
+{
+    Job * j = job_from_json_object(job_object);
+    
+    j->profile = myBatsched::Profile::from_json(j->id,profile_object);
     return j;
 }
 

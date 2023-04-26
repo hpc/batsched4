@@ -19,6 +19,7 @@ SortableJobOrder::UpdateInformation::~UpdateInformation()
 
 }
 
+
 SortableJobOrder::~SortableJobOrder()
 {
 
@@ -39,6 +40,10 @@ FCFSOrder::~FCFSOrder()
 {
 
 }
+OriginalFCFSOrder::~OriginalFCFSOrder()
+{
+
+}
 
 bool FCFSOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
 {
@@ -51,6 +56,21 @@ bool FCFSOrder::compare(const SortableJob *j1, const SortableJob *j2, const Sort
 }
 
 void FCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
+{
+    (void) job;
+    (void) info;
+}
+bool OriginalFCFSOrder::compare(const SortableJob *j1, const SortableJob *j2, const SortableJobOrder::CompareInformation *info) const
+{
+    (void) info;
+
+    if (j1->release_dates[0] == j2->release_dates[0])
+        return j1->job->id < j2->job->id;
+    else
+        return j1->release_dates[0] < j2->release_dates[0];
+}
+
+void OriginalFCFSOrder::updateJob(SortableJob *job, const SortableJobOrder::UpdateInformation *info) const
 {
     (void) job;
     (void) info;
@@ -235,6 +255,7 @@ void Queue::append_job(const Job *job, SortableJobOrder::UpdateInformation *upda
 {
     SortableJob * sjob = new SortableJob;
     sjob->job = job;
+    sjob->release_dates = job->submission_times;
     sjob->release_date = update_info->current_date;
 
     _jobs.push_back(sjob);
@@ -352,5 +373,18 @@ std::list<SortableJob *>::const_iterator Queue::begin() const
 std::list<SortableJob *>::const_iterator Queue::end() const
 {
     return _jobs.end();
+}
+Queue& Queue::operator=(const Queue&  other){
+    _order = other._order;
+    _jobs = other._jobs;
+    return *this;
+    
+}
+
+//this function was meant for our conservative_bf using reservations
+//we added an OriginalFCFSOrder instead
+void Queue::set_release_date_on_job(std::list<SortableJob *>::iterator job_it,Rational release_date){
+    SortableJob * sjob = *job_it;
+    sjob->release_date = release_date;
 }
 

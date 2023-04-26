@@ -10,6 +10,7 @@ struct SortableJob
 {
     const Job * job;
     Rational release_date;
+    std::vector<double> release_dates;
     Rational slowdown;
     Rational bounded_slowdown;
 
@@ -20,9 +21,10 @@ struct SortableJob
 class SortableJobOrder
 {
 public:
+    
     struct CompareInformation
     {
-        virtual ~CompareInformation() = 0;
+       virtual ~CompareInformation() = 0;
     };
 
     struct UpdateInformation
@@ -43,6 +45,13 @@ class FCFSOrder : public SortableJobOrder
 {
 public:
     ~FCFSOrder();
+    bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
+    void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
+};
+class OriginalFCFSOrder : public SortableJobOrder
+{
+public:
+    ~OriginalFCFSOrder();
     bool compare(const SortableJob * j1, const SortableJob * j2, const CompareInformation * info = nullptr) const;
     void updateJob(SortableJob * job, const UpdateInformation * info = nullptr) const;
 };
@@ -117,7 +126,7 @@ public:
     std::list<SortableJob *>::iterator remove_job(const Job * job);
     std::list<SortableJob *>::iterator remove_job(std::list<SortableJob *>::iterator job_it);
     void sort_queue(SortableJobOrder::UpdateInformation * update_info, SortableJobOrder::CompareInformation * compare_info = nullptr);
-
+    void set_release_date_on_job(std::list<SortableJob *>::iterator job_it ,Rational release_date);
     const Job * first_job() const;
     const Job * first_job_or_nullptr() const;
     bool contains_job(const Job * job) const;
@@ -133,6 +142,7 @@ public:
 
     std::list<SortableJob *>::const_iterator begin() const;
     std::list<SortableJob *>::const_iterator end() const;
+    Queue &operator=(const Queue& other);
 
 private:
     std::list<SortableJob *> _jobs;

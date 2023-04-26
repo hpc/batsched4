@@ -6,8 +6,8 @@
 #include <map>
 
 #include <rapidjson/document.h>
+
 #include <intervalset.hpp>
-#include "batsched_tools.hpp"
 
 struct BatsimContext;
 
@@ -60,7 +60,6 @@ public:
                                       const std::string & profile_name,
                                       const std::string & profile_description,
                                       double date) = 0;
-    virtual void append_generic_notification(const std::string &type,const std::string &notify_data,double date) = 0;
 
     /**
      * @brief Appends an EXECUTE_JOB event.
@@ -77,7 +76,6 @@ public:
                                     const IntervalSet & allocated_resources,
                                     double date,
                                     const std::vector<int> & executor_to_allocated_resource_mapping = {}) = 0;
-    
 
     /**
      * @brief Appends a REJECT_JOB event.
@@ -93,7 +91,7 @@ public:
      *                    Must be in the RUNNING state (COMPLETED jobs are ignored).
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_kill_job(const std::vector<batsched_tools::Job_Message *> & job_msgs,
+    virtual void append_kill_job(const std::vector<std::string> & job_ids,
                                  double date) = 0;
 
     /**
@@ -122,7 +120,7 @@ public:
      *            Must be greater than date.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_call_me_later(batsched_tools::call_me_later_types forWhat,int id, double future_date,
+    virtual void append_call_me_later(double future_date,
                                       double date) = 0;
 
     /**
@@ -130,8 +128,6 @@ public:
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
     virtual void append_scheduler_finished_submitting_jobs(double date) = 0;
-
-    virtual void append_scheduler_continue_submitting_jobs(double date) = 0;
 
 
     // Management functions
@@ -212,7 +208,6 @@ public:
                            const std::string & job_description = "",
                            const std::string & profile_description = "",
                            bool send_profile = true);
-    void append_generic_notification(const std::string &type,const std::string &notify_data,double date);
 
     void append_register_profile(const std::string & workload_name,
                                           const std::string & profile_name,
@@ -249,7 +244,7 @@ public:
      *                    Must be in the RUNNING state (COMPLETED jobs are ignored).
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_kill_job(const std::vector<batsched_tools::Job_Message *> & job_msgs,
+    void append_kill_job(const std::vector<std::string> & job_ids,
                          double date);
 
     /**
@@ -278,7 +273,7 @@ public:
      *            Must be greater than date.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date,
+    void append_call_me_later(double future_date,
                               double date);
 
     /**
@@ -287,7 +282,6 @@ public:
      */
     void append_scheduler_finished_submitting_jobs(double date);
 
-    void append_scheduler_continue_submitting_jobs(double date);
     // Management functions
     /**
      * @brief Clears inner content. Should be called directly after generate_current_message.

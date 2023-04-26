@@ -37,7 +37,17 @@ bool BasicResourceSelector::fit(const Job *job, const IntervalSet &available, In
 
     return false;
 }
+bool BasicResourceSelector::fit_reservation(const Job *job, const IntervalSet &available, IntervalSet &allocated)
+{
+    if (job->nb_requested_resources <= (int) available.size())
+    {
+        allocated = job->future_allocations;
+        PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources,"allocated size %d  requested %d",allocated.size(),(unsigned int)job->nb_requested_resources);
+        return true;
+    }
 
+    return false;
+}
 void BasicResourceSelector::select_resources_to_sedate(int nb_resources, const IntervalSet &available, const IntervalSet &potentially_sedated, IntervalSet &to_sedate)
 {
     (void) available;
@@ -86,6 +96,17 @@ bool ContiguousResourceSelector::fit(const Job *job, const IntervalSet &availabl
             PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources);
             return true;
         }
+    }
+
+    return false;
+}
+bool ContiguousResourceSelector::fit_reservation(const Job *job, const IntervalSet &available, IntervalSet &allocated)
+{
+    if (job->nb_requested_resources <= (int) available.size())
+    {
+        allocated = job->future_allocations;
+        PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources);
+        return true;
     }
 
     return false;
@@ -271,6 +292,17 @@ bool LimitedRangeResourceSelector::fit(const Job *job, const IntervalSet &availa
     if (job->nb_requested_resources <= (int) limited_available.size())
     {
         allocated = limited_available.left(job->nb_requested_resources);
+        PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources);
+        return true;
+    }
+
+    return false;
+}
+bool LimitedRangeResourceSelector::fit_reservation(const Job *job, const IntervalSet &available, IntervalSet &allocated)
+{
+    if (job->nb_requested_resources <= (int) available.size())
+    {
+        allocated = job->future_allocations;
         PPK_ASSERT_ERROR(allocated.size() == (unsigned int)job->nb_requested_resources);
         return true;
     }

@@ -5,9 +5,6 @@
 
 #include "decision.hpp"
 #include "queue.hpp"
-#include "external/batsched_workload.hpp"
-#include "batsched_tools.hpp"
-#include "machine.hpp"
 
 /**
  * @brief The base abstract class of (scheduling & machine state) decision algorithms
@@ -65,7 +62,7 @@ public:
      * @param[in] date The date at which the jobs have been killed
      * @param[in] job_ids The identifiers of the jobs which have been finished
      */
-    virtual void on_job_killed(double date, const std::unordered_map<std::string,batsched_tools::Job_Message *> & job_msgs);
+    virtual void on_job_killed(double date, const std::vector<std::string> & job_ids);
 
     /**
      * @brief This function is called when the power state of some machines have been changed
@@ -79,7 +76,7 @@ public:
      * @brief This function is called when a REQUESTED_CALL message is received
      * @param[in] date The date at which the REQUESTED_CALL message have been received
      */
-    virtual void on_requested_call(double date, int id, batsched_tools::call_me_later_types forWhat);
+    virtual void on_requested_call(double date);
 
     /**
      * @brief This function is called when the no_more_static_job_to_submit
@@ -113,9 +110,7 @@ public:
      * @param[in] machines The machines whose availability has changed.
      */
     virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);
-    
-    virtual void on_job_fault_notify_event(double date, std::string job);   //*********************added
-    virtual void on_myKillJob_notify_event(double date);
+
     /**
      * @brief This function is called when a QUERY message about estimating waiting time of potential jobs is received.
      * @param[in] date The date at which the QUERY message has been received
@@ -151,14 +146,9 @@ public:
      * @details This function should be called between make_decisions calls!
      */
     void clear_recent_data_structures();
-    virtual void set_workloads(myBatsched::Workloads *w);
-    virtual void set_machines(Machines *m);
-    
 
 protected:
-    
     Workload * _workload;
-    Machines * _machines;
     SchedulingDecision * _decision;
     Queue * _queue;
     ResourceSelector * _selector;
@@ -172,7 +162,7 @@ protected:
 protected:
     std::vector<std::string> _jobs_released_recently;
     std::vector<std::string> _jobs_ended_recently;
-    std::unordered_map<std::string, batsched_tools::Job_Message *> _jobs_killed_recently;
+    std::vector<std::string> _jobs_killed_recently;
     std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently;
     std::map<int, IntervalSet> _machines_whose_pstate_changed_recently;
     IntervalSet _machines_that_became_available_recently;

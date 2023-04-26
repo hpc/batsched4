@@ -4,7 +4,6 @@
 #include <rapidjson/writer.h>
 
 #include "pempek_assert.hpp"
-#include "batsched_tools.hpp"
 
 using namespace rapidjson;
 using namespace std;
@@ -91,6 +90,23 @@ void JsonProtocolWriter::append_register_job(const string &job_id,
       "type": "REGISTER_JOB",
       "data": {
         "job_id": "w12!45",
+      }
+    }
+    With redis: {
+      "timestamp": 10.0,
+      "type": "REGISTER_JOB",
+      "data": {
+        "job_id": "dyn!my_new_job",
+        "job":{
+          "profile": "delay_10s",
+          "res": 1,
+          "id": "my_new_job",
+          "walltime": 12.0
+        },
+        "profile":{
+          "type": "delay",
+          "delay": 10
+        }
       }
     } */
 
@@ -195,7 +211,6 @@ void JsonProtocolWriter::append_execute_job(const string &job_id,
     _is_empty = false;
 
     Value data(rapidjson::kObjectType);
-   
     data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
     data.AddMember("alloc", Value().SetString(allocated_resources.to_string_hyphen(" ", "-").c_str(), _alloc), _alloc);
 
@@ -246,33 +261,26 @@ void JsonProtocolWriter::append_reject_job(const string &job_id,
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_kill_job(const vector<batsched_tools::Job_Message *> &job_msgs,
+void JsonProtocolWriter::append_kill_job(const vector<string> &job_ids,
                                          double date)
 {
     /* {
       "timestamp": 10.0,
       "type": "KILL_JOB",
-      "data": {"job_ids": [{"id":"w0!1","forWhat": 1},{"id":"w0!2","forWhat": 3}]}
+      "data": {"job_ids": ["w0!1", "w0!2"]}
     } */
 
     PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
     _last_date = date;
     _is_empty = false;
 
-    Value job_msgs_array(rapidjson::kArrayType);
-    //not sure how this next line works, so not doing it
-    //job_ids_array.Reserve(job_msgs.size(), _alloc);
-    for (batsched_tools::Job_Message * job_msg : job_msgs)
-    {
-        Value job_msg_json(rapidjson::kObjectType);
-        job_msg_json.AddMember("id",Value().SetString(job_msg->id.c_str(),_alloc),_alloc);
-        job_msg_json.AddMember("forWhat",Value().SetInt(static_cast<int>(job_msg->forWhat)),_alloc);
-        job_msgs_array.PushBack(job_msg_json, _alloc);
-
-    }
+    Value job_ids_array(rapidjson::kArrayType);
+    job_ids_array.Reserve(job_ids.size(), _alloc);
+    for (const string & job_id : job_ids)
+        job_ids_array.PushBack(Value().SetString(job_id.c_str(), _alloc), _alloc);
 
     Value data(rapidjson::kObjectType);
-    data.AddMember("job_msgs", job_msgs_array, _alloc);
+    data.AddMember("job_ids", job_ids_array, _alloc);
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);
@@ -337,13 +345,13 @@ void JsonProtocolWriter::append_set_job_metadata(const string & job_id,
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_call_me_later(batsched_tools::call_me_later_types forWhat,int id,double future_date,
+void JsonProtocolWriter::append_call_me_later(double future_date,
                                               double date)
 {
     /* {
       "timestamp": 10.0,
       "type": "CALL_ME_LATER",
-      "data": {"timestamp": 25.5,"id":2,"forWhat":3}
+      "data": {"timestamp": 25.5}
     } */
 
     PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
@@ -352,8 +360,6 @@ void JsonProtocolWriter::append_call_me_later(batsched_tools::call_me_later_type
 
     Value data(rapidjson::kObjectType);
     data.AddMember("timestamp", Value().SetDouble(future_date), _alloc);
-    data.AddMember("id", Value().SetInt(id), _alloc);
-    data.AddMember("forWhat", Value().SetInt((int)forWhat), _alloc);
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);
@@ -361,30 +367,6 @@ void JsonProtocolWriter::append_call_me_later(batsched_tools::call_me_later_type
     event.AddMember("data", data, _alloc);
 
     _events.PushBack(event, _alloc);
-}
-void JsonProtocolWriter::append_generic_notification(const std::string &type,const std::string &notify_data,double date)
-{
-  /* {
-      "timestamp": 42.0,
-      "type": "NOTIFY",
-      "data": { "type": "queue_size","data":"12" }
-    } */
-    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value data(rapidjson::kObjectType);
-    data.AddMember("type", Value().SetString(type.c_str(), _alloc), _alloc);
-    data.AddMember("data", Value().SetString(notify_data.c_str(), _alloc), _alloc);
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("NOTIFY"), _alloc);
-    event.AddMember("data", data, _alloc);
-
-    _events.PushBack(event, _alloc);
-
-
 }
 
 void JsonProtocolWriter::append_scheduler_finished_submitting_jobs(double date)
@@ -401,29 +383,6 @@ void JsonProtocolWriter::append_scheduler_finished_submitting_jobs(double date)
 
     Value data(rapidjson::kObjectType);
     data.AddMember("type", Value().SetString("registration_finished", _alloc), _alloc);
-
-    Value event(rapidjson::kObjectType);
-    event.AddMember("timestamp", Value().SetDouble(date), _alloc);
-    event.AddMember("type", Value().SetString("NOTIFY"), _alloc);
-    event.AddMember("data", data, _alloc);
-
-    _events.PushBack(event, _alloc);
-}
-
-void JsonProtocolWriter::append_scheduler_continue_submitting_jobs(double date)
-{
-    /* {
-      "timestamp": 42.0,
-      "type": "NOTIFY",
-      "data": { "type": "continue_registration" }
-    } */
-
-    PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
-    _last_date = date;
-    _is_empty = false;
-
-    Value data(rapidjson::kObjectType);
-    data.AddMember("type", Value().SetString("continue_registration", _alloc), _alloc);
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);

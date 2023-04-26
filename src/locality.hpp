@@ -10,6 +10,7 @@ public:
     virtual ~ResourceSelector();
 
     virtual bool fit(const Job * job, const IntervalSet & available, IntervalSet & allocated) = 0;
+    virtual bool fit_reservation(const Job * job, const IntervalSet & available, IntervalSet & allocated) = 0;
     virtual void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate) = 0;
     virtual void select_resources_to_awaken(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken) = 0;
     virtual void select_resources_to_awaken_to_make_job_fit(const Job * job, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken) = 0;
@@ -22,6 +23,7 @@ public:
     ~BasicResourceSelector();
 
     bool fit(const Job * job, const IntervalSet & available, IntervalSet & allocated);
+    bool fit_reservation(const Job *job, const IntervalSet &available, IntervalSet &allocated);
     void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate);
     void select_resources_to_awaken(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken);
     void select_resources_to_awaken_to_make_job_fit(const Job * job, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken);
@@ -34,6 +36,7 @@ public:
     ~ContiguousResourceSelector();
 
     bool fit(const Job * job, const IntervalSet & available, IntervalSet & allocated);
+    bool fit_reservation(const Job *job, const IntervalSet &available, IntervalSet &allocated);
     void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate);
     void select_resources_to_awaken(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken);
     void select_resources_to_awaken_to_make_job_fit(const Job * job, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken);
@@ -47,6 +50,7 @@ public:
     ~LimitedRangeResourceSelector();
 
     bool fit(const Job *job, const IntervalSet &available, IntervalSet &allocated);
+    bool fit_reservation(const Job *job, const IntervalSet &available, IntervalSet &allocated);
     void select_resources_to_sedate(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_sedated, IntervalSet & to_sedate);
     void select_resources_to_awaken(int nb_resources, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken);
     void select_resources_to_awaken_to_make_job_fit(const Job * job, const IntervalSet & available, const IntervalSet & potentially_awaken, IntervalSet & to_awaken);
