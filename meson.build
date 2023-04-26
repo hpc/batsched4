@@ -80,6 +80,8 @@ batsched_deps = [
 #    'src/algo/fcfs_fast2.hpp',
 #    'src/algo/conservative_bf.cpp',
 #    'src/algo/conservative_bf.hpp',
+#    'src/data_storage.cpp',
+#    'src/data_storage.hpp'
 
 src = [
     'src/algo/easy_bf.cpp',
@@ -94,8 +96,6 @@ src = [
     'src/algo/conservative_bf.hpp',
     'src/batsched_tools.cpp',
     'src/batsched_tools.hpp',
-    'src/data_storage.cpp',
-    'src/data_storage.hpp',
     'src/decision.cpp',
     'src/decision.hpp',
     'src/exact_numbers.hpp',
