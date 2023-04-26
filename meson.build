@@ -96,6 +96,8 @@ src = [
     'src/algo/conservative_bf.hpp',
     'src/batsched_tools.cpp',
     'src/batsched_tools.hpp',
+    'src/data_storage.cpp',
+    'src/data_storage.hpp',
     'src/decision.cpp',
     'src/decision.hpp',
     'src/exact_numbers.hpp',
