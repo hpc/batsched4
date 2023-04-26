@@ -72,6 +72,7 @@ void Submitter::on_simulation_start(double date, const rapidjson::Value & batsim
     PPK_ASSERT_ERROR(batsim_config["dynamic-jobs-enabled"].GetBool(),
             "This algorithm only works if dynamic job are enabled!");
     dyn_submit_ack = batsim_config["dynamic-jobs-acknowledged"].GetBool();
+    redis_enabled = batsim_config["redis-enabled"].GetBool();
 }
 
 void Submitter::on_simulation_end(double date)

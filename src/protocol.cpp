@@ -92,6 +92,23 @@ void JsonProtocolWriter::append_register_job(const string &job_id,
       "data": {
         "job_id": "w12!45",
       }
+    }
+    With redis: {
+      "timestamp": 10.0,
+      "type": "REGISTER_JOB",
+      "data": {
+        "job_id": "dyn!my_new_job",
+        "job":{
+          "profile": "delay_10s",
+          "res": 1,
+          "id": "my_new_job",
+          "walltime": 12.0
+        },
+        "profile":{
+          "type": "delay",
+          "delay": 10
+        }
+      }
     } */
 
     PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");

@@ -5,6 +5,7 @@
 #include <rapidjson/document.h>
 
 #include "exact_numbers.hpp"
+#include "data_storage.hpp"
 #include <intervalset.hpp>
 #include "./external/batsched_profile.hpp"
 
@@ -62,6 +63,7 @@ public:
 
     void set_rjms_delay(Rational rjms_delay);
 
+    void add_job_from_redis(RedisStorage &storage, const std::string & job_id, double submission_time);
     void add_job_from_json_object(const rapidjson::Value & object, const std::string & job_id, double submission_time);
     void add_job_from_json_description_string(const std::string & json_string, const std::string & job_id, double submission_time);
 

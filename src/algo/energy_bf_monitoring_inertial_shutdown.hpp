@@ -2,8 +2,6 @@
 
 #include "energy_bf_monitoring_period.hpp"
 
-#include <fstream>
-
 class EnergyBackfillingMonitoringInertialShutdown : public EnergyBackfillingMonitoringPeriod
 {
 public:

@@ -44,6 +44,7 @@ private:
     bool set_job_metadata = false; //! If set to true, metadata will be associated to jobs when they are submitted.
 
     bool dyn_submit_ack;
+    bool redis_enabled;
     bool finished_submitting_sent = false;
 
     std::set<std::string> profiles_already_sent;
