@@ -4,6 +4,9 @@
 #include <string>
 #include <cstdarg>
 #include <cstdio>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fstream>
 
 
 
@@ -41,6 +44,18 @@ namespace batsched_tools{
     struct tools{
         static id_separation separate_id(const std::string job_id);
     };
+
+    struct memInfo{
+        unsigned long long total,free,available,used;
+    };
+    memInfo get_node_memory_usage();
+    pid_t get_batsched_pid();
+    struct pid_mem{
+      unsigned long long USS=0;
+      unsigned long long PSS=0;  
+      unsigned long long RSS=0;
+    };
+    pid_mem get_pid_memory_usage(pid_t pid);
 }
 
 

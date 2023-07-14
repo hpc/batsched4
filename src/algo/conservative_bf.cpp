@@ -38,6 +38,8 @@ ConservativeBackfilling::~ConservativeBackfilling()
 
 void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
+    pid_t pid = batsched_tools::get_batsched_pid();
+    _decision->add_generic_notification("PID",std::to_string(pid),date);
     const rapidjson::Value & batsim_config = batsim_event["config"];
     LOG_F(INFO,"ON simulation start");
     _output_svg=batsim_config["output-svg"].GetString();

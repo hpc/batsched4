@@ -41,6 +41,8 @@ easy_bf_fast2::~easy_bf_fast2()
 void easy_bf_fast2::on_simulation_start(double date,
     const rapidjson::Value &batsim_event_data)
 {
+    pid_t pid = batsched_tools::get_batsched_pid();
+    _decision->add_generic_notification("PID",std::to_string(pid),date);
     bool seedFailures = false;
     bool logBLog = false;
     const rapidjson::Value & batsim_config = batsim_event_data["config"];
