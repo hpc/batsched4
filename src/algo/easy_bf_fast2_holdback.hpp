@@ -9,7 +9,7 @@
 #include "../isalgorithm.hpp"
 #include "../json_workload.hpp"
 #include "../locality.hpp"
-#include "../external/batsched_workload.hpp"
+#include "../external/pointers.hpp"
 #include <rapidjson/document.h>
 #include "../batsched_tools.hpp"
 
@@ -51,8 +51,8 @@ private:
         
     void handle_new_jobs_to_kill(double date);
     //************************************************************resubmission if killed
-    //Handle jobs to queue back up (if killed)  
-    void handle_resubmission(double date);    
+    //Handle jobs to queue back up (if killed)  , handled by _decision now
+    //void handle_resubmission(double date);    
     //***********************************************************
     
     void handle_machines_coming_available(double date);
@@ -96,12 +96,6 @@ private:
     bool _need_to_send_finished_submitting_jobs = true;
     bool _checkpointing_on=false;
     std::vector<double> _call_me_laters;
-    std::mt19937 generator;
-    std::exponential_distribution<double> * distribution;
-    std::mt19937 generator2;
-    std::uniform_int_distribution<int> * unif_distribution;
-    std::mt19937 generator_repair_time;
-    std::exponential_distribution<double> * repair_time_exponential_distribution;
     std::string _output_folder;
         
     struct machine{

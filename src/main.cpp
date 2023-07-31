@@ -21,8 +21,7 @@
 #include "external/taywee_args.hpp"
 
 // Added to get profiles into batsched but we get the whole workload
-#include "external/batsched_workload.hpp"
-#include "external/batsched_job.hpp"
+
 #include "external/batsched_profile.hpp"
 
 
@@ -459,7 +458,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 //get the workloads
                 
                 
-                for (auto &member : event_data["workloads"].GetObject())
+                /*for (auto &member : event_data["workloads"].GetObject())
                 {
                         std::string workload_name = member.name.GetString();
                         std::string workload_filename = member.value.GetString();

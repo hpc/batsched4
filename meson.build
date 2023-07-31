@@ -124,12 +124,10 @@ src = [
     'src/queueing_theory_waiting_time_estimator.hpp',
     'src/schedule.cpp',
     'src/schedule.hpp',
-    'src/external/batsched_workload.hpp',
-    'src/external/batsched_workload.cpp',
+    'src/external/pointers.hpp',
     'src/external/batsched_profile.hpp',
-    'src/external/batsched_profile.cpp',
-    'src/external/batsched_job.hpp',
-    'src/external/batsched_job.cpp'
+    'src/external/batsched_profile.cpp'
+
     
     
     

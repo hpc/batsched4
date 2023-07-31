@@ -5,7 +5,7 @@
 
 #include "decision.hpp"
 #include "queue.hpp"
-#include "external/batsched_workload.hpp"
+//#include "external/batsched_workload.hpp"
 #include "batsched_tools.hpp"
 #include "machine.hpp"
 #include <random>

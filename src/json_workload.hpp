@@ -7,8 +7,8 @@
 #include "exact_numbers.hpp"
 #include "data_storage.hpp"
 #include <intervalset.hpp>
-#include "external/batsched_workload.hpp"
-#include "external/batsched_job.hpp"
+//#include "external/batsched_workload.hpp"
+//#include "external/batsched_job.hpp"
 #include "external/batsched_profile.hpp"
 namespace myB = myBatsched;
 
@@ -93,7 +93,7 @@ public:
 private:
     char * _fileContents = nullptr;
     std::map<std::string, Job*> _jobs;
-    myB::Workload * _myWorkload;
+    //myB::Workload * _myWorkload;
 
 
     
