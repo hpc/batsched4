@@ -8,6 +8,7 @@
 #include "external/batsched_workload.hpp"
 #include "batsched_tools.hpp"
 #include "machine.hpp"
+#include <random>
 
 /**
  * @brief The base abstract class of (scheduling & machine state) decision algorithms
@@ -151,13 +152,15 @@ public:
      * @details This function should be called between make_decisions calls!
      */
     void clear_recent_data_structures();
-    virtual void set_workloads(myBatsched::Workloads *w);
+    //virtual void set_workloads(myBatsched::Workloads *w);
     virtual void set_machines(Machines *m);
+    virtual void set_generators(double date);
     
 
 protected:
     
     Workload * _workload;
+    //myBatsched::Workloads * _myWorkloads;
     Machines * _machines;
     SchedulingDecision * _decision;
     Queue * _queue;
@@ -168,6 +171,12 @@ protected:
     RedisStorage * _redis = nullptr;
     bool _no_more_static_job_to_submit_received = false;
     bool _no_more_external_event_to_occur_received = false;
+    std::mt19937 generator;
+    std::exponential_distribution<double> * distribution;
+    std::mt19937 generator2;
+    std::mt19937 generator_repair_time;
+    std::exponential_distribution<double> * repair_time_exponential_distribution;
+    std::uniform_int_distribution<int> * unif_distribution;
 
 protected:
     std::vector<std::string> _jobs_released_recently;
@@ -180,4 +189,6 @@ protected:
     bool _nopped_recently;
     bool _consumed_joules_updated_recently;
     double _consumed_joules;
+
+    
 };

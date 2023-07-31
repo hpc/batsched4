@@ -25,7 +25,7 @@ public:
     virtual void on_simulation_end(double date);
     void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date);
     void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date);
-    virtual void set_workloads(myBatsched::Workloads * w);
+    //virtual void set_workloads(myBatsched::Workloads * w);
     virtual void set_machines(Machines *m);
     virtual void on_requested_call(double date,int id,  batsched_tools::call_me_later_types forWhat);
 
@@ -61,7 +61,7 @@ private:
     
     bool _dump_provisional_schedules = false;
     std::string _dump_prefix = "/tmp/dump";
-    myBatsched::Workloads * _myWorkloads;
+    //myBatsched::Workloads * _myWorkloads;
     bool _checkpointing_on;
     bool _start_a_reservation=false;
     b_log *_myBLOG;
@@ -70,10 +70,7 @@ private:
     
 
 
-    std::mt19937 generator;
-    std::exponential_distribution<double> * distribution;
-    std::mt19937 generator2;
-    std::uniform_int_distribution<int> * unif_distribution;
+   
     std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups;
     std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs;
 

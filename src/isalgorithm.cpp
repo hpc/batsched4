@@ -2,6 +2,8 @@
 
 #include "pempek_assert.hpp"
 #include "batsched_tools.hpp"
+#include <chrono>
+#include <ctime>
 
 using namespace std;
 
@@ -113,11 +115,55 @@ void ISchedulingAlgorithm::on_machine_available_notify_event(double date, Interv
     (void) date;
     _machines_that_became_available_recently += machines;
 }
-void ISchedulingAlgorithm::set_workloads(myBatsched::Workloads *w){
+/*void ISchedulingAlgorithm::set_workloads(myBatsched::Workloads *w){
     (void) w;
 }
+*/
 void ISchedulingAlgorithm::set_machines(Machines *m){
     (void) m;
+}
+void ISchedulingAlgorithm::set_generators(double date){
+    unsigned seed = 0;
+    if (_workload->_seed_failures)
+        seed = std::chrono::system_clock::now().time_since_epoch().count();
+    generator.seed(seed);
+    generator2.seed(seed);
+    unsigned seed_repair_time = 10;
+    if (_workload->_seed_repair_time)
+        seed_repair_time = std::chrono::system_clock::now().time_since_epoch().count();
+    generator_repair_time.seed(seed_repair_time);
+    if (_workload->_fixed_failures != -1.0)
+     {
+        if (unif_distribution == nullptr)
+            unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
+        double number = _workload->_fixed_failures;
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);  
+     }
+    if (_workload->_MTTR != -1.0)
+    {
+        if (repair_time_exponential_distribution == nullptr)
+            repair_time_exponential_distribution = new std::exponential_distribution<double>(1.0/_workload->_MTTR);
+    }
+    if (_workload->_SMTBF != -1.0)
+    {
+        distribution = new std::exponential_distribution<double>(1.0/_workload->_SMTBF);
+        if (unif_distribution == nullptr)
+            unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
+        std::exponential_distribution<double>::param_type new_lambda(1.0/_workload->_SMTBF);
+        distribution->param(new_lambda);
+        double number;         
+        number = distribution->operator()(generator);
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
+    }
+    else if (_workload->_MTBF!=-1.0)
+    {
+        distribution = new std::exponential_distribution<double>(1.0/_workload->_MTBF);
+        std::exponential_distribution<double>::param_type new_lambda(1.0/_workload->_MTBF);
+        distribution->param(new_lambda);
+        double number;         
+        number = distribution->operator()(generator);
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
+    }
 }
 
 void ISchedulingAlgorithm::on_machine_unavailable_notify_event(double date, IntervalSet machines)

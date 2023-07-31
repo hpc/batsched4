@@ -395,7 +395,9 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 {
     LOG_F(INFO,"line 371 main.cpp");
     bool simulation_finished = false;
-    myB::Workloads myWorkloads;
+    //just doing single workloads
+    //if this changes uncomment this line and some others
+    //myB::Workloads myWorkloads;
     // Redis creation
     RedisStorage redis;
     bool redis_enabled = false;
@@ -481,9 +483,14 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                                                      profile_json);
                         LOG_F(INFO,"line 468");
                         myWorkload->_host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
-                        myWorkloads.insert_workload(workload_name,myWorkload);
+                        //just doing single workloads
+                        //if this changes uncomment this line
+                        //myWorkloads.insert_workload(workload_name,myWorkload);
+                        workload._myWorkload = myWorkload;
                 }
                 LOG_F(INFO,"line 472");
+               /*
+                JUST DOING SINGLE WORKLOADS 
                 myWorkloads._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
                 myWorkloads._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
                 myWorkloads._MTBF = event_data["config"]["MTBF"].GetDouble();
@@ -491,7 +498,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 myWorkloads._repair_time = event_data["config"]["repair_time"].GetDouble();
                 myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 myWorkloads._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
-                
+                */
                 Machines * machines = new Machines;
                 LOG_F(INFO,"line 489");
                 for(const rapidjson::Value & resource : event_data["compute_resources"].GetArray())
@@ -510,8 +517,14 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._seed_failures = event_data["config"]["seed-failures"].GetBool();
                 workload._queue_depth = event_data["config"]["scheduler-queue-depth"].GetInt();
                 workload._subtract_progress_from_walltime = event_data["config"]["subtract-progress-from-walltime"].GetBool();
+                workload._seed_repair_time = event_data["config"]["seed-repair-time"].GetBool();
+                workload._MTTR = event_data["config"]["MTTR"].GetDouble();
+                
                 LOG_F(INFO, "before set workloads");
+                /*
+                JUST DOING SINGLE WORKLOADS
                 algo->set_workloads(&myWorkloads);
+                */
             LOG_F(INFO, "after set workloads");
                 d.set_redis(redis_enabled, &redis);
 

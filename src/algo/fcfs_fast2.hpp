@@ -70,6 +70,8 @@ private:
     std::exponential_distribution<double> * distribution;
     std::mt19937 generator2;
     std::uniform_int_distribution<int> * unif_distribution;
+    std::mt19937 generator_repair_time;
+    std::exponential_distribution<double> * repair_time_exponential_distribution;
     std::string _output_folder;
         
     struct machine{

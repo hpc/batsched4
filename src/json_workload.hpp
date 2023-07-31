@@ -7,8 +7,10 @@
 #include "exact_numbers.hpp"
 #include "data_storage.hpp"
 #include <intervalset.hpp>
-#include "./external/batsched_profile.hpp"
-
+#include "external/batsched_workload.hpp"
+#include "external/batsched_job.hpp"
+#include "external/batsched_profile.hpp"
+namespace myB = myBatsched;
 
 struct JobAlloc;
 
@@ -86,9 +88,15 @@ public:
     bool _seed_failures = false;
     int _queue_depth = -1;
     bool _subtract_progress_from_walltime = false;
+    bool _seed_repair_time = false;
+    double _MTTR = -1.0;
 private:
     char * _fileContents = nullptr;
     std::map<std::string, Job*> _jobs;
+    myB::Workload * _myWorkload;
+
+
+    
     Rational _rjms_delay = 0;
     int _job_number = 0;
    

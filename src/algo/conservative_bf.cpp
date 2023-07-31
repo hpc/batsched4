@@ -63,39 +63,8 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
-   
-    unsigned seed = 0;
-    if (_workload->_seed_failures)
-        seed = std::chrono::system_clock::now().time_since_epoch().count();
-    generator.seed(seed);
-    generator2.seed(seed);
-    if (_workload->_fixed_failures != -1.0)
-     {
-        if (unif_distribution == nullptr)
-            unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
-        double number = _myWorkloads->_fixed_failures;
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);  
-     }
-    if (_workload->_SMTBF != -1.0)
-    {
-        distribution = new std::exponential_distribution<double>(1.0/_myWorkloads->_SMTBF);
-        if (unif_distribution == nullptr)
-            unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
-        std::exponential_distribution<double>::param_type new_lambda(1.0/_myWorkloads->_SMTBF);
-        distribution->param(new_lambda);
-        double number;         
-        number = distribution->operator()(generator);
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
-    }
-    else if (_workload->_MTBF!=-1.0)
-    {
-        distribution = new std::exponential_distribution<double>(1.0/_myWorkloads->_MTBF);
-        std::exponential_distribution<double>::param_type new_lambda(1.0/_myWorkloads->_MTBF);
-        distribution->param(new_lambda);
-        double number;         
-        number = distribution->operator()(generator);
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
-    }
+    ISchedulingAlgorithm::set_generators(date);
+    
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
     
     (void) batsim_config;
@@ -106,11 +75,13 @@ void ConservativeBackfilling::on_simulation_end(double date)
 {
     (void) date;
 }
+/*
 void ConservativeBackfilling::set_workloads(myBatsched::Workloads *w){
     _myWorkloads = w;
     _checkpointing_on = w->_checkpointing_on;
     
 }
+*/
 void ConservativeBackfilling::set_machines(Machines *m){
     _machines = m;
 }
@@ -140,21 +111,24 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
     //BLOG_F(b_log::FAILURES,"Machine Repair: %d",number);
     if (!added.is_empty())
     {
-        LOG_F(INFO,"here");
+        
         _schedule.add_svg_highlight_machines(machine);
         //ok the machine is not down for repairs already so it WAS added
         //the failure/repair will not be happening on a machine that has a reservation on it either
         //it will be going down for repairs now
-         LOG_F(INFO,"here");
         double repair_time = (*_machines)[number]->repair_time;
-         LOG_F(INFO,"here");
+        //if there is a global repair time set that as the repair time
+        if (_workload->_repair_time != -1.0)
+            repair_time = _workload->_repair_time;
+        if (_workload->_MTTR != -1.0)
+            repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
         //call me back when the repair is done
         _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
-        LOG_F(INFO,"here");
+       
         if (_schedule.get_number_of_running_jobs() > 0 )
         {
             //there are possibly some running jobs to kill
-             LOG_F(INFO,"here");
+             
             std::vector<std::string> jobs_to_kill;
             _schedule.get_jobs_running_on_machines(machine,jobs_to_kill);
               
@@ -327,7 +301,8 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = distribution->operator()(generator);
-                                    if (_workload->_repair_time == 0.0)
+                                    LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
+                                    if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
                                         _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
                                     else
                                         _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::SMTBF);
@@ -358,7 +333,7 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                                 {
                                     LOG_F(INFO,"DEBUG");
                                     double number = _workload->_fixed_failures;
-                                    if (_workload->_repair_time == 0.0)
+                                    if (_workload->_repair_time == 0.0 & _workload->_MTTR == -1.0)
                                         _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);//defer to after make_decisions
                                     else
                                         _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);

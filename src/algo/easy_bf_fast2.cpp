@@ -26,7 +26,7 @@ easy_bf_fast2::easy_bf_fast2(Workload *workload,
         variant_options)
 {
     
-    _myWorkloads = new myBatsched::Workloads;
+    //_myWorkloads = new myBatsched::Workloads;
     //batsim log object.  declared in batsched_tools.hpp
     _myBLOG = new b_log();
     
@@ -65,12 +65,7 @@ void easy_bf_fast2::on_simulation_start(double date,
     if (logBLog){
         _myBLOG->add_log_file(_output_folder+"/log/failures.log",b_log::FAILURES);
     }
-    unsigned seed = 0;
-    if (seedFailures)
-        seed = std::chrono::system_clock::now().time_since_epoch().count();
-         
-    generator.seed(seed);
-    generator2.seed(seed);
+    ISchedulingAlgorithm::set_generators(date);
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     _nb_available_machines = _nb_machines;
     //LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
@@ -95,33 +90,7 @@ void easy_bf_fast2::on_simulation_start(double date,
         //LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
    }
      _oldDate=date;
-     if (_myWorkloads->_fixed_failures != -1.0)
-     {
-        if (unif_distribution == nullptr)
-            unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
-        double number = _myWorkloads->_fixed_failures;
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);  
-     }
-    if (_myWorkloads->_SMTBF != -1.0)
-    {
-        distribution = new std::exponential_distribution<double>(1.0/_myWorkloads->_SMTBF);
-        if (unif_distribution == nullptr)
-            unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
-        std::exponential_distribution<double>::param_type new_lambda(1.0/_myWorkloads->_SMTBF);
-        distribution->param(new_lambda);
-        double number;         
-        number = distribution->operator()(generator);
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
-    }
-    else if (_myWorkloads->_MTBF!=-1.0)
-    {
-        distribution = new std::exponential_distribution<double>(1.0/_myWorkloads->_MTBF);
-        std::exponential_distribution<double>::param_type new_lambda(1.0/_myWorkloads->_MTBF);
-        distribution->param(new_lambda);
-        double number;         
-        number = distribution->operator()(generator);
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
-    }
+   
 }      
 void easy_bf_fast2::on_simulation_end(double date){
     (void) date;
@@ -139,11 +108,12 @@ void easy_bf_fast2::on_simulation_end(double date){
     
 }
 */
-void easy_bf_fast2::set_workloads(myBatsched::Workloads *w){
+/*void easy_bf_fast2::set_workloads(myBatsched::Workloads *w){
     _myWorkloads = w;
     _checkpointing_on = w->_checkpointing_on;
     
 }
+*/
 void easy_bf_fast2::on_machine_available_notify_event(double date, IntervalSet machines){
     ISchedulingAlgorithm::on_machine_available_notify_event(date, machines);
     _unavailable_machines-=machines;
@@ -188,7 +158,9 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
         _repair_machines+=machine;
         _nb_available_machines=_available_machines.size();
 
-        double repair_time = _myWorkloads->_repair_time;
+        double repair_time = _workload->_repair_time;
+        if (_workload->_MTTR != -1.0)
+            repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
         //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
         //LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
         //call me back when the repair is done
@@ -260,7 +232,7 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = distribution->operator()(generator);
-                                    if (_myWorkloads->_repair_time == 0.0)
+                                    if (_workload->_repair_time == 0.0)
                                         on_machine_instant_down_up(date);
                                     else
                                         on_machine_down_for_repair(date);
@@ -286,8 +258,8 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                             BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
-                                    double number = _myWorkloads->_fixed_failures;
-                                    if (_myWorkloads->_repair_time == 0.0)
+                                    double number = _workload->_fixed_failures;
+                                    if (_workload->_repair_time == 0.0)
                                         on_machine_instant_down_up(date);
                                     else
                                         on_machine_down_for_repair(date);
@@ -1051,11 +1023,11 @@ void easy_bf_fast2::handle_resubmission(double date)
         
         const std::string workload_str = killed_job.substr(0,start-1); 
         //get the workload
-        myB::Workload * w0= (*_myWorkloads)[workload_str];
+        //myB::Workload * w0= (*_myWorkloads)[workload_str];
         //get the conversion from seconds to cpu instructions
-        double one_second = w0->_host_speed;
+        double one_second = _workload->_host_speed;
         //get the job that was killed
-        myB::JobPtr job_to_queue =(*(w0->jobs))[myB::JobIdentifier(killed_job)];
+        myB::JobPtr job_to_queue =(*(_workload->jobs))[myB::JobIdentifier(killed_job)];
         //get the job identifier of the job that was killed
         myB::JobIdentifier ji = job_to_queue->id;
         

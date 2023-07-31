@@ -33,7 +33,7 @@ public:
     //virtual void on_job_fault_notify_event(double date, std::string job);
     virtual void on_myKillJob_notify_event(double date);
     virtual void on_requested_call(double date,int id,  batsched_tools::call_me_later_types forWhat);
-    virtual void set_workloads(myBatsched::Workloads * w);
+    //virtual void set_workloads(myBatsched::Workloads * w);
     virtual void make_decisions(double date,
         SortableJobOrder::UpdateInformation * update_info,
         SortableJobOrder::CompareInformation * compare_info);
@@ -89,7 +89,7 @@ private:
     std::list<Job *> _pending_jobs_heldback;
     std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
     std::unordered_set<std::string> _running_jobs;
-    myBatsched::Workloads * _myWorkloads;
+   // myBatsched::Workloads * _myWorkloads;
     double _oldDate=-1;
     int _killed=0;
     bool _wrap_it_up = false;
@@ -100,6 +100,8 @@ private:
     std::exponential_distribution<double> * distribution;
     std::mt19937 generator2;
     std::uniform_int_distribution<int> * unif_distribution;
+    std::mt19937 generator_repair_time;
+    std::exponential_distribution<double> * repair_time_exponential_distribution;
     std::string _output_folder;
         
     struct machine{
