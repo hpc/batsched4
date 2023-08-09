@@ -6,6 +6,9 @@ project('batsched', 'cpp',
 )
 
 # Dependencies
+if get_option('buildtype') == 'debug'
+    add_project_arguments(['-pg','-g'],language: 'cpp')
+endif
 add_project_arguments(['-Wno-error'],language: 'cpp')
 add_project_link_arguments(['-lstdc++fs'], language : 'cpp')
 boost_dep = dependency('boost',
