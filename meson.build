@@ -7,7 +7,13 @@ project('batsched', 'cpp',
 
 # Dependencies
 if get_option('buildtype') == 'debug'
-    add_project_arguments(['-pg','-g'],language: 'cpp')
+    add_project_arguments(['-g'],language:'cpp')
+    add_project_link_arguments(['-g'],language:'cpp')
+
+    #add_project_arguments(['-pg','-g'],language: 'cpp')
+    #add_project_link_arguments(['-pg'],language: 'cpp')
+    #env=environment()
+    #env.set('GMON_OUT_PREFIX','batsim4_gmon')
 endif
 add_project_arguments(['-Wno-error'],language: 'cpp')
 add_project_link_arguments(['-lstdc++fs'], language : 'cpp')
