@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <chrono>
+#include <regex>
 #include <thread>
 
 #include <vector>
@@ -410,7 +411,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
         //LOG_F(INFO,"line 384 main.cpp");
         if (boost::trim_copy(received_message).empty())
             throw runtime_error("Empty message received (connection lost ?)");
-
+        //ok we have a message, get and set real time for use with checkpointing batsim
+        algo->set_real_time(chrono::_V2::system_clock::now());
         d.clear();
         //LOG_F(INFO,"line 389 main.cpp");
         r::Document doc;
@@ -434,6 +436,28 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             //LOG_F(INFO,"line 405 main.cpp");
             if (event_type == "SIMULATION_BEGINS")
             {
+                std::string checkpoint_batsim = event_data["config"]["checkpoint-batsim-interval"].GetString();
+                if (checkpoint_batsim != "False")
+                {
+                    const std::regex r(R"(^(real|simulated):([0-9]+)[-]([0-9]{2}):([0-9]{2}):([0-9]{2}))");
+                	std::smatch sm;
+                    if (std::regex_search(checkpoint_batsim,sm,r))
+                    {
+                        std::string checkpoint_type = sm[1];
+                        int days = std::stoi(sm[2]);
+                        int hours = std::stoi(sm[3]);
+                        int mins = std::stoi(sm[4]);
+                        int seconds = std::stoi(sm[5]);
+                        seconds = seconds + mins*60 + hours*3600 + days*24*3600;
+                        algo->set_checkpoint_time(seconds,checkpoint_type);
+                    }
+                    else
+                        throw runtime_error("checkpoint_batsim != False, but not valid time string: " +checkpoint_batsim);
+                                       
+                    
+                }
+                else
+                    algo->set_checkpoint_time(0,"False");
                 int nb_resources;
                 // DO this for retrocompatibility with batsim 2 API
                 if (event_data.HasMember("nb_compute_resources"))

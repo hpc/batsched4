@@ -32,6 +32,7 @@ public:
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
                                 SortableJobOrder::CompareInformation * compare_info);
+    virtual void checkpoint_batsched(double date);
 
 private:
     void handle_killed_jobs(std::vector<std::string> & recently_queued_jobs,double date);

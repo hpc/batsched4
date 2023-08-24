@@ -46,6 +46,7 @@ struct JobAlloc
   bool has_been_inserted = true;
   const Job * job;
   IntervalSet used_machines;
+  std::string to_string()const;
 };
 
 

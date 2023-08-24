@@ -26,7 +26,7 @@ std::unordered_map<logging_type,FILE*> _files;
 
 
 namespace batsched_tools{
-    enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START};
+    enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START,CHECKPOINT_BATSCHED,RECOVER_FROM_CHECKPOINT};
     enum class KILL_TYPES {NONE,FIXED_FAILURE,SMTBF,MTBF,RESERVATION};
     struct id_separation{
         std::string basename;

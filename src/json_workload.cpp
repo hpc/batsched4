@@ -226,3 +226,16 @@ bool JobComparator::operator()(const Job *j1, const Job *j2) const
 {
     return j1->id < j2->id;
 }
+
+std::string JobAlloc::to_string()const
+{
+    std::string s = "[";
+    s+="[begin:"+begin.str();
+    s+=",end:"+end.str();
+    s+=",has_been_inserted:"+std::string((has_been_inserted ? "1":"0"));
+    s+=",started_in_first_slice:"+std::string((started_in_first_slice ? "1":"0"));
+    s+=",used_machines:"+used_machines.to_string_hyphen();
+    s+=",job:"+job->id+"]";
+    return s;
+
+}

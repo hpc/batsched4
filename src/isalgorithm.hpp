@@ -2,6 +2,7 @@
 
 #include <rapidjson/document.h>
 #include <vector>
+#include <chrono>
 
 #include "decision.hpp"
 #include "queue.hpp"
@@ -155,6 +156,12 @@ public:
     //virtual void set_workloads(myBatsched::Workloads *w);
     virtual void set_machines(Machines *m);
     virtual void set_generators(double date);
+    void set_real_time(std::chrono::_V2::system_clock::time_point time);
+    void set_checkpoint_time(long seconds,std::string checkpoint_type);
+    bool send_batsim_checkpoint_if_ready(double date);
+    bool check_checkpoint_time(double date);
+    virtual void checkpoint_batsched(double date);
+    
     
 
 protected:
@@ -189,6 +196,13 @@ protected:
     bool _nopped_recently;
     bool _consumed_joules_updated_recently;
     double _consumed_joules;
+    std::chrono::_V2::system_clock::time_point _real_time;
+    std::chrono::_V2::system_clock::time_point _start_real_time;
+    int _nb_batsim_checkpoints = 0;
+    long _batsim_checkpoint_interval_seconds = 0;
+    std::string _batsim_checkpoint_interval_type = "real";
+    bool _need_to_checkpoint = false;
+    
 
     
 };
