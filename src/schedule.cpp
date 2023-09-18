@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 #endif
-
+#include "batsched_tools.hpp"
 
 using namespace std;
 
@@ -29,6 +29,7 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
     slice.end = 1e19; // greater than the number of seconds elapsed since the big bang
     slice.length = slice.end - slice.begin;
     slice.available_machines.insert(IntervalSet::ClosedInterval(0, nb_machines - 1));
+    slice.allocated_machines = IntervalSet::empty_interval_set();
     slice.nb_available_machines = nb_machines;
     PPK_ASSERT_ERROR(slice.available_machines.size() == (unsigned int)nb_machines);
 
@@ -43,6 +44,10 @@ Schedule::Schedule(int nb_machines,Rational initial_time)
 Schedule::Schedule(const Schedule &other)
 {
     *this = other;
+}
+void Schedule::set_workload(Workload * workload)
+{
+    _workload = workload;
 }
 void Schedule::set_svg_prefix(std::string svg_prefix){
     _svg_prefix = svg_prefix;
@@ -150,13 +155,18 @@ bool Schedule::remove_svg_highlight_machines(IntervalSet machines)
     else
         return false;
 }
-IntervalSet Schedule::add_repair_machines(IntervalSet machines){
+IntervalSet Schedule::add_repair_machine(IntervalSet machine,double duration){
     //first add the repair machines to our IntervalSet
-    IntervalSet added = machines - _repair_machines;
+    IntervalSet added = machine - _repair_machines;
     int number_added = added.size();
-    _repair_machines+=machines;
+    _repair_machines+=machine;
     if(!added.is_empty())
     {
+        
+        //we used to just take the machines away from the timeslices
+        //now we are going to add reservations to the schedule with purpose="repair"
+
+        /*
         //ok so we added some machines
         //lets take them away from the time_slices
         for (auto slice_it = _profile.begin();slice_it!=_profile.end();++slice_it)
@@ -164,10 +174,50 @@ IntervalSet Schedule::add_repair_machines(IntervalSet machines){
             slice_it->nb_available_machines-=number_added;
             slice_it->available_machines -=added;
         }
+        */
+       /*
+        rapidjson::Document jobDoc;
+        std::string ourJobString;
+        ourJobString = batsched_tools::string_format(
+        R"({ 
+            "id": "repair_%s",
+            "subtime": %f,
+            "res": %d,
+            "profile": "1",
+            "walltime": %f,
+            "purpose":"repair",
+            "alloc":"%s"
+        })",machine.to_string_elements(),0,machine.size(),duration,machine.to_string_hyphen());
+        jobDoc.Parse(ourJobString.c_str());
+        Job * job = _workload->job_from_json_object(jobDoc);
+       */
     }
     return added;
 
 }
+
+/*
+IntervalSet Schedule::add_repair_machines_as_job(IntervalSet machines,double duration){
+    //first add the repair machines to our IntervalSet
+    IntervalSet added = machines - _repair_machines;
+    int number_added = added.size();
+    _repair_machines+=machines;
+    if(!added.is_empty())
+    {
+        //ok so we added some machines
+        //instead of taking them away from slices let's treat the repair time as a job duration
+        //first get affected jobs
+        std::map<const Job *,IntervalSet> jobs_affected_on_machines;
+        get_jobs_affected_on_machines(machines,jobs_affected_on_machines,true);
+        
+        add_repair_job(job);
+
+    }
+    return added;
+
+}
+*/
+
 //This function will remove the given machines that are in _repair_machines
 //It will also add back those machines that are not allocated to each time slice
 IntervalSet Schedule::remove_repair_machines(IntervalSet machines){
@@ -182,14 +232,22 @@ IntervalSet Schedule::remove_repair_machines(IntervalSet machines){
             //normally they shouldn't be in _repair_machines if there are
             //jobs using them but if the _repair_machine was added and the jobs using
             //that machine were not removed then this can be the case
-                IntervalSet allocated = which_machines_are_allocated_in_time_slice(slice_it,removed);                                    
-                slice_it->nb_available_machines+=(number_removed-allocated.size());
-                slice_it->available_machines +=(removed-allocated);
+            //originally we used which_machines_are_allocated_in_time_slice
+                //Intervalset allocated = which_machines_are_allocated_in_time_slice(slice_it,removed)
+            //added machines_allocated to time slice, so no need to waste time traversing all jobs in time slice
+            IntervalSet removed_and_allocated = slice_it->allocated_machines & removed;          
+            slice_it->nb_available_machines+=(number_removed-removed_and_allocated.size());
+            slice_it->available_machines +=(removed-removed_and_allocated);
             
         }
     }
     return removed;
 
+}
+Schedule::JobAlloc Schedule::add_repair_job(Job *job)
+{
+    JobAlloc alloc;
+   return alloc;
 }
 //This function will return the intersection of machines that are allocated
 //in the time slice with the machines that you give it.  Pass it all machines to find out
@@ -206,6 +264,9 @@ IntervalSet Schedule::which_machines_are_allocated_in_time_slice(TimeSliceIterat
 int Schedule::get_number_of_running_jobs(){
     return _profile.begin()->allocated_jobs.size();
 }
+/* This function takes the difference between total number of machines and the first timeslice's nb_available_machines
+*  This may be inaccurate for some uses as repair machines are not "running" but are also not available. 
+*/
 int Schedule::get_number_of_running_machines(){
     return int(_nb_machines - _profile.begin()->nb_available_machines );
 }
@@ -252,7 +313,8 @@ void Schedule::get_jobs_running_on_machines(IntervalSet machines,std::map< const
     }
     return;
 }
-void Schedule::get_jobs_affected_on_machines(IntervalSet machines, std::vector<std::string>& jobs_affected_on_machines){
+
+void Schedule::get_jobs_affected_on_machines(IntervalSet machines, std::vector<std::string>& jobs_affected_on_machines,bool reservations_too){
     std::map<const Job*,IntervalSet> jobs_running_on_machines;
     std::map<const Job *,IntervalSet> jobs_affected;
     get_jobs_running_on_machines(machines,jobs_running_on_machines);
@@ -264,7 +326,7 @@ void Schedule::get_jobs_affected_on_machines(IntervalSet machines, std::vector<s
         for( auto job_interval_pair : slice_it->allocated_jobs)
         {   
             //first check that it's not a reservation
-            if (job_interval_pair.first->purpose != "reservation")
+            if (job_interval_pair.first->purpose != "reservation" || reservations_too)
             {
                 //ok it's not a reservation
                 //check if there is an intersection of machines and the job's machines
@@ -285,7 +347,7 @@ void Schedule::get_jobs_affected_on_machines(IntervalSet machines, std::vector<s
     }
     
 }
-void Schedule::get_jobs_affected_on_machines(IntervalSet machines, std::map<const Job *,IntervalSet>& jobs_affected_on_machines){
+void Schedule::get_jobs_affected_on_machines(IntervalSet machines, std::map<const Job *,IntervalSet>& jobs_affected_on_machines,bool reservations_too){
     std::map<const Job*,IntervalSet> jobs_running_on_machines;
     get_jobs_running_on_machines(machines,jobs_running_on_machines);
     auto slice_it = _profile.begin();
@@ -296,7 +358,7 @@ void Schedule::get_jobs_affected_on_machines(IntervalSet machines, std::map<cons
         for( auto job_interval_pair : slice_it->allocated_jobs)
         {   
             //first check that it's not a reservation
-            if (job_interval_pair.first->purpose != "reservation")
+            if (job_interval_pair.first->purpose != "reservation" || reservations_too)
             {
                 //ok it's not a reservation
                 //check if there is an intersection of machines and the job's machines
@@ -566,7 +628,7 @@ void Schedule::find_least_impactful_fit(JobAlloc* alloc,TimeSliceIterator begin_
         //TODO
     }
 }
-Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
+Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job,batsched_tools::reservation_types forWhat){
     if (_debug)
         output_to_svg("top reserve_time_slice " + job->id);
     
@@ -685,7 +747,6 @@ LOG_F(INFO,"DEBUG line 331 %s",alloc->used_machines.to_string_hyphen().c_str());
                         else
                             continue;
                     }
-                    
                     //this needs to be looked over.  Batsim doesn't always send the completed jobs
                     //in the same message as submitted jobs 
                     jobs_needed_to_be_killed.push_back(job);
@@ -735,6 +796,7 @@ void Schedule::add_reservation(ReservedTimeSlice reservation){
           //  LOG_F(INFO,"DEBUG line 398");
             //LOG_F(INFO,"used machines %s",reservation.alloc->used_machines.to_string_hyphen().c_str());
             slice_it->available_machines -= reservation.alloc->used_machines;
+            slice_it->allocated_machines += reservation.alloc->used_machines;
             //LOG_F(INFO,"DEBUG line 399+1");
             slice_it->nb_available_machines -= job->nb_requested_resources;
             slice_it->allocated_jobs[job] = reservation.alloc->used_machines;
@@ -822,6 +884,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
         // If the current time slice is an anchor point
         
         IntervalSet available_machines = pit->available_machines;
+        //we add the _repair_machines back because they don't factor in with a reservation
         available_machines+=_repair_machines;
         if ((int)available_machines.size() >= job->nb_requested_resources)
         {
@@ -862,11 +925,12 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
                     
                     // Let's remove the allocated machines from the available machines of the time slice
                     first_slice_after_split->available_machines.remove(alloc->used_machines);
+                    first_slice_after_split->allocated_machines.insert(alloc->used_machines);
                     first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
                     first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
                     first_slice_after_split->nb_reservations++;
-                    if (first_slice_after_split->nb_reservations == 1)
-                        first_slice_after_split->has_reservation = true;
+                    if (first_slice_after_split->nb_reservations == 1) 
+                        first_slice_after_split->has_reservation = true; //should only need to do this when first adding a reservation(nb_reservations == 1)
                     if (_debug)
                     {
         //                LOG_F(1, "Added job '%s' (size=%d, walltime=%g). Output number %d. %s", job->id.c_str(),
@@ -919,6 +983,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
                                 //the intersection of available_machines and used machines tells us how many machines to subtract from nb_available_machines
                                 int subtract = (pit3->available_machines & alloc->used_machines).size();
                                 pit3->available_machines -= alloc->used_machines;
+                                pit3->allocated_machines += alloc->used_machines;
                                 pit3->nb_available_machines -= subtract;
                                 pit3->allocated_jobs[job] = alloc->used_machines;
                                 pit3->nb_reservations++;
@@ -935,6 +1000,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
                             // Let's remove the allocated machines from the available machines of the time slice
                             int subtract = (first_slice_after_split->available_machines & alloc->used_machines).size();
                             first_slice_after_split->available_machines -= alloc->used_machines;
+                            first_slice_after_split->allocated_machines += alloc->used_machines;
                             first_slice_after_split->nb_available_machines -= subtract;
                             first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
 
@@ -970,49 +1036,59 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
     auto slice = _profile.begin();
     ++slice;
     if (slice == _profile.end())
-        return false;
-    //LOG_F(INFO,"line 634");
+        return false; //it does not have a reservation...return false
+    
     bool ready = false;
     if (slice->has_reservation)
     {
         //ok the next timeslice does have a reservation
         //check if it is ready to copy over to the first slice
-      //  LOG_F(INFO,"line 640");
-      Rational epsilon =1e-4;
+        //by this we mean if the next timeslice starts at an equal time as the first time slice
+        //within an epsilon
+        Rational epsilon =1e-4;
         if (abs(_profile.begin()->begin - slice->begin)<=epsilon)
         {
             ready = true;
             //ok they are equal, remove the reservations
-        //    LOG_F(INFO,"line 645");
+
             for (auto it = slice->allocated_jobs.begin();it != slice->allocated_jobs.end();++it)
             {
                 
                 const Job* job = it->first;
-                //first make sure it's a reservation and not currently running (ie in the first slice)
+                //first make sure it's a reservation and not currently running (ie not in the first slice)
                 if (job->purpose == "reservation" && !_profile.begin()->contains_job(job))
                     {
                         //ok it is a reservation and not currently running
                         //now make sure the resources are available
                         IntervalSet available_machines = _profile.begin()->available_machines;
                         //we add repair_machines since a reservation takes precedence over such things
-                            available_machines+=_repair_machines;
+                        available_machines+=_repair_machines;
+                        //we return false if we can't run all of the reservations meant for this timeslice
+                        //we simply check if the IntervalSet scheduled is part of the available machines
+                        //making sure reservations aren't using the same allocations is up to scheduling them
+                        //in the first place, not checked here.
                         if ( !(it->second.is_subset_of(available_machines)))
                             return false;
+                        //we are removing the reservation from this next time slice so the next
+                        //time slice has its number of reservations decreased
                         if (slice->nb_reservations > 0)
                             slice->nb_reservations--;
-          //              LOG_F(INFO,"line 670");
+                        //reservations will be removed, push this reservation.
                         jobs_removed.push_back(job);
-            //            LOG_F(INFO,"line 672");
+           
                                               
                     }
 
             }
+            //we remove all the reservations from the schedule and return true
+            //jobs_removed will hold all the reservations that were removed from next time slice
             for (auto job : jobs_removed)
                 remove_job_if_exists(job);
             return true;   
         }
 
     }
+    //its not time to remove reservations.  return false
     return false;
 }
     
@@ -1081,6 +1157,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
 
                     // Let's remove the allocated machines from the available machines of the time slice
                     first_slice_after_split->available_machines.remove(alloc->used_machines);
+                    first_slice_after_split->allocated_machines.insert(alloc->used_machines);
                     first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
                     first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
 
@@ -1141,6 +1218,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                             for (; pit3 != pit2; ++pit3)
                             {
                                 pit3->available_machines -= alloc->used_machines;
+                                pit3->allocated_machines += alloc->used_machines;
                                 pit3->nb_available_machines -= job->nb_requested_resources;
                                 pit3->allocated_jobs[job] = alloc->used_machines;
                             }
@@ -1153,6 +1231,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
 
                             // Let's remove the allocated machines from the available machines of the time slice
                             first_slice_after_split->available_machines -= alloc->used_machines;
+                            first_slice_after_split->allocated_machines += alloc->used_machines;
                             first_slice_after_split->nb_available_machines -= job->nb_requested_resources;
                             first_slice_after_split->allocated_jobs[job] = alloc->used_machines;
 
@@ -2127,6 +2206,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
         if (pit->allocated_jobs.erase(job) == 1)
         {
             pit->available_machines.insert(job_machines);
+            pit->allocated_machines.remove(job_machines);
             pit->nb_available_machines += job_machines.size();
             if (job->purpose == "reservation")
             {
@@ -2163,6 +2243,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             for (++pit; pit != _profile.end() && pit->allocated_jobs.erase(job) == 1; ++pit)
             {
                 pit->available_machines.insert(job_machines);
+                pit->allocated_machines.remove(job_machines);
                 pit->nb_available_machines += job_machines.size();
                 if (job->purpose == "reservation")
                 {

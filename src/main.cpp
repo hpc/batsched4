@@ -39,6 +39,7 @@
 #include "algo/crasher.hpp"
 */
 #include "algo/easy_bf.hpp"
+#include "algo/easy_bf2.hpp"
 /*
 #include "algo/easy_bf_fast.hpp"
 #include "algo/easy_bf_plot_liquid_load_horizon.hpp"
@@ -99,7 +100,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 
 int main(int argc, char ** argv)
 {
-    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf", "easy_bf_fast",
+    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf","easy_bf2", "easy_bf_fast",
                                        "easy_bf_fast2","easy_bf_fast2_holdback",
                                       "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
@@ -299,6 +300,8 @@ int main(int argc, char ** argv)
         */
         if (scheduling_variant == "easy_bf")
             algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        //if (scheduling_variant == "easy_bf2")
+        //    algo = new EasyBackfilling2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "easy_bf_fast")
             algo = new EasyBackfillingFast(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);

@@ -23,6 +23,7 @@ EasyBackfilling::~EasyBackfilling()
 
 void EasyBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
+    
     _schedule = Schedule(_nb_machines, date);
     (void) batsim_config;
 }
@@ -110,7 +111,13 @@ void EasyBackfilling::make_decisions(double date,
         while (job_it != _queue->end() && nb_available_machines > 0)
         {
             const Job * job = (*job_it)->job;
-
+            /*
+            if (nb_available_machines < job->nb_requested_resources && job != priority_job_after)
+            {
+                ++job_it;
+                continue;
+            }
+            */
             if (_schedule.contains_job(job))
                 _schedule.remove_job(job);
 
@@ -142,8 +149,14 @@ void EasyBackfilling::make_decisions(double date,
                     ++job_it;
                 }
             }
+           // nb_available_machines = _schedule.begin()->available_machines.size();
         }
     }
+    _decision->add_generic_notification("queue_size",std::to_string(_queue->nb_jobs()),date);
+    _decision->add_generic_notification("schedule_size",std::to_string(_schedule.size()),date);
+    _decision->add_generic_notification("number_running_jobs",std::to_string(_schedule.get_number_of_running_jobs()),date);
+    _decision->add_generic_notification("utilization",std::to_string(_schedule.get_utilization()),date);
+    _decision->add_generic_notification("utilization_no_resv",std::to_string(_schedule.get_utilization_no_resv()),date);
 }
 
 

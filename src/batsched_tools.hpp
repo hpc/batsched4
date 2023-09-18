@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fstream>
+#include <memory>
 
 
 
@@ -27,6 +28,7 @@ std::unordered_map<logging_type,FILE*> _files;
 
 namespace batsched_tools{
     enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START};
+    enum class reservation_types{RESERVATION,REPAIR};
     enum class KILL_TYPES {NONE,FIXED_FAILURE,SMTBF,MTBF,RESERVATION};
     struct id_separation{
         std::string basename;
@@ -56,7 +58,18 @@ namespace batsched_tools{
       unsigned long long RSS=0;
     };
     pid_mem get_pid_memory_usage(pid_t pid);
-}
+
+    template<typename ... Args>
+    std::string string_format( std::string format, Args ... args )
+    {
+        int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
+        if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
+        auto size = static_cast<size_t>( size_s );
+        std::unique_ptr<char[]> buf( new char[ size ] );
+        std::snprintf( buf.get(), size, format.c_str(), args ... );
+        return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+    }  
+};
 
 
 #endif

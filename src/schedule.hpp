@@ -7,6 +7,7 @@
 #include "locality.hpp"
 #include "json_workload.hpp"
 #include <intervalset.hpp>
+#include "batsched_tools.hpp"
 
 class Schedule
 {
@@ -20,6 +21,7 @@ public:
         int nb_reservations = 0;
 
         IntervalSet available_machines;
+        IntervalSet allocated_machines;//machines in timeslice currently running jobs.  This does not include machines that are down(repair_machines).
         int nb_available_machines;
         std::map<const Job *, IntervalSet, JobComparator> allocated_jobs;
         //std::map<const Job *, IntervalSet, JobComparator> allocated_reservations;
@@ -76,14 +78,15 @@ public:
     
     JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
+    JobAlloc add_repair_job(Job *);
     
     
     
     //CCU-LANL additions start
-    
-    IntervalSet add_repair_machines(IntervalSet machines);
+    void set_workload(Workload * workload);
+    IntervalSet add_repair_machine(IntervalSet machine,double duration);
     IntervalSet remove_repair_machines(IntervalSet machines);
-    ReservedTimeSlice reserve_time_slice(const Job * job);
+    ReservedTimeSlice reserve_time_slice(const Job * job,batsched_tools::reservation_types forWhat=batsched_tools::reservation_types::RESERVATION);
     void add_reservation(ReservedTimeSlice reservation);
     void find_least_impactful_fit(JobAlloc * alloc, TimeSliceIterator begin_slice, TimeSliceIterator end_slice,IMPACT_POLICY policy);
     JobAlloc add_job_first_fit_after_time_slice(const Job * job,
@@ -113,8 +116,8 @@ public:
     int get_number_of_running_jobs();
     void get_jobs_running_on_machines(IntervalSet machines, std::vector<std::string>& jobs_running_on_machines);
     void get_jobs_running_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_running_on_machines);
-    void get_jobs_affected_on_machines(IntervalSet machines, std::vector<std::string>& jobs_affected_on_machines);
-    void get_jobs_affected_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_affected_on_machines);
+    void get_jobs_affected_on_machines(IntervalSet machines, std::vector<std::string>& jobs_affected_on_machines,bool reservations_too=false);
+    void get_jobs_affected_on_machines(IntervalSet machines, std::map<const Job*,IntervalSet>& jobs_affected_on_machines,bool reservations_too=false);
     Rational get_smallest_time_slice_length();
     Rational get_largest_time_slice_length();
     int get_number_of_running_machines();
@@ -213,6 +216,7 @@ private:
     long _svg_frame_end = -1;
     long _svg_output_start = 1;
     long _svg_output_end = -1;
+    Workload * _workload = nullptr;
 };
 
 /**
