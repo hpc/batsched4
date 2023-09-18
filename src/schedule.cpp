@@ -164,9 +164,9 @@ IntervalSet Schedule::add_repair_machine(IntervalSet machine,double duration){
     {
         
         //we used to just take the machines away from the timeslices
-        //now we are going to add reservations to the schedule with purpose="repair"
+        //now we are going to add reservations to the schedule with purpose="repair" //TODO
 
-        /*
+        
         //ok so we added some machines
         //lets take them away from the time_slices
         for (auto slice_it = _profile.begin();slice_it!=_profile.end();++slice_it)
@@ -174,7 +174,7 @@ IntervalSet Schedule::add_repair_machine(IntervalSet machine,double duration){
             slice_it->nb_available_machines-=number_added;
             slice_it->available_machines -=added;
         }
-        */
+        
        /*
         rapidjson::Document jobDoc;
         std::string ourJobString;
