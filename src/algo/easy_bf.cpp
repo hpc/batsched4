@@ -24,6 +24,8 @@ EasyBackfilling::~EasyBackfilling()
 void EasyBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     
+    pid_t pid = batsched_tools::get_batsched_pid();
+    _decision->add_generic_notification("PID",std::to_string(pid),date);
     _schedule = Schedule(_nb_machines, date);
     (void) batsim_config;
 }
