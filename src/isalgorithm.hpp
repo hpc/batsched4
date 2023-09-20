@@ -161,6 +161,7 @@ public:
     bool send_batsim_checkpoint_if_ready(double date);
     bool check_checkpoint_time(double date);
     virtual void checkpoint_batsched(double date);
+    virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
     
     
 
@@ -179,11 +180,18 @@ protected:
     bool _no_more_static_job_to_submit_received = false;
     bool _no_more_external_event_to_occur_received = false;
     std::mt19937 generator;
+    unsigned int generator1_seed;
     std::exponential_distribution<double> * distribution;
+    int nb_distribution=0;
     std::mt19937 generator2;
+    unsigned int generator2_seed;
     std::mt19937 generator_repair_time;
+    unsigned int generator_repair_time_seed;
     std::exponential_distribution<double> * repair_time_exponential_distribution;
+    int nb_repair_time_exponential_distribution =0;
     std::uniform_int_distribution<int> * unif_distribution;
+    int nb_unif_distribution = 0;
+    
 
 protected:
     std::vector<std::string> _jobs_released_recently;

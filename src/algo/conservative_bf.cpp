@@ -43,7 +43,7 @@ void ConservativeBackfilling::checkpoint_batsched(double date)
         f<<_svg_output_start<<std::endl;
         f<<"_svg_output_end"<<std::endl;
         f<<_svg_output_end<<std::endl;
-        f<<"_reschdule_policy"<<std::endl;
+        f<<"_reschedule_policy"<<std::endl;
         f<<int(_reschedule_policy)<<std::endl;
         f<<"_impact_policy"<<std::endl;
         f<<int(_impact_policy)<<std::endl;
@@ -123,6 +123,22 @@ void ConservativeBackfilling::checkpoint_batsched(double date)
         }
         omdfr+="]";
         f<<omdfr<<std::endl;
+
+
+        f<<"generator1_seed"<<std::endl;
+        f<<generator1_seed<<std::endl;
+        f<<"generator2_seed"<<std::endl;
+        f<<generator2_seed<<std::endl;
+        f<<"generator_repair_time_seed"<<std::endl;
+        f<<generator_repair_time_seed<<std::endl;
+
+        f<<"nb_distribution"<<std::endl;
+        f<<nb_distribution<<std::endl;
+        f<<"nb_repair_time_exponential_distribution"<<std::endl;
+        f<<nb_repair_time_exponential_distribution<<std::endl;
+        f<<"nb_unif_distribution"<<std::endl;
+        f<<nb_unif_distribution<<std::endl;
+
         f.close();
     }
     _need_to_checkpoint=false;
@@ -155,6 +171,9 @@ ConservativeBackfilling::~ConservativeBackfilling()
 {
 }
 
+void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
+
+}
 void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
     pid_t pid = batsched_tools::get_batsched_pid();
@@ -215,6 +234,7 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
    
     //get a random number of a machine to kill
     int number = unif_distribution->operator()(generator2);
+    nb_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = (*_machines)[number]->id;
     
@@ -240,7 +260,10 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
         if (_workload->_repair_time != -1.0)
             repair_time = _workload->_repair_time;
         if (_workload->_MTTR != -1.0)
+        {
             repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
+            nb_repair_time_exponential_distribution++;
+        }
         //call me back when the repair is done
         _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
        
@@ -359,6 +382,7 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
     (void) date;
     //get a random number of a machine to kill
     int number = unif_distribution->operator()(generator2);
+    nb_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     _schedule.add_svg_highlight_machines(machine);
@@ -420,6 +444,7 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = distribution->operator()(generator);
+                                    nb_distribution++;
                                     LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
                                     if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
                                         _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        

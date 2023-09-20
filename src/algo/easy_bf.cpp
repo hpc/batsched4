@@ -20,7 +20,9 @@ EasyBackfilling::~EasyBackfilling()
 {
 
 }
+void EasyBackfilling::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
 
+}
 void EasyBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_config)
 {
     _schedule = Schedule(_nb_machines, date);

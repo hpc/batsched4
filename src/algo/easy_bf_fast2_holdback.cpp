@@ -34,7 +34,9 @@ easy_bf_fast2_holdback::~easy_bf_fast2_holdback()
 {
     
 }
+void easy_bf_fast2_holdback::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
 
+}
 void easy_bf_fast2_holdback::on_simulation_start(double date,
     const rapidjson::Value &batsim_event_data)
 {

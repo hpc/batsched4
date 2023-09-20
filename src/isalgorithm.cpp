@@ -127,15 +127,21 @@ void ISchedulingAlgorithm::set_machines(Machines *m){
 void ISchedulingAlgorithm::on_simulation_start(double date, const rapidjson::Value & batsim_config){
     _start_real_time = _real_time;
 }
+void ISchedulingAlgorithm::on_start_from_checkpoint(double date, const rapidjson::Value & batsim_config){
+    _start_real_time = _real_time;
+}
 void ISchedulingAlgorithm::set_generators(double date){
     unsigned seed = 0;
     if (_workload->_seed_failures)
         seed = std::chrono::system_clock::now().time_since_epoch().count();
+    generator1_seed = seed;
+    generator2_seed = seed;
     generator.seed(seed);
     generator2.seed(seed);
     unsigned seed_repair_time = 10;
     if (_workload->_seed_repair_time)
         seed_repair_time = std::chrono::system_clock::now().time_since_epoch().count();
+    generator_repair_time_seed = seed_repair_time;
     generator_repair_time.seed(seed_repair_time);
     if (_workload->_fixed_failures != -1.0)
      {
@@ -158,6 +164,7 @@ void ISchedulingAlgorithm::set_generators(double date){
         distribution->param(new_lambda);
         double number;         
         number = distribution->operator()(generator);
+        nb_distribution++;
         _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
     }
     else if (_workload->_MTBF!=-1.0)
@@ -167,6 +174,7 @@ void ISchedulingAlgorithm::set_generators(double date){
         distribution->param(new_lambda);
         double number;         
         number = distribution->operator()(generator);
+        nb_distribution++;
         _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
     }
 }

@@ -77,6 +77,10 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,bats
     
     for(const auto & killed_map:jobs_killed_recently)
     {
+        /*not implementing this but it is a potential problem. see batsim/src/server.cpp server_on_kill_jobs()
+        if (killed_map.second->progress == 1.0) //if the progress is 100% then it shouldn't be resubmitted
+            continue;
+        */
         std::string killed_job=killed_map.first;
         
     
