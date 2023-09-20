@@ -87,6 +87,8 @@ void ISchedulingAlgorithm::on_machine_state_changed(double date, IntervalSet mac
 
 void ISchedulingAlgorithm::on_requested_call(double date,int id, batsched_tools::call_me_later_types forWhat)
 {
+    if (forWhat == batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED)
+        _need_to_checkpoint = true;
     (void) date;
     _nopped_recently = true;
 }
@@ -122,15 +124,24 @@ void ISchedulingAlgorithm::on_machine_available_notify_event(double date, Interv
 void ISchedulingAlgorithm::set_machines(Machines *m){
     (void) m;
 }
+void ISchedulingAlgorithm::on_simulation_start(double date, const rapidjson::Value & batsim_config){
+    _start_real_time = _real_time;
+}
+void ISchedulingAlgorithm::on_start_from_checkpoint(double date, const rapidjson::Value & batsim_config){
+    _start_real_time = _real_time;
+}
 void ISchedulingAlgorithm::set_generators(double date){
     unsigned seed = 0;
     if (_workload->_seed_failures)
         seed = std::chrono::system_clock::now().time_since_epoch().count();
+    generator1_seed = seed;
+    generator2_seed = seed;
     generator.seed(seed);
     generator2.seed(seed);
     unsigned seed_repair_time = 10;
     if (_workload->_seed_repair_time)
         seed_repair_time = std::chrono::system_clock::now().time_since_epoch().count();
+    generator_repair_time_seed = seed_repair_time;
     generator_repair_time.seed(seed_repair_time);
     if (_workload->_fixed_failures != -1.0)
      {
@@ -153,6 +164,7 @@ void ISchedulingAlgorithm::set_generators(double date){
         distribution->param(new_lambda);
         double number;         
         number = distribution->operator()(generator);
+        nb_distribution++;
         _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
     }
     else if (_workload->_MTBF!=-1.0)
@@ -162,8 +174,52 @@ void ISchedulingAlgorithm::set_generators(double date){
         distribution->param(new_lambda);
         double number;         
         number = distribution->operator()(generator);
+        nb_distribution++;
         _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
     }
+}
+void ISchedulingAlgorithm::set_real_time(std::chrono::_V2::system_clock::time_point time)
+{
+    _real_time = time;
+}
+void ISchedulingAlgorithm::set_checkpoint_time(long seconds,std::string checkpoint_type)
+{
+    _batsim_checkpoint_interval_type = checkpoint_type;
+    _batsim_checkpoint_interval_seconds = seconds;
+    _start_real_time = _real_time;
+}
+bool ISchedulingAlgorithm::check_checkpoint_time(double date)
+{
+    if (_batsim_checkpoint_interval_type == "simulated")
+    {
+        if (date >= _batsim_checkpoint_interval_seconds*(_nb_batsim_checkpoints + 1))
+            return true;
+        else
+            return false;
+            
+    }
+    else
+    {
+        long duration = std::chrono::duration_cast<std::chrono::seconds>(_real_time - _start_real_time).count();
+        if ( duration >= _batsim_checkpoint_interval_seconds*(_nb_batsim_checkpoints + 1))
+            return true;
+        else
+            return false;
+    }
+}
+bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
+    if (_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))
+    {
+        _decision->add_generic_notification("checkpoint","",date);
+        //_decision->add_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED,_nb_batsim_checkpoints,date,date);
+        _nb_batsim_checkpoints +=1;
+        return true;
+    }
+    else
+        return false;
+}
+void ISchedulingAlgorithm::checkpoint_batsched(double date){
+
 }
 
 void ISchedulingAlgorithm::on_machine_unavailable_notify_event(double date, IntervalSet machines)

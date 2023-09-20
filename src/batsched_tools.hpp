@@ -27,9 +27,20 @@ std::unordered_map<logging_type,FILE*> _files;
 
 
 namespace batsched_tools{
-    enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START};
-    enum class reservation_types{RESERVATION,REPAIR};
+    enum class reservation_types{RESERVATION,REPAIR}; //not used yet
+    enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START,CHECKPOINT_BATSCHED,RECOVER_FROM_CHECKPOINT};
     enum class KILL_TYPES {NONE,FIXED_FAILURE,SMTBF,MTBF,RESERVATION};
+    enum class JobState
+{
+     JOB_STATE_NOT_SUBMITTED                //!< The job exists but cannot be scheduled yet.
+    ,JOB_STATE_SUBMITTED                    //!< The job has been submitted, it can now be scheduled.
+    ,JOB_STATE_RUNNING                      //!< The job has been scheduled and is currently being processed.
+    ,JOB_STATE_COMPLETED_SUCCESSFULLY       //!< The job execution finished before its walltime successfully.
+    ,JOB_STATE_COMPLETED_FAILED             //!< The job execution finished before its walltime but the job failed.
+    ,JOB_STATE_COMPLETED_WALLTIME_REACHED   //!< The job has reached its walltime and has been killed.
+    ,JOB_STATE_COMPLETED_KILLED             //!< The job has been killed.
+    ,JOB_STATE_REJECTED                     //!< The job has been rejected by the scheduler.
+};
     struct id_separation{
         std::string basename;
         std::string resubmit_string;

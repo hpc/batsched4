@@ -2,6 +2,7 @@
 
 #include <rapidjson/document.h>
 #include <vector>
+#include <chrono>
 
 #include "decision.hpp"
 #include "queue.hpp"
@@ -155,6 +156,13 @@ public:
     //virtual void set_workloads(myBatsched::Workloads *w);
     virtual void set_machines(Machines *m);
     virtual void set_generators(double date);
+    void set_real_time(std::chrono::_V2::system_clock::time_point time);
+    void set_checkpoint_time(long seconds,std::string checkpoint_type);
+    bool send_batsim_checkpoint_if_ready(double date);
+    bool check_checkpoint_time(double date);
+    virtual void checkpoint_batsched(double date);
+    virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
+    
     
 
 protected:
@@ -172,11 +180,18 @@ protected:
     bool _no_more_static_job_to_submit_received = false;
     bool _no_more_external_event_to_occur_received = false;
     std::mt19937 generator;
+    unsigned int generator1_seed;
     std::exponential_distribution<double> * distribution;
+    int nb_distribution=0;
     std::mt19937 generator2;
+    unsigned int generator2_seed;
     std::mt19937 generator_repair_time;
+    unsigned int generator_repair_time_seed;
     std::exponential_distribution<double> * repair_time_exponential_distribution;
+    int nb_repair_time_exponential_distribution =0;
     std::uniform_int_distribution<int> * unif_distribution;
+    int nb_unif_distribution = 0;
+    
 
 protected:
     std::vector<std::string> _jobs_released_recently;
@@ -189,6 +204,13 @@ protected:
     bool _nopped_recently;
     bool _consumed_joules_updated_recently;
     double _consumed_joules;
+    std::chrono::_V2::system_clock::time_point _real_time;
+    std::chrono::_V2::system_clock::time_point _start_real_time;
+    int _nb_batsim_checkpoints = 0;
+    long _batsim_checkpoint_interval_seconds = 0;
+    std::string _batsim_checkpoint_interval_type = "real";
+    bool _need_to_checkpoint = false;
+    
 
     
 };

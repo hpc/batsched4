@@ -26,6 +26,7 @@ public:
 
     virtual void on_simulation_start(double date,
         const rapidjson::Value & batsim_event);
+    virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
     //virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);

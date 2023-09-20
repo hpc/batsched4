@@ -1741,6 +1741,34 @@ void Schedule::add_reservation_for_svg_outline(const ReservedTimeSlice & reserva
 bool Schedule::ReservedTimeSlice::operator==(const ReservedTimeSlice & r)const {
     return job->id == r.job->id;
 }
+std::string Schedule::ReservedTimeSlice::to_string()const{
+    std::string rts="[";
+    rts+="alloc:"+alloc->to_string();
+    rts+=",job:"+job->id;
+    rts+=",jobs_affected:[";
+    for (auto job : jobs_affected)
+    {
+        rts+=job->id+",";
+    }
+    rts+="]";
+    rts+=",jobs_needed_to_be_killed:[";
+    for (auto job : jobs_needed_to_be_killed)
+    {
+        rts+=job->id+",";
+    }
+    rts+="]";
+    rts+=",jobs_to_reschedule:[";
+    for (auto job : jobs_to_reschedule)
+    {
+        rts+=job->id+",";
+    }
+    rts+="]";
+    rts+=",success:"+std::string((success ? "1":"0"));
+    rts+="]";
+    return rts;
+    
+    
+}
 void Schedule::remove_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be){
     _svg_reservations.remove(reservation_to_be);
 }
@@ -2370,7 +2398,10 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
     for (auto mit : allocated_jobs)
     {
         const Job *job = mit.first;
-        jobs_str.push_back(job->id);
+        if (job->purpose == "reservation")
+            jobs_str.push_back(job->id+":r");
+        else
+            jobs_str.push_back(job->id+":j");
     }
 
     return boost::algorithm::join(jobs_str, ",");

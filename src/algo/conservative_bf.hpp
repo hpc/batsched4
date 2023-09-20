@@ -21,6 +21,7 @@ public:
     virtual ~ConservativeBackfilling();
 
     virtual void on_simulation_start(double date, const rapidjson::Value & batsim_event);
+    virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
 
     virtual void on_simulation_end(double date);
     void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date);
@@ -32,6 +33,7 @@ public:
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
                                 SortableJobOrder::CompareInformation * compare_info);
+    virtual void checkpoint_batsched(double date);
 
 private:
     void handle_killed_jobs(std::vector<std::string> & recently_queued_jobs,double date);

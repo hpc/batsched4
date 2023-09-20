@@ -57,6 +57,7 @@ public:
         TimeSliceIterator slice_end;
         JobAlloc* alloc;
         const Job * job;
+        std::string to_string() const; 
     };
 
 public:

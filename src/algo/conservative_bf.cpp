@@ -4,10 +4,145 @@
 
 #include "../pempek_assert.hpp"
 #include "../batsched_tools.hpp"
+#include <fstream>
 #include <chrono>
 #include <ctime>
 #define B_LOG_INSTANCE _myBLOG
 using namespace std;
+
+void ConservativeBackfilling::checkpoint_batsched(double date)
+{
+    std::string checkpoint_dir = _output_folder+"/checkpoint";
+    std::ofstream f(checkpoint_dir+"/schedule.chkpt",std::ios_base::out);
+    if (f.is_open())
+    {
+        f<<_schedule.to_string()<<std::endl;
+        f.close();
+    }
+    f.open(checkpoint_dir+"/queues.chkpt",std::ios_base::out);
+    if (f.is_open())
+    {
+        f<<"_queue"<<std::endl;
+        f<<_queue->to_string()<<std::endl;
+        f<<"_reservation_queue"<<std::endl;
+        f<<_reservation_queue->to_string()<<std::endl;
+        f.close();
+    }
+    f.open(checkpoint_dir+"/everything_else.chkpt",std::ios_base::out);
+    if (f.is_open())
+    {
+        f<<"_output_folder"<<std::endl;
+        f<<_output_folder<<std::endl;
+        f<<"_output_svg"<<std::endl;
+        f<<_output_svg<<std::endl;
+        f<<"_svg_frame_start"<<std::endl;
+        f<<_svg_frame_start<<std::endl;
+        f<<"_svg_frame_end"<<std::endl;
+        f<<_svg_frame_end<<std::endl;
+        f<<"_svg_output_start"<<std::endl;
+        f<<_svg_output_start<<std::endl;
+        f<<"_svg_output_end"<<std::endl;
+        f<<_svg_output_end<<std::endl;
+        f<<"_reschedule_policy"<<std::endl;
+        f<<int(_reschedule_policy)<<std::endl;
+        f<<"_impact_policy"<<std::endl;
+        f<<int(_impact_policy)<<std::endl;
+        f<<"_previous_date"<<std::endl;
+        f<<_previous_date<<std::endl;
+        f<<"_saved_reservations"<<std::endl;
+        std::string sr = "[";
+        for (auto ts : _saved_reservations)
+        {   
+            sr+=ts.to_string();
+        }
+        sr += "]";
+        f<<sr<<std::endl;
+        f<<"_killed_jobs"<<std::endl;
+        f<<_killed_jobs<<std::endl;
+        f<<"_need_to_send_finished_submitting_jobs"<<std::endl;
+        f<<_need_to_send_finished_submitting_jobs<<std::endl;
+        f<<"_saved_recently_queued_jobs"<<std::endl;
+        std::string srqj = "[";
+        for (std::string s : _saved_recently_queued_jobs)
+        {
+            srqj+=s;
+            srqj+=",";
+        }
+        srqj+="]";
+        f<<srqj<<std::endl;
+        f<<"_saved_recently_ended_jobs"<<std::endl;
+        std::string srej = "[";
+        for (std::string s : _saved_recently_ended_jobs)
+        {
+            srej+=s;
+            srej+=",";
+        }
+        srej+="]";
+        f<<srej<<std::endl;
+        f<<"_recently_under_repair_machines"<<std::endl;
+        f<<_recently_under_repair_machines.to_string_hyphen()<<std::endl;
+        f<<"_need_to_compress"<<std::endl;
+        f<<_need_to_compress<<std::endl;
+        f<<"_checkpointing_on"<<std::endl;
+        f<<_checkpointing_on<<std::endl;
+        f<<"_start_a_reservation"<<std::endl;
+        f<<_start_a_reservation<<std::endl;
+        f<<"_resubmitted_jobs"<<std::endl;
+        std::string rsj="[";
+        for (std::pair pair : _resubmitted_jobs)
+        {
+            rsj+=pair.first+":"+std::to_string(int(pair.second));
+            rsj+=",";
+        }
+        rsj+="]";
+        f<<rsj<<std::endl;
+        f<<"_resubmitted_jobs_released"<<std::endl;
+        std::string rsjr = "[";
+        for (std::pair pair : _resubmitted_jobs_released)
+        {
+            rsjr+=pair.first->id+":"+std::to_string(int(pair.second));
+            rsjr+=",";
+        }
+        rsjr+="]";
+        f<<rsjr<<std::endl;
+        f<<"_on_machine_instant_down_ups"<<std::endl;
+        std::string omidu = "[";
+        for (auto kill_type : _on_machine_instant_down_ups)
+        {
+            omidu+=std::to_string(int(kill_type));
+            omidu+=",";
+        }
+        omidu+="]";
+        f<<omidu<<std::endl;
+        f<<"_on_machine_down_for_repairs"<<std::endl;
+        std::string omdfr = "[";
+        for (auto kill_type: _on_machine_down_for_repairs)
+        {
+            omdfr+=std::to_string(int(kill_type));
+            omdfr+=",";
+        }
+        omdfr+="]";
+        f<<omdfr<<std::endl;
+
+
+        f<<"generator1_seed"<<std::endl;
+        f<<generator1_seed<<std::endl;
+        f<<"generator2_seed"<<std::endl;
+        f<<generator2_seed<<std::endl;
+        f<<"generator_repair_time_seed"<<std::endl;
+        f<<generator_repair_time_seed<<std::endl;
+
+        f<<"nb_distribution"<<std::endl;
+        f<<nb_distribution<<std::endl;
+        f<<"nb_repair_time_exponential_distribution"<<std::endl;
+        f<<nb_repair_time_exponential_distribution<<std::endl;
+        f<<"nb_unif_distribution"<<std::endl;
+        f<<nb_unif_distribution<<std::endl;
+
+        f.close();
+    }
+    _need_to_checkpoint=false;
+}
 
 ConservativeBackfilling::ConservativeBackfilling(Workload *workload, SchedulingDecision *decision,
                                                  Queue *queue, ResourceSelector * selector, double rjms_delay, rapidjson::Document *variant_options) :
@@ -36,6 +171,9 @@ ConservativeBackfilling::~ConservativeBackfilling()
 {
 }
 
+void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
+
+}
 void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
     pid_t pid = batsched_tools::get_batsched_pid();
@@ -108,6 +246,7 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
    
     //get a random number of a machine to kill
     int number = unif_distribution->operator()(generator2);
+    nb_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = (*_machines)[number]->id;
     
@@ -120,7 +259,10 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
         if (_workload->_repair_time != -1.0)
             repair_time = _workload->_repair_time;
         if (_workload->_MTTR != -1.0)
+        {
             repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
+            nb_repair_time_exponential_distribution++;
+        }
     if (_schedule.get_reservations_running_on_machines(machine).empty())
         added = _schedule.add_repair_machine(machine,repair_time);
     LOG_F(INFO,"here");
@@ -135,12 +277,7 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
         //ok the machine is not down for repairs already so it WAS added
         //the failure/repair will not be happening on a machine that has a reservation on it either
         //it will be going down for repairs now
-       // double repair_time = (*_machines)[number]->repair_time;
         //if there is a global repair time set that as the repair time
-        //if (_workload->_repair_time != -1.0)
-        //    repair_time = _workload->_repair_time;
-       // if (_workload->_MTTR != -1.0)
-        //    repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
         //call me back when the repair is done
         _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
        
@@ -259,6 +396,7 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
     (void) date;
     //get a random number of a machine to kill
     int number = unif_distribution->operator()(generator2);
+    nb_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     _schedule.add_svg_highlight_machines(machine);
@@ -320,6 +458,7 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = distribution->operator()(generator);
+                                    nb_distribution++;
                                     LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
                                     if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
                                         _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
@@ -386,15 +525,27 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                             
                         }
                         break;
+            case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
+                        {
+                            _need_to_checkpoint = true;
+                        }
+                        break;
         }
     
 
 }
+
+
+
+
 void ConservativeBackfilling::make_decisions(double date,
                                              SortableJobOrder::UpdateInformation *update_info,
                                              SortableJobOrder::CompareInformation *compare_info)
 {
-    
+    LOG_F(INFO,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
+    send_batsim_checkpoint_if_ready(date);
+    if (_need_to_checkpoint)
+        checkpoint_batsched(date);
     if (_output_svg != "none")
         _schedule.set_now((Rational)date);
     LOG_F(INFO,"make decisions");

@@ -34,7 +34,9 @@ FCFSFast2::~FCFSFast2()
 {
     
 }
+void FCFSFast2::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
 
+}
 void FCFSFast2::on_simulation_start(double date,
     const rapidjson::Value &batsim_event_data)
 {
