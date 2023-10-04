@@ -5,6 +5,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fstream>
+#include <loguru.hpp>
+//#include "schedule.cpp"
+
 b_log::b_log(){
 
 }
@@ -29,23 +32,53 @@ void b_log::blog(logging_type type, std::string fmt, double date, ...){
     }
     
 }
+//a helper function to seperate_id
+batsched_tools::job_parts batsched_tools::get_job_parts(std::string job_id)
+{
+        batsched_tools::job_parts parts;
+
+        auto startDollar = job_id.find("$");
+        parts.job_checkpoint = (startDollar != std::string::npos) ? std::stoi(job_id.substr(startDollar+1)) : -1;
+        if (startDollar == std::string::npos)
+            startDollar = job_id.size();
+        //ok we got the checkpoint number, now the resubmit number
+        auto startPound = job_id.find("#");
+        parts.job_resubmit = (startPound != std::string::npos) ? std::stoi(job_id.substr(startPound+1,startPound+1 - startDollar)): -1;
+        if (startPound == std::string::npos)
+            startPound = startDollar;
+        auto startExclamation = job_id.find("!");
+        parts.job_number = (startExclamation != std::string::npos) ? std::stoi(job_id.substr(startExclamation+1,startExclamation+1 - startPound)) : std::stoi(job_id.substr(0,startPound));
+        parts.workload = (startExclamation != std::string::npos) ? job_id.substr(0,startExclamation) : "null";
+        std::string checkpoint = ((parts.job_checkpoint != -1) ? "$" + std::to_string(parts.job_checkpoint) : "");
+        std::string resubmit = ((parts.job_resubmit != -1) ? "#" + std::to_string(parts.job_resubmit+1) : "#1");
+        parts.next_resubmit = parts.workload + "!"+
+                     std::to_string(parts.job_number) +
+                     resubmit +
+                     checkpoint;
+        checkpoint = ((parts.job_checkpoint != -1) ? "$" + std::to_string(parts.job_checkpoint+1) : "");
+        resubmit = ((parts.job_resubmit != -1) ? "#" + std::to_string(parts.job_resubmit) : "#1");
+        parts.next_checkpoint = parts.workload + "!"+
+                     std::to_string(parts.job_number) +
+                     resubmit +
+                     checkpoint;
+
+        return parts;
+}
 batsched_tools::id_separation batsched_tools::tools::separate_id(const std::string job_id){
     batsched_tools::id_separation separation;
-    auto start = job_id.find("!")+1;
-    auto end = job_id.find("#");
-    separation.basename = (end ==std::string::npos) ? job_id.substr(start) : job_id.substr(start,end-start); 
-    separation.workload = job_id.substr(0,start-1);
-    separation.resubmit_number = 1;
-    int next_number = 1;
-    if (end!=std::string::npos) //if job name has # in it...was resubmitted b4
-    {
-            separation.resubmit_number = std::stoi(job_id.substr(end+1));   // then get the resubmitted number
-            next_number = separation.resubmit_number + 1;
-    }                                                                                                                                                                                                                                                                                                                                                                                    
+    batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id);
+    int next_number;
+    separation.basename = std::to_string(parts.job_number);
+    separation.workload = parts.workload;
+    separation.resubmit_number = (parts.job_resubmit != -1) ? parts.job_resubmit : 0;
+    separation.nb_checkpoint = (parts.job_checkpoint != -1) ? "$"+std::to_string(parts.job_checkpoint) : "";
+    next_number = separation.resubmit_number + 1;
     separation.resubmit_string = std::to_string(separation.resubmit_number);
     separation.next_resubmit_string = separation.workload + "!" +
                                       separation.basename + "#" +
-                                      std::to_string(next_number);
+                                      std::to_string(next_number) +
+                                      separation.nb_checkpoint;
+    LOG_F(INFO,"job_id: '%s' next: '%s'",job_id.c_str(),separation.next_resubmit_string.c_str());
     return separation;
 }
 batsched_tools::memInfo batsched_tools::get_node_memory_usage()
@@ -112,3 +145,165 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     return memory_struct;
 
 }
+
+    
+    std::string batsched_tools::to_string(const int value)
+    {
+        return std::to_string(value);
+    }
+    
+    std::string batsched_tools::to_string(const unsigned int value)
+    {
+        return std::to_string(value);
+    }
+    std::string batsched_tools::to_string(long value)
+    {
+        return std::to_string(value);
+    }
+    std::string batsched_tools::to_string(double value)
+    {
+        return batsched_tools::string_format("%.15f",value);
+    }
+    std::string batsched_tools::to_string(Rational value)
+    {
+        return batsched_tools::string_format("%.15f",value.convert_to<double>());
+    }
+    
+   
+ 
+    
+    std::string batsched_tools::to_string(const std::string value)
+    {
+        return value;
+    }
+    
+    
+    
+    std::string batsched_tools::to_string(const Job* job)
+    {
+        return job->id;
+    }
+
+    
+    std::string batsched_tools::to_string(batsched_tools::KILL_TYPES kt)
+    {
+        return std::to_string(int(kt));
+    }
+
+
+    
+    
+    
+    std::string batsched_tools::to_string(const JobAlloc * alloc)
+    {
+        std::string s = "{";
+            s+="{\"begin\":\""+alloc->begin.str()+"\"";
+            s+=",\"end\":\""+alloc->end.str()+"\"";
+            s+=",\"has_been_inserted\":"+std::string((alloc->has_been_inserted ? "true":"false"));
+            s+=",\"started_in_first_slice\":"+std::string((alloc->started_in_first_slice ? "1":"0"));
+            s+=",\"used_machines\":\""+alloc->used_machines.to_string_hyphen()+"\"";
+            s+=",\"job:\":\""+alloc->job->id+"\"";
+        s+="}";
+        return s;
+    }
+    
+   
+    
+    /*std::string batsched_tools::to_string(const Schedule::ReservedTimeSlice *rts){
+        return rts->to_string();
+        
+    }
+    
+   
+    
+    std::string batsched_tools::to_string(const Schedule::ReservedTimeSlice &rts){
+        return rts.to_string();
+    }
+    */
+   
+    
+    
+    std::string batsched_tools::to_json_string(const int value)
+    {
+        return std::to_string(value);
+    }
+    
+    std::string batsched_tools::to_json_string(const unsigned int value)
+    {
+        return std::to_string(value);
+    }
+    std::string batsched_tools::to_json_string(long value)
+    {
+        return std::to_string(value);
+    }
+    
+    std::string batsched_tools::to_json_string(double value)
+    {
+        return batsched_tools::string_format("%.15f",value);
+    }
+    std::string batsched_tools::to_json_string(Rational value)
+    {
+        return batsched_tools::string_format("%.15f",value.convert_to<double>());
+    }
+    
+
+    
+    std::string batsched_tools::to_json_string(const std::string value)
+    {
+        return "\""+value+"\"";
+    }
+    
+    std::string batsched_tools::to_json_string(Job* job)
+    {
+        return "\""+job->id+"\"";
+    }
+    
+    std::string batsched_tools::to_json_string(const Job* job)
+    {
+        return "\""+job->id+"\"";
+    }
+    
+    std::string batsched_tools::to_json_string(batsched_tools::KILL_TYPES kt)
+    {
+        return batsched_tools::to_json_string(int(kt));
+    }
+
+    
+    
+    
+    std::string batsched_tools::to_json_string(const JobAlloc * alloc)
+    {
+        std::string s = "{";
+            s+="\"begin\":\""+batsched_tools::to_json_string(alloc->begin.convert_to<double>())+"\"";
+            s+=",\"end\":\""+batsched_tools::to_json_string(alloc->end.convert_to<double>())+"\"";
+            s+=",\"has_been_inserted\":"+std::string((alloc->has_been_inserted ? "true":"false"));
+            s+=",\"started_in_first_slice\":"+std::string((alloc->started_in_first_slice ? "true":"false"));
+            s+=",\"used_machines\":\""+alloc->used_machines.to_string_hyphen()+"\"";
+            s+=",\"job:\":\""+alloc->job->id+"\"";
+        s+="}";
+        return s;
+    }
+    
+    
+    
+    /*std::string batsched_tools::to_json_string(const Schedule::ReservedTimeSlice *rts){
+        return rts->to_json_string();
+    }
+    
+
+    
+    std::string batsched_tools::to_json_string(const Schedule::ReservedTimeSlice &rts){
+        return rts.to_json_string();
+    }
+*/
+
+
+
+    
+
+
+
+
+    
+   
+

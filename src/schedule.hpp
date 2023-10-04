@@ -8,7 +8,13 @@
 #include "json_workload.hpp"
 #include <intervalset.hpp>
 #include "batsched_tools.hpp"
-
+class Workload;
+struct JobAlloc;
+namespace batsched_tools{struct start_from_chkpt;}
+struct JobComparator
+{
+    bool operator()(const Job * j1, const Job * j2) const;
+};
 class Schedule
 {
 public:
@@ -28,11 +34,14 @@ public:
 
         bool contains_job(const Job * job) const;
         bool contains_matching_job(std::function<bool(const Job *)> matching_function) const;
+        bool operator==(const TimeSlice & t);
         const Job * job_from_job_id(std::string job_id) const;
 
         std::string to_string_interval() const;
         std::string to_string_allocated_jobs() const;
         std::string to_string(int initial_indent = 0, int indent = 2) const;
+        std::string to_json_string_interval() const;
+        std::string to_json_string(int initial_indent=0,int indent = 2) const;
     };
     enum class RESCHEDULE_POLICY{NONE,AFFECTED,ALL};
     enum class IMPACT_POLICY{NONE,LEAST_KILLING_LARGEST_FIRST,LEAST_KILLING_SMALLEST_FIRST,LEAST_RESCHEDULING};
@@ -45,7 +54,7 @@ public:
     typedef std::list<TimeSlice>::iterator TimeSliceIterator;
     typedef std::list<TimeSlice>::const_iterator TimeSliceConstIterator;
 
-    typedef struct JobAlloc JobAlloc;
+    
 
     struct ReservedTimeSlice{
         bool operator==(const ReservedTimeSlice & r) const;
@@ -57,12 +66,22 @@ public:
         TimeSliceIterator slice_end;
         JobAlloc* alloc;
         const Job * job;
-        std::string to_string() const; 
+        std::string to_string() const;
+        std::string to_json_string() const;
+         
     };
 
 public:
     Schedule(int nb_machines = 1, Rational initial_time = 0);
     Schedule(const Schedule & other);
+    std::string vector_to_json_string(const std::vector<ReservedTimeSlice> *vec) const;
+    std::string list_to_json_string(const std::list<ReservedTimeSlice> *lst) const;
+    void ingest_schedule(rapidjson::Document & doc);
+    TimeSlice TimeSlice_from_json(const rapidjson::Value & Vslice);
+    std::map<const Job *, IntervalSet, JobComparator> JobMap_from_json(const rapidjson::Value & Vjobs,Rational begin);
+    JobAlloc * JobAlloc_from_json(const rapidjson::Value & Valloc);
+    std::vector<const Job *> JobVector_from_json(const rapidjson::Value & Varray);
+    Schedule::ReservedTimeSlice ReservedTimeSlice_from_json(const rapidjson::Value & Vslice);
 
     Schedule & operator=(const Schedule & other);
     void set_now(Rational now);
@@ -85,9 +104,10 @@ public:
     
     //CCU-LANL additions start
     void set_workload(Workload * workload);
+    void set_start_from_checkpoint(batsched_tools::start_from_chkpt * sfc);
     IntervalSet add_repair_machine(IntervalSet machine,double duration);
     IntervalSet remove_repair_machines(IntervalSet machines);
-    ReservedTimeSlice reserve_time_slice(const Job * job,batsched_tools::reservation_types forWhat=batsched_tools::reservation_types::RESERVATION);
+    ReservedTimeSlice reserve_time_slice(const Job * job);
     void add_reservation(ReservedTimeSlice reservation);
     void find_least_impactful_fit(JobAlloc * alloc, TimeSliceIterator begin_slice, TimeSliceIterator end_slice,IMPACT_POLICY policy);
     JobAlloc add_job_first_fit_after_time_slice(const Job * job,
@@ -173,6 +193,8 @@ public:
     int nb_slices() const;
 
     std::string to_string() const;
+    std::string to_json_string() const;
+    
     std::string to_svg(const std::string &message, const std::list<ReservedTimeSlice> & svg_reservations) const;
     void write_svg_to_file(const std::string & filename, 
                         const std::string & message,
@@ -218,6 +240,7 @@ private:
     long _svg_output_start = 1;
     long _svg_output_end = -1;
     Workload * _workload = nullptr;
+    batsched_tools::start_from_chkpt * _start_from_checkpoint=nullptr;
 };
 
 /**

@@ -10,9 +10,11 @@
 //#include "external/batsched_workload.hpp"
 //#include "external/batsched_job.hpp"
 #include "external/batsched_profile.hpp"
+#include "batsched_tools.hpp"
 namespace myB = myBatsched;
 
 struct JobAlloc;
+namespace batsched_tools{struct checkpoint_job_data; struct start_from_chkpt;};
 
 struct Job
 {
@@ -34,6 +36,7 @@ struct Job
     double checkpoint_interval;
     double dump_time;
     double read_time;
+    batsched_tools::checkpoint_job_data * checkpoint_job_data;
     
 };
 
@@ -50,10 +53,7 @@ struct JobAlloc
 };
 
 
-struct JobComparator
-{
-    bool operator()(const Job * j1, const Job * j2) const;
-};
+
 
 class Workload
 {
@@ -91,6 +91,7 @@ public:
     bool _subtract_progress_from_walltime = false;
     bool _seed_repair_time = false;
     double _MTTR = -1.0;
+    batsched_tools::start_from_chkpt* start_from_checkpoint = nullptr;
 private:
     char * _fileContents = nullptr;
     std::map<std::string, Job*> _jobs;
@@ -100,6 +101,6 @@ private:
     
     Rational _rjms_delay = 0;
     int _job_number = 0;
-   
+
 };
 

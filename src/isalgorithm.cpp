@@ -4,6 +4,7 @@
 #include "batsched_tools.hpp"
 #include <chrono>
 #include <ctime>
+#include <loguru.hpp>
 
 using namespace std;
 
@@ -126,9 +127,27 @@ void ISchedulingAlgorithm::set_machines(Machines *m){
 }
 void ISchedulingAlgorithm::on_simulation_start(double date, const rapidjson::Value & batsim_config){
     _start_real_time = _real_time;
+    _output_folder=batsim_config["output-folder"].GetString();
+    _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
+    LOG_F(INFO,"output folder %s",_output_folder.c_str());
 }
 void ISchedulingAlgorithm::on_start_from_checkpoint(double date, const rapidjson::Value & batsim_config){
+    
     _start_real_time = _real_time;
+    _start_from_checkpoint.nb_folder= batsim_config["start-from-checkpoint"]["nb_folder"].GetInt();
+    _start_from_checkpoint.nb_checkpoint = batsim_config["start-from-checkpoint"]["nb_checkpoint"].GetInt();
+    _start_from_checkpoint.nb_previously_completed = batsim_config["start-from-checkpoint"]["nb_previously_completed"].GetInt();
+    _start_from_checkpoint.nb_original_jobs = batsim_config["start-from-checkpoint"]["nb_original_jobs"].GetInt();
+    _start_from_checkpoint.nb_actually_completed = _start_from_checkpoint.nb_previously_completed;
+    _start_from_checkpoint.started_from_checkpoint = true;
+    _start_from_checkpoint.checkpoint_folder =_output_folder+"/previous/checkpoint_"+std::to_string(_start_from_checkpoint.nb_checkpoint);
+    _workload->start_from_checkpoint = &_start_from_checkpoint;
+}
+
+void ISchedulingAlgorithm::on_signal_checkpoint()
+{
+    LOG_F(INFO,"on_signal_checkpoint");
+    _need_to_send_checkpoint = true;
 }
 void ISchedulingAlgorithm::set_generators(double date){
     unsigned seed = 0;
@@ -208,11 +227,13 @@ bool ISchedulingAlgorithm::check_checkpoint_time(double date)
     }
 }
 bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
-    if (_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))
+    if ((_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))||_need_to_send_checkpoint)
     {
         _decision->add_generic_notification("checkpoint","",date);
+        _need_to_send_checkpoint=false;
         //_decision->add_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED,_nb_batsim_checkpoints,date,date);
-        _nb_batsim_checkpoints +=1;
+        if (!_need_to_send_checkpoint)//check that this is a scheduled checkpoint
+            _nb_batsim_checkpoints +=1;
         return true;
     }
     else

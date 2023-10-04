@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/craig/LANL/Post_July_2021/Sim/deploy_bare_metal/simulator/Install/include"
+                "/home/craig/LANL/Post_July_2021/Sim/deploy_bare_metal_2/simulator/Install/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

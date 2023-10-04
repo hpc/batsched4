@@ -1,5 +1,6 @@
 #include "schedule.hpp"
 #include <cstdlib>
+#include <vector>
 
 #include <boost/algorithm/string/join.hpp>
 #include <fstream>
@@ -15,9 +16,16 @@ namespace fs = std::filesystem;
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 #endif
-#include "batsched_tools.hpp"
+
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
 
 using namespace std;
+bool JobComparator::operator()(const Job *j1, const Job *j2) const
+{
+    return j1->id < j2->id;
+}
 
 Schedule::Schedule(int nb_machines,Rational initial_time)
 {
@@ -45,9 +53,14 @@ Schedule::Schedule(const Schedule &other)
 {
     *this = other;
 }
+
 void Schedule::set_workload(Workload * workload)
 {
     _workload = workload;
+}
+void Schedule::set_start_from_checkpoint(batsched_tools::start_from_chkpt * sfc)
+{
+    _start_from_checkpoint = sfc;
 }
 void Schedule::set_svg_prefix(std::string svg_prefix){
     _svg_prefix = svg_prefix;
@@ -67,6 +80,156 @@ void Schedule::set_now(Rational now){
     _now = now;
     }
 }
+void Schedule::ingest_schedule(rapidjson::Document & doc)
+{
+       
+    using namespace rapidjson;
+    //let's clear the schedule
+    _profile.clear();
+    
+    PPK_ASSERT_ERROR(doc.HasMember("Schedule"),"Trying to ingest schedule from checkpoint, but there is no 'Schedule' key");
+    const Value & schedule = doc["Schedule"];
+    const Value & timeSlices = schedule["TimeSlices"].GetArray();
+    PPK_ASSERT_ERROR(timeSlices.IsArray(), "Trying to ingest schedule from checkpoint, but Schedule is not an array");
+    
+    for (SizeType i = 0;i<timeSlices.Size();i++)
+    {
+        _profile.push_back(TimeSlice_from_json(timeSlices[i]));
+    }
+        
+    const Value & colors = schedule["_colors"].GetArray();
+    std::vector<std::string> temp;
+    for(SizeType i = 0;i<colors.Size();i++)
+    {
+        temp.push_back(colors[i].GetString());
+    }
+    _colors = temp;
+    _frame_number = schedule["_frame_number"].GetInt();
+    _largest_time_slice_length = Rational(schedule["_largest_time_slice_length"].GetDouble());
+    _nb_jobs_size = schedule["_nb_jobs_size"].GetInt();
+    _nb_reservations_size = schedule["_nb_reservations_size"].GetInt();
+    _output_number = schedule["_output_number"].GetInt();
+    _output_svg = schedule["_output_svg"].GetString();
+    _previous_time_end = Rational(schedule["_previous_time_end"].GetDouble());
+    _repair_machines = IntervalSet::from_string_hyphen(schedule["_repair_machines"].GetString());
+    const Value & resv_colors = schedule["_reservation_colors"].GetArray();
+    temp.clear();
+    for(SizeType i = 0;i<resv_colors.Size();i++)
+    {
+        temp.push_back(resv_colors[i].GetString());
+    }
+    _reservation_colors = temp;
+    _size = schedule["_size"].GetInt();
+    _smallest_time_slice_length = Rational(schedule["_smallest_time_slice_length"].GetDouble());
+    _svg_frame_end = schedule["_svg_frame_end"].GetInt();
+    _svg_frame_start = schedule["_svg_frame_start"].GetInt();
+    _svg_highlight_machines = IntervalSet::from_string_hyphen(schedule["_svg_highlight_machines"].GetString());
+    _svg_output_end = schedule["_svg_output_end"].GetInt();
+    _svg_output_start = schedule["_svg_output_start"].GetInt();
+    _svg_prefix = schedule["_svg_prefix"].GetString();
+    const Value & svg_resvs = schedule["_svg_reservations"].GetArray();
+    std::list<Schedule::ReservedTimeSlice> tempL;
+    for(SizeType i = 0;i<svg_resvs.Size();i++)
+    {
+        const Value & Vslice = svg_resvs[i];
+        tempL.push_back(ReservedTimeSlice_from_json(Vslice));
+    }
+    _svg_reservations = tempL;
+
+}
+std::vector<const Job *> Schedule::JobVector_from_json(const rapidjson::Value & Varray)
+{
+    using namespace rapidjson;
+    std::vector<const Job *> ourVector;
+    for(SizeType i = 0;i<Varray.Size();i++)
+    {
+        ourVector.push_back((*_workload)[Varray[i].GetString()]);
+    }
+    return ourVector;
+}
+JobAlloc * Schedule::JobAlloc_from_json(const rapidjson::Value & Valloc)
+{
+    JobAlloc *alloc = new JobAlloc;
+    alloc->begin = Rational(std::stod(Valloc["begin"].GetString()));
+    alloc->end = Rational(std::stod(Valloc["end"].GetString()));
+    alloc->has_been_inserted = Valloc["has_been_inserted"].GetBool();
+    alloc->started_in_first_slice = Valloc["started_in_first_slice"].GetBool();
+    alloc->used_machines = IntervalSet::from_string_hyphen(Valloc["used_machines"].GetString());
+    std::string job_id_str = Valloc["job"].GetString();
+    batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id_str);
+    job_id_str = parts.next_checkpoint; //the previous schedule's job_id is not the current one batsim has
+    alloc->job = (*_workload)[job_id_str];
+    alloc->job->allocations[alloc->begin]=alloc;
+    return alloc;
+}
+Schedule::ReservedTimeSlice Schedule::ReservedTimeSlice_from_json(const rapidjson::Value & Vslice)
+{
+    using namespace rapidjson;
+    //first get the individual parts
+    const Value & Valloc = Vslice["alloc"];
+    std::string job_str = Vslice["job"].GetString();
+    const Value & Vjobs_affected = Vslice["jobs_affected"].GetArray();
+    const Value & Vjobs_needed_to_be_killed = Vslice["jobs_to_be_killed"].GetArray();
+    const Value & Vjobs_to_reschedule = Vslice["jobs_to_reschedule"].GetArray();
+    bool success = Vslice["success"].GetBool();
+
+    ReservedTimeSlice slice;
+    // Let's create the job allocation
+    JobAlloc * alloc = JobAlloc_from_json(Valloc);
+    const Job * job = alloc->job;
+    //lets get jobs_affected
+    slice.jobs_affected = JobVector_from_json(Vjobs_affected);
+    slice.jobs_needed_to_be_killed = JobVector_from_json(Vjobs_needed_to_be_killed);
+    slice.jobs_to_reschedule = JobVector_from_json(Vjobs_to_reschedule);
+    slice.job = job;
+    TimeSlice ts;
+    ts.begin = alloc->begin;
+    slice.slice_begin = std::find(_profile.begin(),_profile.end(),ts);
+    ts.begin = alloc->end;
+    slice.slice_end = std::find(_profile.begin(),_profile.end(),ts);
+    return slice;
+}
+Schedule::TimeSlice Schedule::TimeSlice_from_json(const rapidjson::Value & Vslice)
+{
+    using namespace rapidjson;
+    TimeSlice slice;
+    
+    slice.begin = Rational(Vslice["begin"].GetDouble());
+    slice.end = Rational(Vslice["end"].GetDouble());
+    slice.length = Rational(Vslice["length"].GetDouble());
+    slice.available_machines = IntervalSet::from_string_hyphen(Vslice["available_machines"].GetString());
+    slice.allocated_jobs = JobMap_from_json(Vslice["allocated_jobs"].GetArray(),slice.begin);
+    slice.allocated_machines = IntervalSet::from_string_hyphen(Vslice["allocated_machines"].GetString());
+    slice.has_reservation = Vslice["has_reservation"].GetBool();
+    slice.nb_available_machines = Vslice["nb_available_machines"].GetInt();
+    slice.nb_reservations = Vslice["nb_reservations"].GetInt();
+
+    return slice;
+}
+std::map<const Job *, IntervalSet, JobComparator>  Schedule::JobMap_from_json(const rapidjson::Value & Vjobs,Rational begin)
+{
+    using namespace rapidjson;
+    std::map<const Job*,IntervalSet,JobComparator> ourMap;
+    for(SizeType i = 0;i<Vjobs.Size();i++)
+    {
+        const Value & Vjob = Vjobs[i];
+        const Value & Vid = Vjob["job_id"]; 
+        const Value & Valloc = Vjob["alloc"];
+        JobAlloc * alloc = JobAlloc_from_json(Valloc);
+        batsched_tools::job_parts parts = batsched_tools::get_job_parts(Vid.GetString());
+        const Job * job = (*_workload)[parts.next_checkpoint];
+        ourMap[job]=IntervalSet::from_string_hyphen(job->checkpoint_job_data->allocation);
+        
+
+    }
+    return ourMap;
+}
+
+
+
+
+
+
 void Schedule::set_smallest_and_largest_time_slice_length(Rational length){
     //first set the smallest and largest to init values
 
@@ -244,10 +407,12 @@ IntervalSet Schedule::remove_repair_machines(IntervalSet machines){
     return removed;
 
 }
-Schedule::JobAlloc Schedule::add_repair_job(Job *job)
+JobAlloc Schedule::add_repair_job(Job *job)
 {
+    //TODO
+    
     JobAlloc alloc;
-   return alloc;
+    return alloc;
 }
 //This function will return the intersection of machines that are allocated
 //in the time slice with the machines that you give it.  Pass it all machines to find out
@@ -512,7 +677,7 @@ void Schedule::remove_job_last_occurence(const Job *job)
     remove_job_internal(job, job_first_slice);
 }
 
-Schedule::JobAlloc Schedule::add_job_first_fit(
+JobAlloc Schedule::add_job_first_fit(
     const Job *job, ResourceSelector *selector, bool assert_insertion_successful)
 {
     PPK_ASSERT_ERROR(!contains_job(job),
@@ -628,12 +793,12 @@ void Schedule::find_least_impactful_fit(JobAlloc* alloc,TimeSliceIterator begin_
         //TODO
     }
 }
-Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job,batsched_tools::reservation_types forWhat){
+Schedule::ReservedTimeSlice Schedule::reserve_time_slice(const Job* job){
     if (_debug)
         output_to_svg("top reserve_time_slice " + job->id);
     
     // Let's create the job allocation
-    Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
+    JobAlloc *alloc = new JobAlloc;
          
         //find insertion slice
         auto slice_begin = _profile.begin();
@@ -853,7 +1018,7 @@ void Schedule::add_reservation(ReservedTimeSlice reservation){
 }
 
 */
-Schedule::JobAlloc Schedule::add_current_reservation(const Job * job, ResourceSelector * selector,bool assert_insertion_successful)
+JobAlloc Schedule::add_current_reservation(const Job * job, ResourceSelector * selector,bool assert_insertion_successful)
 {
      PPK_ASSERT_ERROR(!contains_job(job),
         "Invalid Schedule::add_current_reservation call: Cannot add "
@@ -862,7 +1027,7 @@ Schedule::JobAlloc Schedule::add_current_reservation(const Job * job, ResourceSe
     return add_current_reservation_after_time_slice(job, _profile.begin(),selector,assert_insertion_successful);
 }
 
-Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job *job,
+JobAlloc Schedule::add_current_reservation_after_time_slice(const Job *job,
     std::list<TimeSlice>::iterator first_time_slice, ResourceSelector *selector, bool assert_insertion_successful)
 {
     _size++;
@@ -905,7 +1070,7 @@ Schedule::JobAlloc Schedule::add_current_reservation_after_time_slice(const Job 
             if (totalTime >= job->walltime)
             {
                 // Let's create the job allocation
-                Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
+                JobAlloc *alloc = new JobAlloc;
 
                 // If the job fits in the current time slice (according to the fitting function)
                 if (selector->fit_reservation(job, available_machines, alloc->used_machines))
@@ -1092,7 +1257,7 @@ bool Schedule::remove_reservations_if_ready(std::vector<const Job *>& jobs_remov
     return false;
 }
     
-Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
+JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
     std::list<TimeSlice>::iterator first_time_slice, ResourceSelector *selector, bool assert_insertion_successful)
 {
 
@@ -1138,7 +1303,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
             if (totalTime >= job->walltime)
             {
                 // Let's create the job allocation
-                Schedule::JobAlloc *alloc = new Schedule::JobAlloc;
+                JobAlloc *alloc = new JobAlloc;
 
                 // If the job fits in the current time slice (according to the fitting function)
                 if (selector->fit(job, pit->available_machines, alloc->used_machines))
@@ -1270,7 +1435,7 @@ Schedule::JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
     return failed_alloc;
 }
 
-Schedule::JobAlloc Schedule::add_job_first_fit_after_time(
+JobAlloc Schedule::add_job_first_fit_after_time(
     const Job *job, Rational date, ResourceSelector *selector, bool assert_insertion_successful)
 {
     if (_debug)
@@ -1404,9 +1569,9 @@ Rational Schedule::infinite_horizon() const
     return it->end;
 }
 
-std::multimap<std::string, Schedule::JobAlloc> Schedule::jobs_allocations() const
+std::multimap<std::string, JobAlloc> Schedule::jobs_allocations() const
 {
-    multimap<std::string, Schedule::JobAlloc> res;
+    multimap<std::string, JobAlloc> res;
 
     map<const Job *, Rational> jobs_starting_times;
     map<const Job *, Rational> jobs_ending_times;
@@ -1734,40 +1899,96 @@ string Schedule::to_string() const
 
     return res;
 }
+string Schedule::to_json_string() const
+{
+    string res;
+    res = "{\n";
+        res = res + "\t\"Schedule\":\n\t{\n";
+            res = res + "\t\t\"_colors\":" + batsched_tools::vector_to_json_string(_colors) + ",\n";
+            res = res + "\t\t\"_frame_number\":" + batsched_tools::to_json_string(_frame_number) + ",\n";
+            res = res + "\t\t\"_largest_time_slice_length\":" + batsched_tools::to_json_string(_largest_time_slice_length) + ",\n";
+            res = res + "\t\t\"_nb_jobs_size\":" + batsched_tools::to_json_string(_nb_jobs_size) + ",\n";
+            res = res + "\t\t\"_nb_reservations_size\":" + batsched_tools::to_json_string(_nb_reservations_size) + ",\n";
+            res = res + "\t\t\"_output_number\":" + batsched_tools::to_json_string(_output_number) + ",\n";
+            res = res + "\t\t\"_output_svg\":" + batsched_tools::to_json_string(_output_svg) + ",\n";
+            res = res + "\t\t\"_previous_time_end\":" + batsched_tools::to_json_string(_previous_time_end) + ",\n";
+            res = res + "\t\t\"_repair_machines\":" + batsched_tools::to_json_string(_repair_machines.to_string_hyphen()) + ",\n";
+            res = res + "\t\t\"_reservation_colors\":" + batsched_tools::vector_to_json_string(_reservation_colors) + ",\n";
+            res = res + "\t\t\"_size\":" + batsched_tools::to_json_string(_size) + ",\n";
+            res = res + "\t\t\"_smallest_time_slice_length\":" + batsched_tools::to_json_string(_smallest_time_slice_length) + ",\n";
+            res = res + "\t\t\"_svg_frame_end\":" + batsched_tools::to_json_string(_svg_frame_end) + ",\n";
+            res = res + "\t\t\"_svg_frame_start\":" + batsched_tools::to_json_string(_svg_frame_start) + ",\n";
+            res = res + "\t\t\"_svg_highlight_machines\":" + batsched_tools::to_json_string(_svg_highlight_machines.to_string_hyphen()) + ",\n";
+            res = res + "\t\t\"_svg_output_end\":" + batsched_tools::to_json_string(_svg_output_end) + ",\n";
+            res = res + "\t\t\"_svg_output_start\":" + batsched_tools::to_json_string(_svg_output_start) + ",\n";
+            res = res + "\t\t\"_svg_prefix\":" + batsched_tools::to_json_string(_svg_prefix) + ",\n";
+            res = res + "\t\t\"_svg_reservations\":" + list_to_json_string(&_svg_reservations) + ",\n";
+            res = res + "\t\t\"TimeSlices\":\n\t\t[\n";
+                for (const TimeSlice &slice : _profile)
+                    res +=slice.to_json_string(3,1);
+            res = res + "\t\t]\n";
+        res = res + "\t}\n";
+    res = res +"}";
+    return res;
+}
 void Schedule::add_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be ){
     _svg_reservations.push_back(reservation_to_be);
 
+}
+bool Schedule::TimeSlice::operator==(const TimeSlice & t)
+{
+    return begin == t.begin;
 }
 bool Schedule::ReservedTimeSlice::operator==(const ReservedTimeSlice & r)const {
     return job->id == r.job->id;
 }
 std::string Schedule::ReservedTimeSlice::to_string()const{
-    std::string rts="[";
-    rts+="alloc:"+alloc->to_string();
-    rts+=",job:"+job->id;
-    rts+=",jobs_affected:[";
-    for (auto job : jobs_affected)
-    {
-        rts+=job->id+",";
-    }
-    rts+="]";
-    rts+=",jobs_needed_to_be_killed:[";
-    for (auto job : jobs_needed_to_be_killed)
-    {
-        rts+=job->id+",";
-    }
-    rts+="]";
-    rts+=",jobs_to_reschedule:[";
-    for (auto job : jobs_to_reschedule)
-    {
-        rts+=job->id+",";
-    }
-    rts+="]";
-    rts+=",success:"+std::string((success ? "1":"0"));
-    rts+="]";
-    return rts;
-    
-    
+    std::string rts_string="{";
+            rts_string+="\"alloc\":\""+batsched_tools::to_string(alloc)+"\"";
+            rts_string+=",\"job\":\""+batsched_tools::to_string(job)+"\"";
+            rts_string+=",\"jobs_affected\":"+batsched_tools::vector_to_string(jobs_affected)+"\"";
+            rts_string+=",\"jobs_needed_to_be_killed\":\"" +batsched_tools::vector_to_string(jobs_needed_to_be_killed)+"\"";
+            rts_string+=",\"jobs_to_reschedule\":"+batsched_tools::vector_to_string(jobs_to_reschedule)+"\"";
+            rts_string+=",\"success:\":"+std::string((success ? "true":"false"));
+        rts_string+="}";
+        return rts_string;
+}
+std::string Schedule::ReservedTimeSlice::to_json_string()const{
+            std::string rts_string="{";
+            rts_string+="\"alloc\":"+batsched_tools::to_json_string(alloc);
+            rts_string+=",\"job\":"+batsched_tools::to_json_string(job);
+            rts_string+=",\"jobs_affected\":"+batsched_tools::vector_to_json_string(jobs_affected);
+            rts_string+=",\"jobs_needed_to_be_killed\":" +batsched_tools::vector_to_json_string(jobs_needed_to_be_killed);
+            rts_string+=",\"jobs_to_reschedule\":"+batsched_tools::vector_to_json_string(jobs_to_reschedule);
+            rts_string+=",\"success\":"+std::string((success ? "true":"false"));
+        rts_string+="}";
+        return rts_string;
+}
+std::string Schedule::vector_to_json_string(const std::vector<Schedule::ReservedTimeSlice> * vec)const
+{
+        std::string ourString="[";
+        bool first = true;
+        for (ReservedTimeSlice value:(*vec))
+        {
+            if (!first)
+                ourString + ", "; first = false;
+            ourString = ourString + value.to_json_string();
+        }
+        ourString = ourString + "]";
+        return ourString;
+}
+std::string Schedule::list_to_json_string(const std::list<Schedule::ReservedTimeSlice> * lst)const
+{
+        std::string ourString="[";
+        bool first = true;
+        for (ReservedTimeSlice value:(*lst))
+        {
+            if (!first)
+                ourString + ", "; first = false;
+            ourString = ourString + value.to_json_string();
+        }
+        ourString = ourString + "]";
+        return ourString;
 }
 void Schedule::remove_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be){
     _svg_reservations.remove(reservation_to_be);
@@ -2386,9 +2607,20 @@ string Schedule::TimeSlice::to_string_interval() const
     double ilength = length.convert_to<double>();
 
     char buf[256];
-    snprintf(buf, 256, "[%f,%f] (length=%f)", ibegin, iend, ilength);
+    snprintf(buf, 256, "[%.15f,%.15f] (length=%.15f)", ibegin, iend, ilength);
 
     return string(buf);
+}
+string Schedule::TimeSlice::to_json_string_interval() const
+{
+    double ibegin = begin.convert_to<double>();
+    double iend = end.convert_to<double>();
+    double ilength =length.convert_to<double>();
+    return batsched_tools::string_format(  "\"begin\" : %.15f , \"end\" : %.15f, \"length\" : %.15f ,\n",
+                                           ibegin,iend,ilength);
+    
+
+
 }
 
 string Schedule::TimeSlice::to_string_allocated_jobs() const
@@ -2398,13 +2630,41 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
     for (auto mit : allocated_jobs)
     {
         const Job *job = mit.first;
-        if (job->purpose == "reservation")
-            jobs_str.push_back(job->id+":r");
-        else
-            jobs_str.push_back(job->id+":j");
+        jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":" +
+                              batsched_tools::to_json_string(job->allocations[this->begin]) +"}");
+
+        
     }
 
     return boost::algorithm::join(jobs_str, ",");
+}
+
+string Schedule::TimeSlice::to_json_string(int initial_indent, int indent) const
+{
+    string res;
+
+    string iistr, istr;
+
+    for (int i = 0; i < initial_indent; ++i)
+        iistr += "\t";
+
+    for (int i = 0; i < indent; ++i)
+        istr += "\t";
+
+    res += iistr + "Time slice: {";
+
+    res += to_json_string_interval();
+    res += iistr + istr + "\"available_machines\": \"" + available_machines.to_string_hyphen() + "\",\n";
+    res += iistr + istr + "\"allocated_jobs\": [" + to_string_allocated_jobs() + "],\n";
+    res += iistr + istr + "\"allocated_machines\":\"" +allocated_machines.to_string_hyphen()+"\",\n";
+    res += iistr + istr + "\"has_reservation\":"+(has_reservation ? "true" : "false")+",\n";
+    res += iistr + istr + "\"nb_available_machines\":" + std::to_string(nb_available_machines) + ",\n"; 
+    res += iistr + istr + "\"nb_reservations\":" + std::to_string(nb_reservations)+"\n";
+    res += iistr + "}\n";
+    
+    
+
+    return res;
 }
 
 string Schedule::TimeSlice::to_string(int initial_indent, int indent) const
@@ -2422,8 +2682,9 @@ string Schedule::TimeSlice::to_string(int initial_indent, int indent) const
     res += iistr + "Time slice: ";
 
     res += to_string_interval() + "\n";
-    res += iistr + istr + "available machines: " + available_machines.to_string_brackets() + "\n";
+    res += iistr + istr + "available machines: " + available_machines.to_string_hyphen() + "\n";
     res += iistr + istr + "allocated jobs: {" + to_string_allocated_jobs() + "}\n";
+    
 
     return res;
 }

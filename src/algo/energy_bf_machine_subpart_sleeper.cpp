@@ -94,7 +94,7 @@ void EnergyBackfillingMachineSubpartSleeper::on_monitoring_stage(double date)
         LOG_F(1, "Date=%g. nb_machines_to_let_awakened=%d", date, nb_machines_to_let_awakened);
 
     IntervalSet machines_that_can_be_used_by_the_priority_job;
-    Schedule::JobAlloc priority_job_alloc;
+    JobAlloc priority_job_alloc;
     IntervalSet priority_job_reserved_machines;
     bool priority_job_needs_awakenings = false;
 

@@ -20,6 +20,7 @@
 #include <loguru.hpp>
 
 #include "external/taywee_args.hpp"
+#include <csignal>
 
 // Added to get profiles into batsched but we get the whole workload
 
@@ -79,6 +80,9 @@ namespace r = rapidjson;
 
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
          Workload &workload, bool call_make_decisions_on_single_nop = true);
+void on_signal_checkpoint(int signum);
+bool batsim_checkpoint = false;
+int _checkpoint_signal = 35;
 
 /** @def STR_HELPER(x)
  *  @brief Helper macro to retrieve the string view of a macro.
@@ -101,6 +105,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision &d,
 
 int main(int argc, char ** argv)
 {
+    
     const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf","easy_bf2", "easy_bf_fast",
                                        "easy_bf_fast2","easy_bf_fast2_holdback",
                                       "easy_bf_plot_liquid_load_horizon",
@@ -359,6 +364,8 @@ int main(int argc, char ** argv)
         Network n;
         n.bind(socket_endpoint);
            LOG_F(1, "before run");
+
+
         // Run the simulation
         run(n, algo, decision, w, call_make_decisions_on_single_nop);
     }
@@ -392,10 +399,15 @@ int main(int argc, char ** argv)
 
     return 0;
 }
+void on_signal_checkpoint(int signum)
+{
+    batsim_checkpoint=true;
+}
 
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
          Workload & workload, bool call_make_decisions_on_single_nop)
 {
+    
     LOG_F(INFO,"line 371 main.cpp");
     bool simulation_finished = false;
     //just doing single workloads
@@ -406,11 +418,27 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
     bool redis_enabled = false;
     algo->set_redis(&redis);
     //LOG_F(INFO,"line 378 main.cpp");
+    
     while (!simulation_finished)
     {
+        
         LOG_F(INFO,"line 381 main.cpp");
         string received_message;
-        n.read(received_message);
+        
+   
+        try{
+            n.read(received_message);
+        } catch (zmq::error_t &ex)
+        {
+            //batsim_checkpoint = true;
+            if (boost::trim_copy(received_message).empty())
+                continue;
+        }
+        if (batsim_checkpoint)
+        {
+            algo->on_signal_checkpoint();
+            batsim_checkpoint = false;
+        }
         //LOG_F(INFO,"line 384 main.cpp");
         if (boost::trim_copy(received_message).empty())
             throw runtime_error("Empty message received (connection lost ?)");
@@ -439,25 +467,18 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             //LOG_F(INFO,"line 405 main.cpp");
             if (event_type == "SIMULATION_BEGINS")
             {
-                std::string checkpoint_batsim = event_data["config"]["checkpoint-batsim-interval"].GetString();
+                int signal = event_data["config"]["checkpoint-signal"].GetInt();
+                LOG_F(INFO,"CHECKPOINT SIGNAL=%d",signal);
+                //register signal for checkpointing
+                if (signal != -1)
+                    std::signal(signal,on_signal_checkpoint);
+                std::string checkpoint_batsim = event_data["config"]["checkpoint-batsim-interval"]["raw"].GetString();
                 if (checkpoint_batsim != "False")
                 {
-                    const std::regex r(R"(^(real|simulated):([0-9]+)[-]([0-9]{2}):([0-9]{2}):([0-9]{2}))");
-                	std::smatch sm;
-                    if (std::regex_search(checkpoint_batsim,sm,r))
-                    {
-                        std::string checkpoint_type = sm[1];
-                        int days = std::stoi(sm[2]);
-                        int hours = std::stoi(sm[3]);
-                        int mins = std::stoi(sm[4]);
-                        int seconds = std::stoi(sm[5]);
-                        seconds = seconds + mins*60 + hours*3600 + days*24*3600;
-                        algo->set_checkpoint_time(seconds,checkpoint_type);
-                    }
-                    else
-                        throw runtime_error("checkpoint_batsim != False, but not valid time string: " +checkpoint_batsim);
-                                       
-                    
+                        int total_seconds = event_data["config"]["checkpoint-batsim-interval"]["total_seconds"].GetInt();
+                        std::string checkpoint_type = event_data["config"]["checkpoint-batsim-interval"]["type"].GetString();
+                        algo->set_checkpoint_time(total_seconds,checkpoint_type);
+                             
                 }
                 else
                     algo->set_checkpoint_time(0,"False");
@@ -546,6 +567,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._seed_repair_time = event_data["config"]["seed-repair-time"].GetBool();
                 workload._MTTR = event_data["config"]["MTTR"].GetDouble();
                 
+                
                 LOG_F(INFO, "before set workloads");
                 /*
                 JUST DOING SINGLE WORKLOADS
@@ -555,7 +577,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
-                algo->on_simulation_start(current_date, event_data);
+                bool start_from_checkpoint = event_data["config"]["start-from-checkpoint"]["started_from_checkpoint"].GetBool();
+                if (start_from_checkpoint)
+                    algo->on_start_from_checkpoint(current_date,event_data);
+                else
+                    algo->on_simulation_start(current_date, event_data);
             }
             else if (event_type == "SIMULATION_ENDS")
             {

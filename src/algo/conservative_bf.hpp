@@ -9,7 +9,9 @@
 #include "../schedule.hpp"
 #include "../batsched_tools.hpp"
 #include "../machine.hpp"
+#include "../decision.hpp"
 #include <random>
+
 
 class ConservativeBackfilling : public ISchedulingAlgorithm
 {
@@ -34,6 +36,7 @@ public:
                                 SortableJobOrder::UpdateInformation * update_info,
                                 SortableJobOrder::CompareInformation * compare_info);
     virtual void checkpoint_batsched(double date);
+    virtual void on_first_jobs_submitted(double date);
 
 private:
     void handle_killed_jobs(std::vector<std::string> & recently_queued_jobs,double date);

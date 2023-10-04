@@ -534,7 +534,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
                     PPK_ASSERT_ERROR(ensured_removed || potential_removed);
 
                     // Let's insert the switch ON into the online schedule
-                    Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, machine_info->limited_resource_selector);
+                    JobAlloc alloc = _schedule.add_job_first_fit(job, machine_info->limited_resource_selector);
                     PPK_ASSERT_ERROR(alloc.begin == slice.begin);
 
                     // Let's register that this machine should be switched ON now
@@ -578,7 +578,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
             {
                 // Let's append it to the online schedule
                 LimitedRangeResourceSelector selector(job_machines);
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, &selector);
+                JobAlloc alloc = _schedule.add_job_first_fit(job, &selector);
                 PPK_ASSERT_ERROR(alloc.started_in_first_slice);
                 PPK_ASSERT_ERROR(alloc.begin == slice.begin);
 
@@ -776,7 +776,7 @@ void EnergyBackfilling::put_jobs_into_schedule(Schedule &schedule) const
         const Job * job = (*job_it)->job;
 
         // Let's try to put the job into the schedule at the first available slot.
-        Schedule::JobAlloc alloc = schedule.add_job_first_fit(job, _selector, false);
+        JobAlloc alloc = schedule.add_job_first_fit(job, _selector, false);
 
         // Because of sleeping machines, the allocation might be impossible.
         // If this happens, some machines must be awaken
@@ -949,7 +949,7 @@ void EnergyBackfilling::sedate_machine(Schedule &schedule,
     }
 
     // Let's add the switch OFF job into the schedule
-    Schedule::JobAlloc switch_off_alloc = schedule.add_job_first_fit_after_time_slice(minfo->switch_off_job, time_slice, minfo->limited_resource_selector);
+    JobAlloc switch_off_alloc = schedule.add_job_first_fit_after_time_slice(minfo->switch_off_job, time_slice, minfo->limited_resource_selector);
 
     if (_debug)
     {
@@ -980,7 +980,7 @@ void EnergyBackfilling::sedate_machine_without_switch(Schedule &schedule,
     if (minfo->ensured_sleep_job->walltime > 0)
     {
         // Let's add the ensured sleep job into the schedule, right after the previous one
-        Schedule::JobAlloc ensured_sleep_alloc = schedule.add_job_first_fit_after_time(minfo->ensured_sleep_job, when_it_should_start, minfo->limited_resource_selector);
+        JobAlloc ensured_sleep_alloc = schedule.add_job_first_fit_after_time(minfo->ensured_sleep_job, when_it_should_start, minfo->limited_resource_selector);
 
         if (_debug)
         {
@@ -999,7 +999,7 @@ void EnergyBackfilling::sedate_machine_without_switch(Schedule &schedule,
     Rational infinite_horizon_before = schedule.infinite_horizon();
 
     // Let's add the potential sleep job into the schedule, right after the previous one
-    Schedule::JobAlloc potential_sleep_alloc = schedule.add_job_first_fit_after_time(minfo->potential_sleep_job, when_it_should_start, minfo->limited_resource_selector);
+    JobAlloc potential_sleep_alloc = schedule.add_job_first_fit_after_time(minfo->potential_sleep_job, when_it_should_start, minfo->limited_resource_selector);
 
     if (_debug)
     {

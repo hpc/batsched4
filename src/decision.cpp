@@ -465,7 +465,12 @@ void SchedulingDecision::add_set_job_metadata(const string &job_id,
 
 void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date, double date)
 {
-    _proto_writer->append_call_me_later(forWhat,id, future_date, date);
+    _proto_writer->append_call_me_later(forWhat,_nb_call_me_laters, future_date, date);
+    _nb_call_me_laters++;
+}
+void SchedulingDecision::set_nb_call_me_laters(int nb)
+{
+    _nb_call_me_laters = nb;
 }
 
 void SchedulingDecision::add_generic_notification(const std::string &type,const std::string & notify_data,double date)

@@ -73,7 +73,7 @@ public:
                                                        const Job *& priority_job,
                                                        ResourceSelector * priority_job_selector,
                                                        bool & priority_job_needs_awakenings,
-                                                       Schedule::JobAlloc & first_insertion_alloc,
+                                                       JobAlloc & first_insertion_alloc,
                                                        IntervalSet & priority_job_reserved_machines,
                                                        IntervalSet & machines_that_can_be_used_by_the_priority_job);
 

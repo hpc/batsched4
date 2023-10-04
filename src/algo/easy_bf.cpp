@@ -93,7 +93,7 @@ void EasyBackfilling::make_decisions(double date,
                 new_job != priority_job_after &&
                 new_job->nb_requested_resources <= nb_available_machines)
             {
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
+                JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
                 if ( alloc.started_in_first_slice)
                 {
                     _decision->add_execute_job(new_job_id, alloc.used_machines, date);
@@ -127,7 +127,7 @@ void EasyBackfilling::make_decisions(double date,
 
             if (job == priority_job_after) // If the current job is priority
             {
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
+                JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
 
                 if (alloc.started_in_first_slice)
                 {
@@ -140,7 +140,7 @@ void EasyBackfilling::make_decisions(double date,
             }
             else // The job is not priority
             {
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
+                JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
 
                 if (alloc.started_in_first_slice)
                 {
@@ -192,7 +192,7 @@ void EasyBackfilling::sort_queue_while_handling_priority_job(const Job * priorit
             could_run_priority_job = false;
 
             // Let's add the priority job into the schedule
-            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(priority_job_after, _selector);
+            JobAlloc alloc = _schedule.add_job_first_fit(priority_job_after, _selector);
 
             if (alloc.started_in_first_slice)
             {

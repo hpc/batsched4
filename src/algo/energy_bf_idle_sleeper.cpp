@@ -103,7 +103,7 @@ void EnergyBackfillingIdleSleeper::select_idle_machines_to_awaken(const Queue *q
 
     const Job * priority_job;
     bool priority_job_needs_awakenings;
-    Schedule::JobAlloc priority_job_alloc;
+    JobAlloc priority_job_alloc;
     IntervalSet priority_job_reserved_machines;
     IntervalSet machines_that_can_be_used_by_the_priority_job;
     compute_priority_job_and_related_stuff(schedule_copy, queue, priority_job,

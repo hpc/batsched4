@@ -11,6 +11,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
+#include "batsched_tools.hpp"
 
 #include "pempek_assert.hpp"
 
@@ -146,6 +147,27 @@ Job *Workload::job_from_json_object(const Value &object)
     j->nb_requested_resources = object["res"].GetInt();
     j->unique_number = _job_number++;
     j->checkpoint_interval = -1.0;
+    if (start_from_checkpoint!=nullptr)
+    {
+        j->checkpoint_job_data = new batsched_tools::checkpoint_job_data();
+        PPK_ASSERT_ERROR(object.HasMember("allocation"), "%s: job '%s' has no 'allocation' field"
+        ", but we are starting-from-checkpoint",j->id.c_str());
+        j->checkpoint_job_data->allocation = object["allocation"].GetString();
+        
+        PPK_ASSERT_ERROR(object.HasMember("progress"), "%s: job '%s' has no 'progress' field"
+        ", but we are starting-from-checkpoint",j->id.c_str());
+        j->checkpoint_job_data->progress = object["progress"].GetDouble();
+
+        PPK_ASSERT_ERROR(object.HasMember("state"), "%s: job '%s' has no 'state' field"
+        ", but we are starting-from-checkpoint",j->id.c_str());
+        j->checkpoint_job_data->state = object["state"].GetInt();
+
+        PPK_ASSERT_ERROR(object.HasMember("jitter"), "%s: job '%s' has no 'jitter' field"
+        ", but we are starting-from-checkpoint",j->id.c_str());
+        j->checkpoint_job_data->jitter = object["jitter"].GetString();
+
+        
+    }
 
     if (object.HasMember("walltime"))
     {
@@ -222,20 +244,10 @@ Job *Workload::job_from_json_object(const Value &job_object,const Value &profile
     return j;
 }
 
-bool JobComparator::operator()(const Job *j1, const Job *j2) const
-{
-    return j1->id < j2->id;
-}
+
 
 std::string JobAlloc::to_string()const
 {
-    std::string s = "[";
-    s+="[begin:"+begin.str();
-    s+=",end:"+end.str();
-    s+=",has_been_inserted:"+std::string((has_been_inserted ? "1":"0"));
-    s+=",started_in_first_slice:"+std::string((started_in_first_slice ? "1":"0"));
-    s+=",used_machines:"+used_machines.to_string_hyphen();
-    s+=",job:"+job->id+"]";
-    return s;
+    return batsched_tools::to_string(this);
 
 }

@@ -60,12 +60,13 @@ public:
     void add_answer_estimate_waiting_time(const std::string & job_id,
                                           double estimated_waiting_time,
                                           double date);
+            
 
     void clear();
 
     std::string content(double date);
     double last_date() const;
-
+    void set_nb_call_me_laters(int nb);
     void set_redis(bool enabled, RedisStorage * redis);
     std::string to_json_desc(rapidjson::Document * doc);
 
@@ -84,4 +85,5 @@ private:
     AbstractProtocolWriter * _proto_writer = nullptr;
     bool _redis_enabled = false;
     RedisStorage * _redis = nullptr;
+    int _nb_call_me_laters=0;
 };

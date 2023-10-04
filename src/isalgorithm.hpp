@@ -162,6 +162,11 @@ public:
     bool check_checkpoint_time(double date);
     virtual void checkpoint_batsched(double date);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
+    virtual void on_first_jobs_submitted(double date) {}
+    void on_signal_checkpoint();
+    
+    
+    
     
     
 
@@ -210,6 +215,10 @@ protected:
     long _batsim_checkpoint_interval_seconds = 0;
     std::string _batsim_checkpoint_interval_type = "real";
     bool _need_to_checkpoint = false;
+    bool _need_to_send_checkpoint = false;
+    int _nb_call_me_laters=0;
+    batsched_tools::start_from_chkpt _start_from_checkpoint;
+    std::string _output_folder;
     
 
     

@@ -98,10 +98,16 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
     
     if (_output_svg == "all")
             _schedule.output_to_svg("On Machine Down For Repairs  Machine #:  "+std::to_string((*_machines)[number]->id));
-    
+    double repair_time = (*_machines)[number]->repair_time;
+    //if there is a global repair time set that as the repair time
+    if (_workload->_repair_time != -1.0)
+        repair_time = _workload->_repair_time;
+    if (_workload->_MTTR != -1.0)
+        repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
     IntervalSet added = IntervalSet::empty_interval_set() ;
     if (_schedule.get_reservations_running_on_machines(machine).empty())
-        added = _schedule.add_repair_machines(machine);
+        added = _schedule.add_repair_machine(machine,repair_time);
+
     LOG_F(INFO,"here");
     //if the machine is already down for repairs ignore it.
     //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
@@ -114,12 +120,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
         //ok the machine is not down for repairs already so it WAS added
         //the failure/repair will not be happening on a machine that has a reservation on it either
         //it will be going down for repairs now
-        double repair_time = (*_machines)[number]->repair_time;
-        //if there is a global repair time set that as the repair time
-        if (_workload->_repair_time != -1.0)
-            repair_time = _workload->_repair_time;
-        if (_workload->_MTTR != -1.0)
-            repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
+        
         //call me back when the repair is done
         _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
        
@@ -131,9 +132,9 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
             _schedule.get_jobs_running_on_machines(machine,jobs_to_kill);
               
               std::string jobs_to_kill_str = !(jobs_to_kill.empty())? std::accumulate( /* otherwise, accumulate */
-    ++jobs_to_kill.begin(), jobs_to_kill.end(), /* the range 2nd to after-last */
-    *jobs_to_kill.begin(), /* and start accumulating with the first item */
-    [](auto& a, auto& b) { return a + "," + b; }) : "";
+            ++jobs_to_kill.begin(), jobs_to_kill.end(), /* the range 2nd to after-last */
+            *jobs_to_kill.begin(), /* and start accumulating with the first item */
+            [](auto& a, auto& b) { return a + "," + b; }) : "";
               
             LOG_F(INFO,"jobs to kill %s",jobs_to_kill_str.c_str());
 
@@ -162,7 +163,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
                     if (_output_svg == "all")
                         _schedule.output_to_svg("Finished Machine Down For Repairs, Machine #: "+std::to_string(number));
 
-                }
+                
         }
     }
     else{
@@ -396,7 +397,7 @@ void EasyBackfilling2::make_decisions(double date,
                 new_job != priority_job_after &&
                 new_job->nb_requested_resources <= nb_available_machines)
             {
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
+                JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector);
                 if ( alloc.started_in_first_slice)
                 {
                     _decision->add_execute_job(new_job_id, alloc.used_machines, date);
@@ -424,7 +425,7 @@ void EasyBackfilling2::make_decisions(double date,
 
             if (job == priority_job_after) // If the current job is priority
             {
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
+                JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
 
                 if (alloc.started_in_first_slice)
                 {
@@ -437,7 +438,7 @@ void EasyBackfilling2::make_decisions(double date,
             }
             else // The job is not priority
             {
-                Schedule::JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
+                JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
 
                 if (alloc.started_in_first_slice)
                 {
@@ -483,7 +484,7 @@ void EasyBackfilling2::sort_queue_while_handling_priority_job(const Job * priori
             could_run_priority_job = false;
 
             // Let's add the priority job into the schedule
-            Schedule::JobAlloc alloc = _schedule.add_job_first_fit(priority_job_after, _selector);
+            JobAlloc alloc = _schedule.add_job_first_fit(priority_job_after, _selector);
 
             if (alloc.started_in_first_slice)
             {

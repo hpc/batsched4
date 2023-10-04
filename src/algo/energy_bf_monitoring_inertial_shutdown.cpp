@@ -261,7 +261,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                 LOG_F(1, "Date=%g. make_decisions, priority loop, trying to insert priority job '%s'.%s",
                        date, priority_job->id.c_str(), _inertial_schedule.to_string().c_str());
 
-            Schedule::JobAlloc alloc = _inertial_schedule.add_job_first_fit(priority_job, _selector, false);
+            JobAlloc alloc = _inertial_schedule.add_job_first_fit(priority_job, _selector, false);
 
             if (alloc.has_been_inserted)
             {
@@ -535,7 +535,7 @@ void EnergyBackfillingMonitoringInertialShutdown::make_decisions(double date,
                 allocated_jobs.count(job) == 0 && // Not already scheduled
                 job->nb_requested_resources <= nb_machines_available_now) // Thin enough to fit the first hole
             {
-                Schedule::JobAlloc alloc = _inertial_schedule.add_job_first_fit(job, _selector, false);
+                JobAlloc alloc = _inertial_schedule.add_job_first_fit(job, _selector, false);
                 if (alloc.has_been_inserted)
                 {
                     if (alloc.started_in_first_slice)
@@ -828,7 +828,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     }
 
     IntervalSet machines_that_can_be_used_by_the_priority_job;
-    Schedule::JobAlloc priority_job_alloc;
+    JobAlloc priority_job_alloc;
     bool priority_job_needs_awakenings = false;
 
     if (_inertial_shutdown_debug)
@@ -1020,7 +1020,7 @@ void EnergyBackfillingMonitoringInertialShutdown::on_monitoring_stage(double dat
     if (priority_job != nullptr && !priority_job_needs_awakenings)
     {
         // Let's make sure the priority job has not been delayed by the choices we made.
-        Schedule::JobAlloc priority_job_alloc2 = _inertial_schedule.add_job_first_fit(priority_job, _selector);
+        JobAlloc priority_job_alloc2 = _inertial_schedule.add_job_first_fit(priority_job, _selector);
 
         if (_inertial_shutdown_debug)
         {
@@ -1409,8 +1409,8 @@ void EnergyBackfillingMonitoringInertialShutdown::write_schedule_debug(const str
         char output_filename[256];
         snprintf(output_filename, 256, "%s/inertial_schedule_%06d%s.svg",
                  _output_dir.c_str(), _debug_output_id, filename_suffix.c_str());
-
-        _inertial_schedule.write_svg_to_file(output_filename);
+        std::list<Schedule::ReservedTimeSlice> empty_list;
+        _inertial_schedule.write_svg_to_file(output_filename,"",empty_list );
     }
 
     ++_debug_output_id;
@@ -1421,7 +1421,7 @@ void EnergyBackfillingMonitoringInertialShutdown::compute_priority_job_and_relat
                                                                                          const Job *&priority_job,
                                                                                          ResourceSelector * priority_job_selector,
                                                                                          bool & priority_job_needs_awakenings,
-                                                                                         Schedule::JobAlloc &first_insertion_alloc,
+                                                                                         JobAlloc &first_insertion_alloc,
                                                                                          IntervalSet &priority_job_reserved_machines,
                                                                                          IntervalSet &machines_that_can_be_used_by_the_priority_job)
 {
@@ -1491,7 +1491,7 @@ Rational EnergyBackfillingMonitoringInertialShutdown::compute_priority_job_start
         EnergyBackfilling::awaken_machine_as_soon_as_possible(copy, machine_id);
     }
 
-    Schedule::JobAlloc alloc = copy.add_job_first_fit(priority_job, _selector, true);
+    JobAlloc alloc = copy.add_job_first_fit(priority_job, _selector, true);
 
     PPK_ASSERT_ERROR(alloc.has_been_inserted);
     return alloc.begin;
