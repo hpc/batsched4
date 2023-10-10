@@ -227,13 +227,17 @@ bool ISchedulingAlgorithm::check_checkpoint_time(double date)
     }
 }
 bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
+    LOG_F(INFO,"here");
     if ((_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))||_need_to_send_checkpoint)
     {
+       LOG_F(INFO,"here");
         _decision->add_generic_notification("checkpoint","",date);
+        LOG_F(INFO,"here");
         _need_to_send_checkpoint=false;
         //_decision->add_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED,_nb_batsim_checkpoints,date,date);
         if (!_need_to_send_checkpoint)//check that this is a scheduled checkpoint
             _nb_batsim_checkpoints +=1;
+        LOG_F(INFO,"here");
         return true;
     }
     else

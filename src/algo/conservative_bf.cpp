@@ -14,13 +14,16 @@ using namespace std;
 
 void ConservativeBackfilling::checkpoint_batsched(double date)
 {
+    LOG_F(INFO,"here");
     std::string checkpoint_dir = _output_folder+"/checkpoint_latest";
+    LOG_F(INFO,"here");
     std::ofstream f(checkpoint_dir+"/batsched_schedule.chkpt",std::ios_base::out);
     if (f.is_open())
     {
         f<<_schedule.to_json_string()<<std::endl;
         f.close();
     }
+    LOG_F(INFO,"here");
     f.open(checkpoint_dir+"/batsched_queues.chkpt",std::ios_base::out);
     if (f.is_open())
     {
@@ -30,6 +33,7 @@ void ConservativeBackfilling::checkpoint_batsched(double date)
         f<<"}";
         f.close();
     }
+    LOG_F(INFO,"here");
     f.open(checkpoint_dir+"/batsched_variables.chkpt",std::ios_base::out);
     if (f.is_open())
     {
@@ -111,7 +115,8 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
     _svg_output_end = batsim_config["svg-output-end"].GetInt64();
     LOG_F(INFO,"output svg %s",_output_svg.c_str());
-   
+    _output_folder=batsim_config["output-folder"].GetString();
+    _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
     
     Schedule::convert_policy(batsim_config["reschedule-policy"].GetString(),_reschedule_policy);
     Schedule::convert_policy(batsim_config["impact-policy"].GetString(),_impact_policy);
@@ -131,6 +136,7 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     _schedule.set_workload(_workload);
     _schedule.set_start_from_checkpoint(&_start_from_checkpoint);
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
+    _recover_from_checkpoint = true;
    //we are going to wait on setting any generators
    
 
@@ -140,8 +146,8 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
     //ok we need to update things now
     //workload should have our jobs now
     //lets ingest our schedule
-    std::string schedule_filename = _start_from_checkpoint.checkpoint_folder + "/batsched_schedule.chkpt";
-    ifstream ifile(_start_from_checkpoint.checkpoint_folder);
+    std::string schedule_filename = _output_folder + "/start_from_checkpoint/batsched_schedule.chkpt";
+    ifstream ifile(schedule_filename);
     PPK_ASSERT_ERROR(ifile.is_open(), "Cannot read schedule file '%s'", schedule_filename.c_str());
     std::string content;
 
@@ -154,7 +160,18 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
 
     rapidjson::Document scheduleDoc;
     scheduleDoc.Parse(content.c_str());
+    LOG_F(INFO,"here");
     _schedule.ingest_schedule(scheduleDoc);
+    LOG_F(INFO,"%s",_schedule.to_string().c_str());
+    for (auto kv_pair:_schedule.begin()->allocated_jobs)
+    {
+        _decision->add_execute_job(kv_pair.first->id,kv_pair.second,date);
+        _queue->remove_job(kv_pair.first);
+    }
+    _decision->add_call_me_later(batsched_tools::call_me_later_types::RECOVER_FROM_CHECKPOINT,1,date,date);
+    //_queue.ingest_queue()
+    //_reservation_queue.ingest_queue()
+    
     
 }
 void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_event)
@@ -525,10 +542,17 @@ void ConservativeBackfilling::make_decisions(double date,
                                              SortableJobOrder::UpdateInformation *update_info,
                                              SortableJobOrder::CompareInformation *compare_info)
 {
+    if (_exit_make_decisions)
+    {   
+        _exit_make_decisions = false;     
+        return;
+    }
     LOG_F(INFO,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
     send_batsim_checkpoint_if_ready(date);
+    LOG_F(INFO,"here");
     if (_need_to_checkpoint)
         checkpoint_batsched(date);
+    LOG_F(INFO,"here");
     if (_output_svg != "none")
         _schedule.set_now((Rational)date);
     LOG_F(INFO,"make decisions");
@@ -584,9 +608,11 @@ void ConservativeBackfilling::make_decisions(double date,
             recently_released_reservations.push_back(new_job_id);
         }
     }
-    if( _start_from_checkpoint.started_from_checkpoint && _start_from_checkpoint.received_submitted_jobs)
+    if( _recover_from_checkpoint && _start_from_checkpoint.received_submitted_jobs)
     {
         on_first_jobs_submitted(date);
+        _recover_from_checkpoint = false;
+        return;
 
     }
     /********* The following are just thoughts I don't want to get rid of

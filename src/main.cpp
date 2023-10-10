@@ -566,7 +566,19 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._subtract_progress_from_walltime = event_data["config"]["subtract-progress-from-walltime"].GetBool();
                 workload._seed_repair_time = event_data["config"]["seed-repair-time"].GetBool();
                 workload._MTTR = event_data["config"]["MTTR"].GetDouble();
-                
+                const rapidjson::Value & Vstart_from_checkpoint = event_data["config"]["start-from-checkpoint"];
+                workload.start_from_checkpoint = new batsched_tools::start_from_chkpt();
+                LOG_F(INFO, "here");
+                workload.start_from_checkpoint->started_from_checkpoint = Vstart_from_checkpoint["started_from_checkpoint"].GetBool();
+                LOG_F(INFO, "here");
+                workload.start_from_checkpoint->nb_folder = Vstart_from_checkpoint["nb_folder"].GetInt();
+                LOG_F(INFO, "here");
+                workload.start_from_checkpoint->nb_checkpoint = Vstart_from_checkpoint["nb_checkpoint"].GetInt();
+                LOG_F(INFO, "here");
+                workload.start_from_checkpoint->nb_previously_completed = Vstart_from_checkpoint["nb_previously_completed"].GetInt();
+                LOG_F(INFO, "here");
+                workload.start_from_checkpoint->nb_original_jobs = Vstart_from_checkpoint["nb_original_jobs"].GetInt();
+                LOG_F(INFO, "here");
                 
                 LOG_F(INFO, "before set workloads");
                 /*
@@ -577,8 +589,8 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 d.set_redis(redis_enabled, &redis);
 
                 algo->set_nb_machines(nb_resources);
-                bool start_from_checkpoint = event_data["config"]["start-from-checkpoint"]["started_from_checkpoint"].GetBool();
-                if (start_from_checkpoint)
+                
+                if (workload.start_from_checkpoint->started_from_checkpoint)
                     algo->on_start_from_checkpoint(current_date,event_data);
                 else
                     algo->on_simulation_start(current_date, event_data);

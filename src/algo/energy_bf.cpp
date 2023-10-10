@@ -609,7 +609,7 @@ void EnergyBackfilling::make_decisions_of_schedule(const Schedule &schedule,
             // To avoid Batsim's deadlock, we should tell it to wait that we are ready.
 
             PPK_ASSERT_ERROR(_schedule.nb_slices() >= 1);
-            _decision->add_call_me_later((double) _schedule.begin()->end + 1, (double) _schedule.begin()->begin);
+            _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,_nb_call_me_later_running,(double) _schedule.begin()->end + 1, (double) _schedule.begin()->begin);
             _nb_call_me_later_running++;
         }
     }

@@ -219,6 +219,8 @@ protected:
     int _nb_call_me_laters=0;
     batsched_tools::start_from_chkpt _start_from_checkpoint;
     std::string _output_folder;
+    bool _exit_make_decisions = false;
+    bool _recover_from_checkpoint = false;
     
 
     

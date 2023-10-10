@@ -55,8 +55,8 @@ batsched_tools::job_parts batsched_tools::get_job_parts(std::string job_id)
                      std::to_string(parts.job_number) +
                      resubmit +
                      checkpoint;
-        checkpoint = ((parts.job_checkpoint != -1) ? "$" + std::to_string(parts.job_checkpoint+1) : "");
-        resubmit = ((parts.job_resubmit != -1) ? "#" + std::to_string(parts.job_resubmit) : "#1");
+        checkpoint = ((parts.job_checkpoint != -1) ? "$" + std::to_string(parts.job_checkpoint+1) : "$1");
+        resubmit = ((parts.job_resubmit != -1) ? "#" + std::to_string(parts.job_resubmit) : "");
         parts.next_checkpoint = parts.workload + "!"+
                      std::to_string(parts.job_number) +
                      resubmit +
@@ -239,6 +239,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     
     std::string batsched_tools::to_json_string(double value)
     {
+        LOG_F(INFO,"here");
         return batsched_tools::string_format("%.15f",value);
     }
     std::string batsched_tools::to_json_string(Rational value)
@@ -274,12 +275,18 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     std::string batsched_tools::to_json_string(const JobAlloc * alloc)
     {
         std::string s = "{";
+        LOG_F(INFO,"here");
             s+="\"begin\":\""+batsched_tools::to_json_string(alloc->begin.convert_to<double>())+"\"";
+            LOG_F(INFO,"here");
             s+=",\"end\":\""+batsched_tools::to_json_string(alloc->end.convert_to<double>())+"\"";
+            LOG_F(INFO,"here");
             s+=",\"has_been_inserted\":"+std::string((alloc->has_been_inserted ? "true":"false"));
+            LOG_F(INFO,"here");
             s+=",\"started_in_first_slice\":"+std::string((alloc->started_in_first_slice ? "true":"false"));
+            LOG_F(INFO,"here");
             s+=",\"used_machines\":\""+alloc->used_machines.to_string_hyphen()+"\"";
-            s+=",\"job:\":\""+alloc->job->id+"\"";
+            LOG_F(INFO,"here");
+            s+=",\"job\":\""+alloc->job->id+"\"";
         s+="}";
         return s;
     }

@@ -147,7 +147,7 @@ Job *Workload::job_from_json_object(const Value &object)
     j->nb_requested_resources = object["res"].GetInt();
     j->unique_number = _job_number++;
     j->checkpoint_interval = -1.0;
-    if (start_from_checkpoint!=nullptr)
+    if (start_from_checkpoint->started_from_checkpoint)
     {
         j->checkpoint_job_data = new batsched_tools::checkpoint_job_data();
         PPK_ASSERT_ERROR(object.HasMember("allocation"), "%s: job '%s' has no 'allocation' field"

@@ -86,23 +86,25 @@ void Schedule::ingest_schedule(rapidjson::Document & doc)
     using namespace rapidjson;
     //let's clear the schedule
     _profile.clear();
-    
+    LOG_F(INFO,"here");
     PPK_ASSERT_ERROR(doc.HasMember("Schedule"),"Trying to ingest schedule from checkpoint, but there is no 'Schedule' key");
     const Value & schedule = doc["Schedule"];
+    LOG_F(INFO,"here");
     const Value & timeSlices = schedule["TimeSlices"].GetArray();
     PPK_ASSERT_ERROR(timeSlices.IsArray(), "Trying to ingest schedule from checkpoint, but Schedule is not an array");
-    
+    LOG_F(INFO,"here");
     for (SizeType i = 0;i<timeSlices.Size();i++)
     {
         _profile.push_back(TimeSlice_from_json(timeSlices[i]));
     }
-        
+    LOG_F(INFO,"here");  
     const Value & colors = schedule["_colors"].GetArray();
     std::vector<std::string> temp;
     for(SizeType i = 0;i<colors.Size();i++)
     {
         temp.push_back(colors[i].GetString());
     }
+    LOG_F(INFO,"here");
     _colors = temp;
     _frame_number = schedule["_frame_number"].GetInt();
     _largest_time_slice_length = Rational(schedule["_largest_time_slice_length"].GetDouble());
@@ -111,7 +113,12 @@ void Schedule::ingest_schedule(rapidjson::Document & doc)
     _output_number = schedule["_output_number"].GetInt();
     _output_svg = schedule["_output_svg"].GetString();
     _previous_time_end = Rational(schedule["_previous_time_end"].GetDouble());
-    _repair_machines = IntervalSet::from_string_hyphen(schedule["_repair_machines"].GetString());
+    LOG_F(INFO,"here");
+    std::string repair_machines = schedule["_repair_machines"].GetString();
+    if (repair_machines == "")
+        _repair_machines = IntervalSet::empty_interval_set();
+    else
+        _repair_machines = IntervalSet::from_string_hyphen(repair_machines);
     const Value & resv_colors = schedule["_reservation_colors"].GetArray();
     temp.clear();
     for(SizeType i = 0;i<resv_colors.Size();i++)
@@ -123,10 +130,15 @@ void Schedule::ingest_schedule(rapidjson::Document & doc)
     _smallest_time_slice_length = Rational(schedule["_smallest_time_slice_length"].GetDouble());
     _svg_frame_end = schedule["_svg_frame_end"].GetInt();
     _svg_frame_start = schedule["_svg_frame_start"].GetInt();
-    _svg_highlight_machines = IntervalSet::from_string_hyphen(schedule["_svg_highlight_machines"].GetString());
+    std::string svg_highlight_machines = schedule["_svg_highlight_machines"].GetString();
+    if (svg_highlight_machines == "")
+        _svg_highlight_machines = IntervalSet::empty_interval_set();
+    else
+        _svg_highlight_machines = IntervalSet::from_string_hyphen(svg_highlight_machines);
     _svg_output_end = schedule["_svg_output_end"].GetInt();
     _svg_output_start = schedule["_svg_output_start"].GetInt();
     _svg_prefix = schedule["_svg_prefix"].GetString();
+    LOG_F(INFO,"here");
     const Value & svg_resvs = schedule["_svg_reservations"].GetArray();
     std::list<Schedule::ReservedTimeSlice> tempL;
     for(SizeType i = 0;i<svg_resvs.Size();i++)
@@ -150,16 +162,26 @@ std::vector<const Job *> Schedule::JobVector_from_json(const rapidjson::Value & 
 JobAlloc * Schedule::JobAlloc_from_json(const rapidjson::Value & Valloc)
 {
     JobAlloc *alloc = new JobAlloc;
-    alloc->begin = Rational(std::stod(Valloc["begin"].GetString()));
-    alloc->end = Rational(std::stod(Valloc["end"].GetString()));
-    alloc->has_been_inserted = Valloc["has_been_inserted"].GetBool();
-    alloc->started_in_first_slice = Valloc["started_in_first_slice"].GetBool();
-    alloc->used_machines = IntervalSet::from_string_hyphen(Valloc["used_machines"].GetString());
-    std::string job_id_str = Valloc["job"].GetString();
-    batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id_str);
-    job_id_str = parts.next_checkpoint; //the previous schedule's job_id is not the current one batsim has
-    alloc->job = (*_workload)[job_id_str];
-    alloc->job->allocations[alloc->begin]=alloc;
+    LOG_F(INFO,"here");
+    if (Valloc.HasMember("begin"))
+    {
+    LOG_F(INFO,"here");
+        alloc->begin = Rational(std::stod(Valloc["begin"].GetString()));
+        LOG_F(INFO,"here");
+        alloc->end = Rational(std::stod(Valloc["end"].GetString()));
+        LOG_F(INFO,"here");
+        alloc->has_been_inserted = Valloc["has_been_inserted"].GetBool();
+        LOG_F(INFO,"here");
+        alloc->started_in_first_slice = Valloc["started_in_first_slice"].GetBool();
+    }
+   // std::string job_id_str = Valloc["job"].GetString();
+    
+    LOG_F(INFO,"here");
+    //a job has to have used_machines in a schedule
+    std::string used_machines = Valloc["used_machines"].GetString();
+    //PPK_ASSERT(used_machines != "","Error, job: %s has an empty string for used_machines in batsched_schedule.chkpt",job_id_str.c_str() );
+    alloc->used_machines = IntervalSet::from_string_hyphen(used_machines);
+    LOG_F(INFO,"here");
     return alloc;
 }
 Schedule::ReservedTimeSlice Schedule::ReservedTimeSlice_from_json(const rapidjson::Value & Vslice)
@@ -193,16 +215,37 @@ Schedule::TimeSlice Schedule::TimeSlice_from_json(const rapidjson::Value & Vslic
 {
     using namespace rapidjson;
     TimeSlice slice;
-    
-    slice.begin = Rational(Vslice["begin"].GetDouble());
-    slice.end = Rational(Vslice["end"].GetDouble());
-    slice.length = Rational(Vslice["length"].GetDouble());
-    slice.available_machines = IntervalSet::from_string_hyphen(Vslice["available_machines"].GetString());
-    slice.allocated_jobs = JobMap_from_json(Vslice["allocated_jobs"].GetArray(),slice.begin);
-    slice.allocated_machines = IntervalSet::from_string_hyphen(Vslice["allocated_machines"].GetString());
-    slice.has_reservation = Vslice["has_reservation"].GetBool();
-    slice.nb_available_machines = Vslice["nb_available_machines"].GetInt();
-    slice.nb_reservations = Vslice["nb_reservations"].GetInt();
+    const Value & VTimeSlice= Vslice["Time slice"];
+    LOG_F(INFO,"here");
+    slice.begin = Rational(VTimeSlice["begin"].GetDouble());
+    LOG_F(INFO,"here slice_begin: %f",slice.begin.convert_to<double>());
+    slice.end = Rational(VTimeSlice["end"].GetDouble());
+    LOG_F(INFO,"here");
+    slice.length = Rational(VTimeSlice["length"].GetDouble());
+    std::string available_machines = VTimeSlice["available_machines"].GetString();
+    if (available_machines == "")
+        slice.available_machines = IntervalSet::empty_interval_set();
+    else
+        slice.available_machines = IntervalSet::from_string_hyphen(VTimeSlice["available_machines"].GetString());
+    //if the length of the slice is above 100 years I think it is safe to assume it is the last slice
+    //there will be no allocated jobs and there will be no allocated machines
+    if (slice.length > 3153600000)
+    {
+        std::map<const Job*,IntervalSet,JobComparator> map;
+        slice.allocated_jobs = map;
+        slice.allocated_machines = IntervalSet::empty_interval_set();
+    }
+    else
+    {
+        slice.allocated_jobs = JobMap_from_json(VTimeSlice["allocated_jobs"].GetArray(),slice.begin);
+        slice.allocated_machines = IntervalSet::from_string_hyphen(VTimeSlice["allocated_machines"].GetString());
+    }
+    LOG_F(INFO,"here");
+    slice.has_reservation = VTimeSlice["has_reservation"].GetBool();
+    LOG_F(INFO,"here");
+    slice.nb_available_machines = VTimeSlice["nb_available_machines"].GetInt();
+    LOG_F(INFO,"here");
+    slice.nb_reservations = VTimeSlice["nb_reservations"].GetInt();
 
     return slice;
 }
@@ -213,12 +256,23 @@ std::map<const Job *, IntervalSet, JobComparator>  Schedule::JobMap_from_json(co
     for(SizeType i = 0;i<Vjobs.Size();i++)
     {
         const Value & Vjob = Vjobs[i];
-        const Value & Vid = Vjob["job_id"]; 
+        LOG_F(INFO,"here");
+        const Value & Vid = Vjob["job_id"];
+        LOG_F(INFO,"here"); 
         const Value & Valloc = Vjob["alloc"];
         JobAlloc * alloc = JobAlloc_from_json(Valloc);
+        LOG_F(INFO,"here"); 
         batsched_tools::job_parts parts = batsched_tools::get_job_parts(Vid.GetString());
+        LOG_F(INFO,"here"); 
         const Job * job = (*_workload)[parts.next_checkpoint];
-        ourMap[job]=IntervalSet::from_string_hyphen(job->checkpoint_job_data->allocation);
+        LOG_F(INFO,"here job:%s , alloc: %s",job->id.c_str()); 
+        ourMap[job]=IntervalSet::from_string_hyphen(job->checkpoint_job_data->allocation.c_str());
+        LOG_F(INFO,"here"); 
+        alloc->job = job;
+        LOG_F(INFO,"here"); 
+        if (Valloc.HasMember("begin"))
+            alloc->job->allocations[alloc->begin]=alloc;
+        LOG_F(INFO,"here"); 
         
 
     }
@@ -591,14 +645,18 @@ void Schedule::update_first_slice(Rational current_time)
     Rational old_time = slice->begin;
     slice->begin = current_time;
     slice->length = slice->end - slice->begin;
-
+    //LOG_F(INFO,"allocated_jobs.size: %d, old time: %.15f",slice->allocated_jobs.size(),old_time.convert_to<double>());
     for (auto it = slice->allocated_jobs.begin(); it != slice->allocated_jobs.end(); ++it)
     {
         const Job *job_ref = (it->first);
+        //LOG_F(INFO,"update: job_id: %s",job_ref->id.c_str());
+        //for (auto myAlloc:job_ref->allocations)
+        //    LOG_F(INFO,"update: job_id: %s, myAlloc: %.15f",job_ref->id.c_str(),myAlloc.first.convert_to<double>());
         auto alloc_it = job_ref->allocations.find(old_time);
 
-        if (alloc_it != job_ref->allocations.end())
+        if (alloc_it != job_ref->allocations.end() && old_time != current_time)
         {
+            //LOG_F(INFO,"update: job_id: %s,current_time: %.15f",job_ref->id.c_str(),current_time.convert_to<double>());
             job_ref->allocations[current_time] = alloc_it->second;
             job_ref->allocations.erase(alloc_it);
         }
@@ -1312,7 +1370,10 @@ JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                     alloc->begin = beginning;
                     alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
                     alloc->job = job;
+                    LOG_F(INFO,"job id: %s, beginning: %.15f, alloc: %s",job->id.c_str(),beginning.convert_to<double>(),alloc->used_machines.to_string_hyphen().c_str());
                     job->allocations[beginning] = alloc;
+                    
+    
 
                     // Let's split the current time slice if needed
                     TimeSliceIterator first_slice_after_split;
@@ -1904,28 +1965,55 @@ string Schedule::to_json_string() const
     string res;
     res = "{\n";
         res = res + "\t\"Schedule\":\n\t{\n";
+        LOG_F(INFO,"here");
             res = res + "\t\t\"_colors\":" + batsched_tools::vector_to_json_string(_colors) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_frame_number\":" + batsched_tools::to_json_string(_frame_number) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_largest_time_slice_length\":" + batsched_tools::to_json_string(_largest_time_slice_length) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_nb_jobs_size\":" + batsched_tools::to_json_string(_nb_jobs_size) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_nb_reservations_size\":" + batsched_tools::to_json_string(_nb_reservations_size) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_output_number\":" + batsched_tools::to_json_string(_output_number) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_output_svg\":" + batsched_tools::to_json_string(_output_svg) + ",\n";
             res = res + "\t\t\"_previous_time_end\":" + batsched_tools::to_json_string(_previous_time_end) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_repair_machines\":" + batsched_tools::to_json_string(_repair_machines.to_string_hyphen()) + ",\n";
             res = res + "\t\t\"_reservation_colors\":" + batsched_tools::vector_to_json_string(_reservation_colors) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_size\":" + batsched_tools::to_json_string(_size) + ",\n";
             res = res + "\t\t\"_smallest_time_slice_length\":" + batsched_tools::to_json_string(_smallest_time_slice_length) + ",\n";
             res = res + "\t\t\"_svg_frame_end\":" + batsched_tools::to_json_string(_svg_frame_end) + ",\n";
             res = res + "\t\t\"_svg_frame_start\":" + batsched_tools::to_json_string(_svg_frame_start) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_svg_highlight_machines\":" + batsched_tools::to_json_string(_svg_highlight_machines.to_string_hyphen()) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_svg_output_end\":" + batsched_tools::to_json_string(_svg_output_end) + ",\n";
             res = res + "\t\t\"_svg_output_start\":" + batsched_tools::to_json_string(_svg_output_start) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_svg_prefix\":" + batsched_tools::to_json_string(_svg_prefix) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"_svg_reservations\":" + list_to_json_string(&_svg_reservations) + ",\n";
+            LOG_F(INFO,"here");
             res = res + "\t\t\"TimeSlices\":\n\t\t[\n";
+            
+                int count = _profile.size();
+                
                 for (const TimeSlice &slice : _profile)
+                {
                     res +=slice.to_json_string(3,1);
+                    if (count > 1)
+                    {
+                        res +=",\n";
+                        count--;
+                    }
+                    else
+                        res +="\n";
+                }
+                
             res = res + "\t\t]\n";
         res = res + "\t}\n";
     res = res +"}";
@@ -2630,11 +2718,22 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
     for (auto mit : allocated_jobs)
     {
         const Job *job = mit.first;
-        jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":" +
+        LOG_F(INFO,"here");
+        LOG_F(INFO,"here %s",job->id.c_str());
+        LOG_F(INFO,"here");
+        LOG_F(INFO,"job_alloc_size: %d",job->allocations.size());
+        for (auto kv_pair:job->allocations)
+            LOG_F(INFO,"%.15f, ",kv_pair.first.convert_to<double>());
+        LOG_F(INFO,"here %.15f",this->begin.convert_to<double>());
+        if (job->allocations.find(this->begin)!= job->allocations.end())
+            jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":" +
                               batsched_tools::to_json_string(job->allocations[this->begin]) +"}");
+        else
+            jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":{ \"used_machines\":\""+mit.second.to_string_hyphen()+"\" }}");
 
         
     }
+    LOG_F(INFO,"here");
 
     return boost::algorithm::join(jobs_str, ",");
 }
@@ -2651,16 +2750,22 @@ string Schedule::TimeSlice::to_json_string(int initial_indent, int indent) const
     for (int i = 0; i < indent; ++i)
         istr += "\t";
 
-    res += iistr + "Time slice: {";
-
+    res += iistr + "{\"Time slice\": {";
+    LOG_F(INFO,"here");
     res += to_json_string_interval();
     res += iistr + istr + "\"available_machines\": \"" + available_machines.to_string_hyphen() + "\",\n";
+    LOG_F(INFO,"here");
     res += iistr + istr + "\"allocated_jobs\": [" + to_string_allocated_jobs() + "],\n";
+    LOG_F(INFO,"here");
     res += iistr + istr + "\"allocated_machines\":\"" +allocated_machines.to_string_hyphen()+"\",\n";
+    LOG_F(INFO,"here");
     res += iistr + istr + "\"has_reservation\":"+(has_reservation ? "true" : "false")+",\n";
-    res += iistr + istr + "\"nb_available_machines\":" + std::to_string(nb_available_machines) + ",\n"; 
+    LOG_F(INFO,"here");
+    res += iistr + istr + "\"nb_available_machines\":" + std::to_string(nb_available_machines) + ",\n";
+    LOG_F(INFO,"here");
     res += iistr + istr + "\"nb_reservations\":" + std::to_string(nb_reservations)+"\n";
-    res += iistr + "}\n";
+    LOG_F(INFO,"here");
+    res += iistr + "}}";
     
     
 
