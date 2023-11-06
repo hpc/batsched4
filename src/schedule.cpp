@@ -91,6 +91,7 @@ void Schedule::incorrect_call_me_later(double difference)
     slice->length+=difference;
     slice++;
     slice->begin+=difference;
+    slice->length-=difference;
 
 }
 void Schedule::ingest_schedule(rapidjson::Document & doc)
