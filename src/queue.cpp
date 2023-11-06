@@ -280,6 +280,10 @@ std::list<SortableJob *>::iterator Queue::remove_job(std::list<SortableJob *>::i
 
     return _jobs.erase(job_it);
 }
+void Queue::clear()
+{
+    _jobs.clear();
+}
 
 void Queue::sort_queue(SortableJobOrder::UpdateInformation *update_info,
                        SortableJobOrder::CompareInformation *compare_info)
@@ -351,6 +355,16 @@ std::string Queue::to_string() const
 
     for (const SortableJob * sjob : _jobs)
         jobs_strings.push_back(sjob->job->id);
+
+    return "[" + boost::algorithm::join(jobs_strings, ", ") + "]";
+}
+std::string Queue::to_json_string() const
+{
+    vector<string> jobs_strings;
+    jobs_strings.reserve(_jobs.size());
+
+    for (const SortableJob * sjob : _jobs)
+        jobs_strings.push_back("\""+sjob->job->id+"\"");
 
     return "[" + boost::algorithm::join(jobs_strings, ", ") + "]";
 }

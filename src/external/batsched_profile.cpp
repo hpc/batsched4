@@ -181,11 +181,13 @@ ProfilePtr Profile::from_json(const std::string & profile_name,
         data->delay = json_desc["delay"].GetDouble();
         
         if (json_desc.HasMember("original_delay")){
-            data->real_delay = json_desc["original_delay"].GetDouble();
+            data->original_delay = json_desc["original_delay"].GetDouble();
         }
-        else{
-            data->real_delay = data->delay;
+        if (json_desc.HasMember("original_real_delay")){
+            data->original_real_delay = json_desc["original_real_delay"].GetDouble();
         }
+        
+        
         
         CHECK_F(data->delay > 0, "%s: profile '%s' has a non-strictly-positive 'delay' field (%g)",
                    error_prefix.c_str(), profile_name.c_str(), data->delay);
@@ -282,12 +284,13 @@ ProfilePtr Profile::from_json(const std::string & profile_name,
                    error_prefix.c_str(), profile_name.c_str(), data->com);
 
         if (json_desc.HasMember("original_cpu")){
-            data->real_cpu = json_desc["original_cpu"].GetDouble();
+            data->original_cpu = json_desc["original_cpu"].GetDouble();
         }
-        else{
-            data->real_cpu = data->cpu;
+        
+        if (json_desc.HasMember("original_real_cpu")){
+            data->original_real_cpu = json_desc["original_real_cpu"].GetDouble();
         }
-
+        
 
         profile->data = data;
     }

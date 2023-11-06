@@ -12,7 +12,7 @@
 using namespace std;
 
 
-void ConservativeBackfilling::checkpoint_batsched(double date)
+void ConservativeBackfilling::on_checkpoint_batsched(double date)
 {
     LOG_F(INFO,"here");
     std::string checkpoint_dir = _output_folder+"/checkpoint_latest";
@@ -28,19 +28,19 @@ void ConservativeBackfilling::checkpoint_batsched(double date)
     if (f.is_open())
     {
         f<<"{\n"
-            <<"\t\"_queue\":"<<_queue->to_string()<<","<<std::endl
-            <<"\t\"_reservation_queue\":"<<_reservation_queue->to_string()<<std::endl;
+            <<"\t\"_queue\":"<<_queue->to_json_string()<<","<<std::endl
+            <<"\t\"_reservation_queue\":"<<_reservation_queue->to_json_string()<<std::endl;
         f<<"}";
         f.close();
     }
     LOG_F(INFO,"here");
-    f.open(checkpoint_dir+"/batsched_variables.chkpt",std::ios_base::out);
+    f.open(checkpoint_dir+"/batsched_variables.chkpt",std::ios_base::app);
     if (f.is_open())
     {
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
-         <<"{\n"
-         <<"\t\"_output_folder\":\""<<_output_folder<<"\","<<std::endl
-         <<"\t\"_output_svg\":"<<_output_svg<<","<<std::endl
+         <<"\t,\n" //after base we need a comma
+         <<"\t\"derived\":{\n"
+         <<"\t\"_output_svg\":"<<batsched_tools::to_json_string(_output_svg)<<","<<std::endl
          <<"\t\"_svg_frame_start\":"<<_svg_frame_start<<","<<std::endl
          <<"\t\"_svg_frame_end\":"<<_svg_frame_end<<","<<std::endl
          <<"\t\"_svg_output_start\":"<<_svg_output_start<<","<<std::endl
@@ -60,20 +60,54 @@ void ConservativeBackfilling::checkpoint_batsched(double date)
          <<"\t\"_resubmitted_jobs\":"<<batsched_tools::map_to_json_string(&_resubmitted_jobs)<<","<<std::endl
          <<"\t\"_resubmitted_jobs_released\":"<<batsched_tools::vector_pair_to_json_string(&_resubmitted_jobs_released)<<","<<std::endl
          <<"\t\"_on_machine_instant_down_ups\":"<<batsched_tools::vector_to_json_string(&_on_machine_instant_down_ups)<<","<<std::endl
-         <<"\t\"_on_machine_down_for_repairs\":"<<batsched_tools::vector_to_json_string(&_on_machine_down_for_repairs)<<","<<std::endl
+         <<"\t\"_on_machine_down_for_repairs\":"<<batsched_tools::vector_to_json_string(&_on_machine_down_for_repairs)<<std::endl
 
-         <<"\t\"generator1_seed\":"<<generator1_seed<<","<<std::endl
-         <<"\t\"generator2_seed\":"<<generator2_seed<<","<<std::endl
-         <<"\t\"generator_repair_time_seed\":"<<generator_repair_time_seed<<","<<std::endl
-
-         <<"\t\"nb_distribution\":"<<nb_distribution<<","<<std::endl
-         <<"\t\"nb_repair_time_exponential_distribution\":"<<nb_repair_time_exponential_distribution<<","<<std::endl
-         <<"\t\"nb_unif_distribution\":"<<nb_unif_distribution<<std::endl
-         <<"}";
+         
+         <<"}";//closes derived, still a brace open
 
         f.close();
     }
     _need_to_checkpoint=false;
+}
+void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & doc)
+{
+    using namespace rapidjson;
+    const Value & derived = doc["derived"];
+
+    _reschedule_policy = static_cast<Schedule::RESCHEDULE_POLICY>(derived["_reschedule_policy"].GetInt());
+    _impact_policy = static_cast<Schedule::IMPACT_POLICY>(derived["_impact_policy"].GetInt());
+    _previous_date = derived["_previous_date"].GetDouble();
+    _saved_reservations.clear();
+    const Value & Vsr = derived["_saved_reservations"].GetArray();
+    for (SizeType i = 0;i<Vsr.Size();i++)
+    {
+        _saved_reservations.push_back(_schedule.ReservedTimeSlice_from_json(Vsr[i]));
+    }
+    _killed_jobs = derived["_killed_jobs"].GetBool();
+    _need_to_send_finished_submitting_jobs = derived["_need_to_send_finished_submitting_jobs"].GetBool();
+    //not going to get _saved_recently_queued_jobs or _saved_recently_ended_jobs
+    std::string rurm = derived["_recently_under_repair_machines"].GetString();
+    if (rurm == "")
+        _recently_under_repair_machines = IntervalSet::empty_interval_set();
+    else
+        _recently_under_repair_machines = IntervalSet::from_string_hyphen(rurm);
+    //not going to get _need_to_compress
+    _checkpointing_on = derived["_checkpointing_on"].GetBool();
+    _start_a_reservation = derived["_start_a_reservation"].GetBool();
+    //not going to get _resubmitted_jobs _resubmitted_jobs_released
+    const Value & Vomidu = derived["_on_machine_instant_down_ups"].GetArray();
+    for (SizeType i=0;i<Vomidu.Size();i++)
+    {
+        _on_machine_instant_down_ups.push_back(static_cast<batsched_tools::KILL_TYPES>(Vomidu[i].GetInt()));
+    }
+    const Value & Vomdfr = derived["_on_machine_down_for_repairs"].GetArray();
+     for (SizeType i=0;i<Vomdfr.Size();i++)
+    {
+        _on_machine_down_for_repairs.push_back(static_cast<batsched_tools::KILL_TYPES>(Vomdfr[i].GetInt()));
+    }
+
+
+
 }
 
 ConservativeBackfilling::ConservativeBackfilling(Workload *workload, SchedulingDecision *decision,
@@ -110,6 +144,7 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     const rapidjson::Value & batsim_config = batsim_event["config"];
     LOG_F(INFO,"***** on_start_from_checkpoint ******");
     _output_svg=batsim_config["output-svg"].GetString();
+    std::string output_svg_method = batsim_config["output-svg-method"].GetString();
     _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
@@ -123,10 +158,12 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
 
     _schedule = Schedule(_nb_machines, date);
     _schedule.set_output_svg(_output_svg);
+    _schedule.set_output_svg_method(output_svg_method);
     _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
-
+    //we need to set our generators even though they will be overwritten, so that distributions aren't null
+    ISchedulingAlgorithm::set_generators(date);
 
     //ok now we need to modify things but it would be best to wait until jobs are being submitted
     //when the first jobs come in, they should be the "previous currently running" jobs
@@ -157,20 +194,90 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
 
     content.assign((std::istreambuf_iterator<char>(ifile)),
                 std::istreambuf_iterator<char>());
-
+    ifile.close();
     rapidjson::Document scheduleDoc;
     scheduleDoc.Parse(content.c_str());
     LOG_F(INFO,"here");
     _schedule.ingest_schedule(scheduleDoc);
-    LOG_F(INFO,"%s",_schedule.to_string().c_str());
+    ingest_variables();
+    LOG_F(INFO,"here");
+    content = "";
+    std::string batsim_filename = _output_folder + "/start_from_checkpoint/batsim_variables.chkpt";
+    ifile.open(batsim_filename);
+    PPK_ASSERT_ERROR(ifile.is_open(), "Cannot read batsim_variables.chkpt file '%s'", batsim_filename.c_str());
+
+    ifile.seekg(0, ios::end);
+    content.reserve(static_cast<unsigned long>(ifile.tellg()));
+    ifile.seekg(0, ios::beg);
+
+    content.assign((std::istreambuf_iterator<char>(ifile)),
+                std::istreambuf_iterator<char>());
+    ifile.close();
+    rapidjson::Document batVarDoc;
+    batVarDoc.Parse(content.c_str());
+    LOG_F(INFO,"here");
+    /*  This was thought to be needed.  It may be in the future, but at this time
+        it simply results in a duplication of the call_me_later at the target time
+        This is because we are starting the simulation effectively at time 0 and going through all the call_me_laters.
+        This may be wrong.  It may be advisable to set a variable when on_first_jobs_submitted() is run and only do call me laters
+        when this has been set*/
+    /*
+    rapidjson::Value & Vcml = batVarDoc["call_me_laters"];
+    LOG_F(INFO,"here");
+    for (rapidjson::Value::ConstMemberIterator it = Vcml.MemberBegin(); it != Vcml.MemberEnd(); ++it)
+    {
+        const rapidjson::Value & value = it->value;
+        batsched_tools::call_me_later_types forWhat = static_cast<batsched_tools::call_me_later_types>(value["forWhat"].GetInt());
+        int id = value["id"].GetInt();
+        double target_time = value["target_time"].GetDouble();
+        _decision->add_call_me_later(forWhat,id,target_time,date);
+    }
+    */
+    LOG_F(INFO,"here");
+    //now get the first time slice jobs to execute on the same machines they exectued on before
     for (auto kv_pair:_schedule.begin()->allocated_jobs)
     {
         _decision->add_execute_job(kv_pair.first->id,kv_pair.second,date);
-        _queue->remove_job(kv_pair.first);
+        //we don't remove the job from queue because we are going to make the queue back to how it was in a second
     }
-    _decision->add_call_me_later(batsched_tools::call_me_later_types::RECOVER_FROM_CHECKPOINT,1,date,date);
-    //_queue.ingest_queue()
-    //_reservation_queue.ingest_queue()
+    content = "";
+    std::string queues_filename = _output_folder + "/start_from_checkpoint/batsched_queues.chkpt";
+    ifile.open(queues_filename);
+    PPK_ASSERT_ERROR(ifile.is_open(), "Cannot read batsched_queues.chkpt file '%s'", queues_filename.c_str());
+
+    ifile.seekg(0, ios::end);
+    content.reserve(static_cast<unsigned long>(ifile.tellg()));
+    ifile.seekg(0, ios::beg);
+
+    content.assign((std::istreambuf_iterator<char>(ifile)),
+                std::istreambuf_iterator<char>());
+
+    ifile.close();
+    rapidjson::Document queueDoc;
+    queueDoc.Parse(content.c_str());
+    _queue->clear();
+    rapidjson::Value & Vqueue = queueDoc["_queue"].GetArray();
+    SortableJobOrder::UpdateInformation update_info(date);
+    for (rapidjson::SizeType i=0;i<Vqueue.Size();i++)
+    {
+        std::string job_id = Vqueue[i].GetString();
+        auto parts = batsched_tools::get_job_parts(job_id);
+        const Job * new_job = (*_workload)[parts.next_checkpoint];
+        
+        _queue->append_job(new_job,&update_info);
+    }
+    _reservation_queue->clear();
+    rapidjson::Value & Vrqueue = queueDoc["_reservation_queue"].GetArray();
+    for (rapidjson::SizeType i=0;i<Vrqueue.Size();i++)
+    {
+        std::string job_id = Vrqueue[i].GetString();
+        auto parts = batsched_tools::get_job_parts(job_id);
+        const Job * new_job = (*_workload)[parts.next_checkpoint];
+        
+        _reservation_queue->append_job(new_job,&update_info);
+    }
+    //now touch back with batsim just to get things solidified
+    _decision->add_generic_notification("recover_from_checkpoint","",date);
     
     
 }
@@ -181,6 +288,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     const rapidjson::Value & batsim_config = batsim_event["config"];
     LOG_F(INFO,"ON simulation start");
     _output_svg=batsim_config["output-svg"].GetString();
+    std::string output_svg_method = batsim_config["output-svg-method"].GetString();
     _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
@@ -198,6 +306,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
 
     _schedule = Schedule(_nb_machines, date);
     _schedule.set_output_svg(_output_svg);
+    _schedule.set_output_svg_method(output_svg_method);
     _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
@@ -245,8 +354,8 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
     };
    
     //get a random number of a machine to kill
-    int number = unif_distribution->operator()(generator2);
-    nb_unif_distribution++;
+    int number = machine_unif_distribution->operator()(generator_machine);
+    nb_machine_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = (*_machines)[number]->id;
     
@@ -395,8 +504,9 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
 void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date){
     (void) date;
     //get a random number of a machine to kill
-    int number = unif_distribution->operator()(generator2);
-    nb_unif_distribution++;
+    LOG_F(INFO,"here");
+    int number = machine_unif_distribution->operator()(generator_machine);
+    nb_machine_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     _schedule.add_svg_highlight_machines(machine);
@@ -457,8 +567,8 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                             //BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
-                                    double number = distribution->operator()(generator);
-                                    nb_distribution++;
+                                    double number = failure_exponential_distribution->operator()(generator_failure);
+                                    nb_failure_exponential_distribution++;
                                     LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
                                     if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
                                         _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
@@ -531,6 +641,12 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                         }
                         break;
         }
+        double difference = _decision->remove_call_me_later(forWhat,id,date,_workload);
+        if (difference != 0 && forWhat == batsched_tools::call_me_later_types::RESERVATION_START)
+        {
+            LOG_F(INFO,"difference: %f",difference);
+            _schedule.incorrect_call_me_later(difference);
+        }
     
 
 }
@@ -565,11 +681,13 @@ void ConservativeBackfilling::make_decisions(double date,
     };
     
     // Let's remove finished jobs from the schedule
-    // not including killed jobs
     
     for (const std::string & ended_job_id : _jobs_ended_recently)
     {
-        _schedule.remove_job_if_exists((*_workload)[ended_job_id]);
+        if (_schedule.remove_job_if_exists((*_workload)[ended_job_id]))
+            LOG_F(INFO,"ended_job_id: %s",ended_job_id.c_str());
+        else
+            LOG_F(INFO,"ended_no_find: %s",ended_job_id.c_str());
     }
     
     LOG_F(INFO,"after jobs ended");
@@ -624,9 +742,11 @@ void ConservativeBackfilling::make_decisions(double date,
     
         
     **********/
-    
+        if (_output_svg == "short")
+        _schedule.output_to_svg("make_decisions",true);
     // Let's update the schedule's present. it may put a reservation in a position to run
     _schedule.update_first_slice(date);
+    _schedule.output_to_svg("after update first slice",true);
     //check if the first slice has a reservation to run (by checking _start_a_reservation)
     //this starts out as false
     if (_start_a_reservation)
@@ -636,11 +756,13 @@ void ConservativeBackfilling::make_decisions(double date,
         
         if(_schedule.remove_reservations_if_ready(jobs_removed))
         {
+                _schedule.output_to_svg("after reservations if ready",true);
                 //traverse the reservations removed         
                 for(const Job * job : jobs_removed)
                 {
                     //add the reservation to schedule in the first time slice
                     alloc = _schedule.add_current_reservation(job,_selector);
+                    LOG_F(INFO,"allocated reservation %s, %s",alloc.job->id.c_str(),alloc.used_machines.to_string_hyphen().c_str());
                     //we are about to run the reservation, remove it from the reservation queue
                     _reservation_queue->remove_job(job);
                     //execute the reservation
@@ -657,7 +779,7 @@ void ConservativeBackfilling::make_decisions(double date,
 
     
     if (_output_svg == "short")
-        _schedule.output_to_svg("make_decisions");
+        _schedule.output_to_svg("after reservation added back",true);
     // Queue sorting
     _queue->sort_queue(update_info, compare_info);
     _reservation_queue->sort_queue(update_info,compare_info);
@@ -693,6 +815,7 @@ void ConservativeBackfilling::make_decisions(double date,
                 return j1 < j2;
 
     };
+    
     //sort reservations with jobs that have allocations coming first 
     if (!recently_released_reservations.empty())           
     {
@@ -705,7 +828,7 @@ void ConservativeBackfilling::make_decisions(double date,
         //handle the reservations by putting them into the schedule
         handle_reservations(recently_released_reservations,recently_queued_jobs,date);
     }
-    
+    LOG_F(INFO,"here");
     
 
     //handle any instant down ups (no repair time on machine going down)
@@ -713,6 +836,7 @@ void ConservativeBackfilling::make_decisions(double date,
     {
         on_machine_instant_down_up(forWhat,date);
     }
+    LOG_F(INFO,"here");
     //ok we handled them all, clear the container
     _on_machine_instant_down_ups.clear();
     //handle any machine down for repairs (machine going down with a repair time)
@@ -720,17 +844,20 @@ void ConservativeBackfilling::make_decisions(double date,
     {
         on_machine_down_for_repair(forWhat,date);
     }
+    LOG_F(INFO,"here");
     //ok we handled them all, clear the container
     _on_machine_down_for_repairs.clear();
-    
+    LOG_F(INFO,"here");
     //lifecycle of killed job:
     //make_decisions() kill job -> make_decisions() submit job -> make_decisions() add jobs to schedule in correct order
     //this function is the submit job part, the second invocation of make_decisions()
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
-    
+    LOG_F(INFO,"here");
     //this handles the schedule including any compressing that might need to be done
+    LOG_F(INFO,"%s",_queue->to_json_string().c_str());
+    _schedule.output_to_svg("before handle",true);
     handle_schedule(recently_queued_jobs,date);
-
+    _schedule.output_to_svg("after handle",true);
 
 LOG_F(INFO,"here");
 
@@ -874,6 +1001,8 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
                 //LOG_F(INFO,"DEBUG line 337");
                     
                 JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector,false);
+                
+                LOG_F(INFO,"ALLOC: %s  begin:%f  end:%f used:%s",new_job->id.c_str(),alloc.begin.convert_to<double>(),alloc.end.convert_to<double>(),alloc.used_machines.to_string_hyphen().c_str());
 
                 // If the job should start now, let's say it to the resource manager
                  if (!alloc.used_machines.is_empty())
@@ -913,7 +1042,9 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
             //LOG_F(INFO,"DEBUG line 375");
-            JobAlloc alloc = _schedule.add_job_first_fit(job, _selector,false);   
+            JobAlloc alloc = _schedule.add_job_first_fit(job, _selector,false); 
+            
+            LOG_F(INFO,"ALLOC: %s  begin:%f  end:%f used:%s",job->id.c_str(),alloc.begin.convert_to<double>(),alloc.end.convert_to<double>(),alloc.used_machines.to_string_hyphen().c_str());  
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
             if (!alloc.used_machines.is_empty())
@@ -1076,7 +1207,7 @@ LOG_F(INFO,"%s",job_id.c_str());
                     _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
                                                 reservation.job->unique_number,
                                                 reservation.job->start,
-                                                date );
+                                                date,reservation.job->id);
                     else if (reservation.alloc->started_in_first_slice)
                     {
                         _reservation_queue->remove_job(reservation.job);
@@ -1182,7 +1313,7 @@ LOG_F(INFO,"%s",job_id.c_str());
                     _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
                                                 reservation.job->unique_number,
                                                 reservation.job->start,
-                                                date );
+                                                date,reservation.job->id );
                     else if (reservation.alloc->started_in_first_slice)
                     {
                         _reservation_queue->remove_job(reservation.job);
@@ -1314,7 +1445,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                         _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
                                                     new_job->unique_number,
                                                     new_job->start,
-                                                    date);
+                                                    date,new_job->id);
                     else
                         _start_a_reservation = true;
                     //we need to compress since things moved around
@@ -1445,7 +1576,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                         _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
                                                     new_job->unique_number,
                                                     new_job->start,
-                                                    date);
+                                                    date,new_job->id);
                     else
                         _start_a_reservation = true;
 

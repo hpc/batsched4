@@ -160,7 +160,10 @@ public:
     void set_checkpoint_time(long seconds,std::string checkpoint_type);
     bool send_batsim_checkpoint_if_ready(double date);
     bool check_checkpoint_time(double date);
-    virtual void checkpoint_batsched(double date);
+    void checkpoint_batsched(double date);
+    void ingest_variables();
+    virtual void on_ingest_variables(const rapidjson::Document & doc);
+    virtual void on_checkpoint_batsched(double date);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
     virtual void on_first_jobs_submitted(double date) {}
     void on_signal_checkpoint();
@@ -184,18 +187,22 @@ protected:
     RedisStorage * _redis = nullptr;
     bool _no_more_static_job_to_submit_received = false;
     bool _no_more_external_event_to_occur_received = false;
-    std::mt19937 generator;
-    unsigned int generator1_seed;
-    std::exponential_distribution<double> * distribution;
-    int nb_distribution=0;
-    std::mt19937 generator2;
-    unsigned int generator2_seed;
+    std::mt19937 generator_failure;
+    unsigned int generator_failure_seed;
+    std::exponential_distribution<double> * failure_exponential_distribution=nullptr;
+    std::uniform_int_distribution<int> * failure_unif_distribution=nullptr;
+    int nb_failure_unif_distribution = 0;
+    int nb_failure_exponential_distribution=0;
+    std::mt19937 generator_machine;
+    unsigned int generator_machine_seed;
+    std::uniform_int_distribution<int> * machine_unif_distribution = nullptr;
+    int nb_machine_unif_distribution = 0;
     std::mt19937 generator_repair_time;
     unsigned int generator_repair_time_seed;
     std::exponential_distribution<double> * repair_time_exponential_distribution;
     int nb_repair_time_exponential_distribution =0;
-    std::uniform_int_distribution<int> * unif_distribution;
-    int nb_unif_distribution = 0;
+   
+    
     
 
 protected:

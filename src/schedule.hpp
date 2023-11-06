@@ -99,6 +99,8 @@ public:
     JobAlloc add_job_first_fit(const Job * job, ResourceSelector * selector,
                                bool assert_insertion_successful = true);
     JobAlloc add_repair_job(Job *);
+
+    void incorrect_call_me_later(double difference);
     
     
     
@@ -121,6 +123,7 @@ public:
     void add_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be );
     void remove_reservation_for_svg_outline(const ReservedTimeSlice & reservation_to_be);
     void set_output_svg(std::string output_svg);
+    void set_output_svg_method(std::string output_svg_method);
     void set_svg_prefix(std::string svg_prefix);
     void set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end);
     void set_policies(RESCHEDULE_POLICY r_policy, IMPACT_POLICY i_policy);
@@ -199,7 +202,7 @@ public:
     void write_svg_to_file(const std::string & filename, 
                         const std::string & message,
                         const std::list<ReservedTimeSlice> & svg_reservations) const;
-    void output_to_svg(const std::string & message);
+    void output_to_svg(const std::string & message,bool json=false);
 
     void dump_to_batsim_jobs_file(const std::string & filename) const;
     void incremental_dump_as_batsim_jobs_file(const std::string & filename_prefix = "/tmp/schedule");
@@ -235,6 +238,7 @@ private:
     IntervalSet _repair_machines;
     Rational _smallest_time_slice_length=0;
     Rational _largest_time_slice_length=1e19;
+    std::string _output_svg_method = "svg";
     long _svg_frame_start = 1;
     long _svg_frame_end = -1;
     long _svg_output_start = 1;

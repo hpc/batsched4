@@ -166,6 +166,10 @@ Job *Workload::job_from_json_object(const Value &object)
         ", but we are starting-from-checkpoint",j->id.c_str());
         j->checkpoint_job_data->jitter = object["jitter"].GetString();
 
+        PPK_ASSERT_ERROR(object.HasMember("runtime"), "%s: job '%s' has no 'runtime' field"
+        ", but we are starting-from-checkpoint",j->id.c_str());
+        j->checkpoint_job_data->runtime = object["runtime"].GetDouble();
+
         
     }
 
@@ -180,6 +184,12 @@ Job *Workload::job_from_json_object(const Value &object)
     PPK_ASSERT_ERROR(j->walltime == -1 || j->walltime > 0,
                      "Invalid json object: 'walltime' should either be -1 (no walltime) "
                      "or strictly positive.");
+    if (object.HasMember("original_walltime"))
+    {
+        PPK_ASSERT_ERROR(object["original_walltime"].IsNumber(), "Invalid json object: 'original_walltime' member is not a number");
+        
+        j->original_walltime = object["original_walltime"].GetDouble();
+    }
 
     if (j->walltime == -1)
         j->has_walltime = false;

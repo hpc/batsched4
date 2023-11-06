@@ -10,7 +10,12 @@
 
 class AbstractProtocolWriter;
 class RedisStorage;
-
+struct CALL_ME_LATERS{
+    double time;
+    int id;
+    batsched_tools::call_me_later_types forWhat;
+    std::string job_id="null";
+};
 class SchedulingDecision
 {
 public:
@@ -51,7 +56,7 @@ public:
                               const std::string & metadata,
                               double date);
 
-    void add_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double future_date, double date);
+    void add_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double future_date, double date,std::string job_id="null");
     void add_scheduler_finished_submitting_jobs(double date);
     void add_scheduler_continue_submitting_jobs(double date);
     void add_generic_notification(const std::string &type,const std::string &notify_data,double date);
@@ -60,6 +65,7 @@ public:
     void add_answer_estimate_waiting_time(const std::string & job_id,
                                           double estimated_waiting_time,
                                           double date);
+    double remove_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double date,Workload * w0);
             
 
     void clear();
@@ -86,4 +92,6 @@ private:
     bool _redis_enabled = false;
     RedisStorage * _redis = nullptr;
     int _nb_call_me_laters=0;
+    std::map<int,CALL_ME_LATERS> _call_me_laters;
+    
 };

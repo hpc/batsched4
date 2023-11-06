@@ -37,8 +37,24 @@ std::unordered_map<logging_type,FILE*> _files;
 
 namespace batsched_tools{
     enum class reservation_types{RESERVATION,REPAIR}; //not used yet
-    enum class call_me_later_types {FIXED_FAILURE,SMTBF,MTBF,REPAIR_DONE,RESERVATION_START,CHECKPOINT_BATSCHED,RECOVER_FROM_CHECKPOINT};
-    enum class KILL_TYPES {NONE,FIXED_FAILURE,SMTBF,MTBF,RESERVATION};
+    enum class call_me_later_types 
+    {
+        FIXED_FAILURE
+        ,SMTBF
+        ,MTBF
+        ,REPAIR_DONE
+        ,RESERVATION_START
+        ,CHECKPOINT_BATSCHED
+        ,RECOVER_FROM_CHECKPOINT
+    };
+    enum class KILL_TYPES 
+    {
+        NONE
+        ,FIXED_FAILURE
+        ,SMTBF
+        ,MTBF
+        ,RESERVATION
+    };
     enum class JobState
 {
      JOB_STATE_NOT_SUBMITTED                //!< The job exists but cannot be scheduled yet.
@@ -55,6 +71,9 @@ namespace batsched_tools{
         std::string basename;
         std::string resubmit_string;
         int resubmit_number;
+        int next_resubmit_number;
+        std::string next_profile_name;
+        std::string next_job_name;
         std::string next_resubmit_string;
         std::string workload;
         std::string nb_checkpoint;
@@ -80,6 +99,7 @@ namespace batsched_tools{
     struct checkpoint_job_data{
       int state = -1;
       double progress = -1;
+      double runtime = 0;
       std::string allocation = "null";
       long double consumed_energy = -1.0;
       std::string jitter = "null";
@@ -156,6 +176,8 @@ namespace batsched_tools{
     //std::string to_json_string(JobAlloc * alloc);
     std::string to_json_string(const JobAlloc * alloc);
     std::string to_json_string(batsched_tools::KILL_TYPES kt);
+    std::string to_json_string(const IntervalSet is);
+    std::string to_json_string(const batsched_tools::Job_Message * jm);
     //std::string to_json_string(Schedule::ReservedTimeSlice rts);
     //std::string to_json_string(const Schedule::ReservedTimeSlice rts);
     //std::string to_json_string(Schedule::ReservedTimeSlice * rts);
@@ -202,7 +224,7 @@ namespace batsched_tools{
     template<typename K,typename V>
     std::string map_to_string(std::map<K,V> &m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:m)
         {
@@ -210,13 +232,13 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string map_to_string(std::map<K,V> *m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*m)
         {
@@ -224,13 +246,13 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K, typename V>
     std::string unordered_map_to_string(std::unordered_map<K,V> &um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:um)
         {
@@ -238,13 +260,13 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K, typename V>
     std::string unordered_map_to_string(std::unordered_map<K,V> *um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*um)
         {
@@ -252,7 +274,7 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
@@ -316,7 +338,7 @@ namespace batsched_tools{
     template<typename K, typename V>
     std::string map_to_string(const std::map<K,V> &m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:m)
         {
@@ -324,13 +346,13 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K, typename V>
     std::string map_to_string(const std::map<K,V> *m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*m)
         {
@@ -338,13 +360,13 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string unordered_map_to_string(const std::unordered_map<K,V> &um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:um)
         {
@@ -352,13 +374,13 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string unordered_map_to_string(const std::unordered_map<K,V> *um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*um)
         {
@@ -366,7 +388,7 @@ namespace batsched_tools{
                 ourString += ", "; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
@@ -411,12 +433,12 @@ namespace batsched_tools{
     template<typename K,typename V>
     std::string pair_to_json_string(std::pair<K,V> pair)
     {
-        return batsched_tools::to_json_string(pair.first)+":"+batsched_tools::to_json_string(pair.second);
+        return "{ \"key\":"+batsched_tools::to_json_string(pair.first)+", \"value\":"+batsched_tools::to_json_string(pair.second)+"}";
     }
     template<typename K,typename V>
     std::string const_pair_to_string(const std::pair<K,V> pair)
     {
-        return batsched_tools::to_json_string(pair.first)+":"+batsched_tools::to_json_string(pair.second);
+        return "{ \"key\":"+batsched_tools::to_json_string(pair.first)+", \"value\":"+batsched_tools::to_json_string(pair.second)+"}";
     }
 
     template<typename T>
@@ -510,7 +532,7 @@ namespace batsched_tools{
     template<typename K,typename V>
     std::string map_to_json_string(std::map<K,V> &m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:m)
         {
@@ -519,13 +541,13 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string map_to_json_string(std::map<K,V> *m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*m)
         {
@@ -534,13 +556,13 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string map_to_json_string(const std::map<K,V> &m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:m)
         {
@@ -549,13 +571,13 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string map_to_json_string(const std::map<K,V> *m)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*m)
         {
@@ -564,13 +586,13 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string unordered_map_to_json_string(std::unordered_map<K,V> &um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:um)
         {
@@ -579,13 +601,13 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string unordered_map_to_json_string(std::unordered_map<K,V> *um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*um)
         {
@@ -594,13 +616,13 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string unordered_map_to_json_string(const std::unordered_map<K,V> &um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:um)
         {
@@ -609,13 +631,13 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
     std::string unordered_map_to_json_string(const std::unordered_map<K,V> *um)
     {
-        std::string ourString="{";
+        std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*um)
         {
@@ -624,7 +646,7 @@ namespace batsched_tools{
             first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
-        ourString = ourString + "}";
+        ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
@@ -686,6 +708,17 @@ namespace batsched_tools{
         }
         ourString = ourString + "]";
         return ourString;
+    }
+
+    template<typename T>
+    void from_json_to_vector(const rapidjson::Value & json, std::vector<T> & vec)
+    {
+        using namespace rapidjson;
+        for(SizeType i=0;i<json.Size();i++)
+        {
+            vec.push_back(json[i]);
+        }
+        
     }
 
    

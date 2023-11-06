@@ -22,6 +22,7 @@ struct Job
     int unique_number;
     int nb_requested_resources;
     Rational walltime;
+    Rational original_walltime = -1;
     bool has_walltime = true;
     double submission_time = 0;
     std::vector<double> submission_times ;  //can possibly use for handling resubmitted jobs

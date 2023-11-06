@@ -134,8 +134,10 @@ public:
     bool is_empty() const;
     int nb_jobs() const;
     Rational compute_load_estimation() const;
+    void clear();
 
     std::string to_string() const;
+    std::string to_json_string() const;
 
     std::list<SortableJob *>::iterator begin();
     std::list<SortableJob *>::iterator end();

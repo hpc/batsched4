@@ -252,7 +252,7 @@ int main(int argc, char ** argv)
             order = new AscendingWalltimeOrder;
         else if (queue_order == "desc_walltime")
             order = new DescendingWalltimeOrder;
-
+        order = new OriginalFCFSOrder;
         queue = new Queue(order);
 
         // Resource selector
@@ -305,6 +305,8 @@ int main(int argc, char ** argv)
             algo = new Crasher(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         */
         if (scheduling_variant == "easy_bf")
+            algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+        else if (scheduling_variant == "easy_bf2")
             algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         //if (scheduling_variant == "easy_bf2")
         //    algo = new EasyBackfilling2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
@@ -415,8 +417,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
     //myB::Workloads myWorkloads;
     // Redis creation
     RedisStorage redis;
+    LOG_F(INFO,"here");
     bool redis_enabled = false;
+    LOG_F(INFO,"here");
     algo->set_redis(&redis);
+    LOG_F(INFO,"here");
     //LOG_F(INFO,"line 378 main.cpp");
     
     while (!simulation_finished)

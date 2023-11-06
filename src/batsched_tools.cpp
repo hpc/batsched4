@@ -73,11 +73,16 @@ batsched_tools::id_separation batsched_tools::tools::separate_id(const std::stri
     separation.resubmit_number = (parts.job_resubmit != -1) ? parts.job_resubmit : 0;
     separation.nb_checkpoint = (parts.job_checkpoint != -1) ? "$"+std::to_string(parts.job_checkpoint) : "";
     next_number = separation.resubmit_number + 1;
+    separation.next_resubmit_number = next_number;
     separation.resubmit_string = std::to_string(separation.resubmit_number);
     separation.next_resubmit_string = separation.workload + "!" +
                                       separation.basename + "#" +
                                       std::to_string(next_number) +
                                       separation.nb_checkpoint;
+    separation.next_profile_name = separation.basename + "#" +
+                                   std::to_string(next_number) +
+                                   separation.nb_checkpoint;
+    separation.next_job_name = separation.next_profile_name;
     LOG_F(INFO,"job_id: '%s' next: '%s'",job_id.c_str(),separation.next_resubmit_string.c_str());
     return separation;
 }
@@ -268,24 +273,41 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     {
         return batsched_tools::to_json_string(int(kt));
     }
+    std::string batsched_tools::to_json_string(const IntervalSet is)
+    {
+        return is.to_string_hyphen();
+    }
+    std::string batsched_tools::to_json_string(const Job_Message * jm)
+    {
+        std::string ret;
+        ret = "{";
+        ret += "\"id\":"                +  batsched_tools::to_json_string(jm->id)                   + ",";
+        ret += "\"progress_str\":"      +  batsched_tools::to_json_string(jm->progress_str)         + ",";
+        ret += "\"progress\":"          +  batsched_tools::to_json_string(jm->progress)                 + ",";
+        ret += "\"forWhat\":"           +  batsched_tools::to_json_string(jm->forWhat)              + "}";
+        return ret;
+    }
 
-    
+    std::string id;
+        std::string progress_str;
+        double progress;
+        batsched_tools::KILL_TYPES forWhat = batsched_tools::KILL_TYPES::NONE;
     
     
     std::string batsched_tools::to_json_string(const JobAlloc * alloc)
     {
         std::string s = "{";
-        LOG_F(INFO,"here");
+        
             s+="\"begin\":\""+batsched_tools::to_json_string(alloc->begin.convert_to<double>())+"\"";
-            LOG_F(INFO,"here");
+           
             s+=",\"end\":\""+batsched_tools::to_json_string(alloc->end.convert_to<double>())+"\"";
-            LOG_F(INFO,"here");
+           
             s+=",\"has_been_inserted\":"+std::string((alloc->has_been_inserted ? "true":"false"));
-            LOG_F(INFO,"here");
+           
             s+=",\"started_in_first_slice\":"+std::string((alloc->started_in_first_slice ? "true":"false"));
-            LOG_F(INFO,"here");
+           
             s+=",\"used_machines\":\""+alloc->used_machines.to_string_hyphen()+"\"";
-            LOG_F(INFO,"here");
+           
             s+=",\"job\":\""+alloc->job->id+"\"";
         s+="}";
         return s;

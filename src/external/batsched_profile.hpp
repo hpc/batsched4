@@ -94,7 +94,9 @@ struct ParallelHomogeneousProfileData
     double com; //!< The communication amount between each pair of nodes
 
     //CCU-LANL additions
-    double real_cpu; //!< The original amount of cpu (forward work)
+    double real_cpu = -1.0; //!< The original amount of cpu (forward work)
+    double original_cpu = -1.0; //!< used with checkpointing-batsim
+    double original_real_cpu = -1.0; //!< used with checkpointing-batsim
 };
 
 /**
@@ -114,7 +116,9 @@ struct ParallelHomogeneousTotalAmountProfileData
 struct DelayProfileData
 {
     double delay; //!< The time amount, in seconds, that the job is supposed to take
-    double real_delay;
+    double real_delay = -1.0;
+    double original_delay = -1.0; //!< Used with checkpointing-batsim
+    double original_real_delay = -1.0; //!< Used with checkpointing-batsim
 };
 
 /**

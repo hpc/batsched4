@@ -86,24 +86,27 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,bats
     
         Job * job_to_queue = (*w0)[killed_job];
 
-        auto start = killed_job.find("!")+1;
-        auto end = killed_job.find("#");
-        std::string basename = (end ==std::string::npos) ? killed_job.substr(start) : killed_job.substr(start,end-start); 
-        const std::string workload_str = killed_job.substr(0,start-1); 
+        //auto parts = batsched_tools::get_job_parts(killed_job);
+        auto sep = batsched_tools::tools::separate_id(killed_job);
+        
+        //auto start = killed_job.find("!")+1;
+        //auto end = killed_job.find("#");
+        //std::string basename = (end ==std::string::npos) ? killed_job.substr(start) : killed_job.substr(start,end-start); 
+
+        //const std::string workload_str = killed_job.substr(0,start-1); 
         
         //const std::string workload_str = killed_job.substr(0,start-1);  //used when having multiple workloads
         //get the conversion from seconds to cpu instructions
             
         //get the job identifier of the job that was killed
-        std::string jid = killed_job;
+        //std::string jid = killed_job;
         std::string profile_jd=job_to_queue->profile->json_description;
         rapidjson::Document profile_doc;
         profile_doc.Parse(profile_jd.c_str());
         rapidjson::Document job_doc;
         job_doc.Parse(job_to_queue->json_description.c_str());
-
         
-        
+        LOG_F(INFO,"here");
         if (job_to_queue->profile->type == myBatsched::ProfileType::DELAY )
         {
             get_meta_data_from_delay(killed_map,profile_doc,job_doc,w0);
@@ -112,12 +115,19 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,bats
         {
             get_meta_data_from_parallel_homogeneous(killed_map,profile_doc,job_doc,w0);
         }
-        
+        LOG_F(INFO,"here");
         job_doc["subtime"]=date;
+        LOG_F(INFO,"here");
+        job_doc["original_submit"]=date;
+        LOG_F(INFO,"here");
+        job_doc["original_start"]=-1.0;
+        LOG_F(INFO,"here");
         rapidjson::Document::AllocatorType & myAlloc(job_doc.GetAllocator());
         job_doc["submission_times"].PushBack(date,myAlloc);
+        LOG_F(INFO,"here");
+
         
-                
+        /*        
         //check if resubmitted and get the next resubmission number
         int resubmit = 1;
         if (end!=std::string::npos) //if job name has # in it...was resubmitted b4
@@ -126,14 +136,16 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,bats
             resubmit++; // and add 1 to it
         }
         std::string resubmit_str = std::to_string(resubmit);
+        */
         
-        
-        std::string profile_name = basename + "#" + resubmit_str;
-        std::string job_name = basename + "#" + resubmit_str;
-        std::string job_id = workload_str+"!" + basename + "#" + resubmit_str;
-        std::string workload_name = workload_str;
+        //std::string profile_name = basename + "#" + resubmit_str;
+        std::string profile_name = sep.next_profile_name;
+        std::string job_name = sep.next_job_name;
+        std::string job_id = sep.next_resubmit_string;
+        std::string workload_name = sep.workload;
         job_doc["profile"].SetString(profile_name.data(), profile_name.size(), myAlloc);
         job_doc["id"].SetString(job_id.data(),job_id.size(),myAlloc);
+        LOG_F(INFO,"here");
         std::string error_prefix = "Invalid JSON job '" + killed_job + "'";
         profile_jd = to_json_desc(&profile_doc);
         std::string job_jd = to_json_desc(&job_doc);
@@ -198,6 +210,7 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
             
             
             progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
+            progress_time += job_to_queue->checkpoint_job_data->runtime;
 
             LOG_F(INFO,"job %s progress is > 0  progress: %f  progress_time: %f",job_to_queue->id.c_str(),progress,progress_time);
             //LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
@@ -289,7 +302,12 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
                         job_doc["metadata"].SetString(myString.c_str(),myAlloc2);
                 }
 
-            }        
+            }
+            myBatsched::ParallelHomogeneousProfileData * data = static_cast<myBatsched::ParallelHomogeneousProfileData *>(job_to_queue->profile->data);
+            if (data->original_cpu != -1.0)
+                profile_doc["cpu"]=data->original_cpu;
+            if (job_to_queue->original_walltime != -1.0)
+                job_doc["walltime"]=job_to_queue->original_walltime.convert_to<double>();
             //only if a new checkpoint has been reached does the delay time change
             //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
             if (num_checkpoints_completed > 0)
@@ -308,10 +326,17 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
                 //LOG_F(INFO,"REPAIR cpu_time: %f  readtime: %f",cpu_time,job_to_queue->read_time);
                 profile_doc["cpu"].SetDouble(cpu_time*one_second);
                 
-                
             }
         }
     
+    }
+    else
+    {
+        myBatsched::ParallelHomogeneousProfileData * data = static_cast<myBatsched::ParallelHomogeneousProfileData *>(job_to_queue->profile->data);
+        if (data->original_cpu != -1.0)
+            profile_doc["cpu"]=data->original_cpu;
+        if (job_to_queue->original_walltime != -1.0)
+            job_doc["walltime"]=job_to_queue->original_walltime.convert_to<double>();
     }
 }
 void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched_tools::Job_Message *> killed_map,
@@ -333,6 +358,7 @@ void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched
             
             
             progress_time =progress * profile_doc["delay"].GetDouble();
+            progress_time += job_to_queue->checkpoint_job_data->runtime;
             //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
             
             bool has_checkpointed = false;
@@ -463,10 +489,29 @@ void SchedulingDecision::add_set_job_metadata(const string &job_id,
     _proto_writer->append_set_job_metadata(job_id, metadata, date);
 }
 
-void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date, double date)
+void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date, double date,std::string job_id)
 {
     _proto_writer->append_call_me_later(forWhat,_nb_call_me_laters, future_date, date);
+    CALL_ME_LATERS call_me_later;
+    call_me_later.forWhat = forWhat;
+    call_me_later.job_id = job_id;
+    call_me_later.time = future_date;
+    call_me_later.id = _nb_call_me_laters;
+    _call_me_laters[_nb_call_me_laters]=call_me_later;
     _nb_call_me_laters++;
+}
+double SchedulingDecision::remove_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double date, Workload * w0)
+{
+    CALL_ME_LATERS call_me_later = _call_me_laters[id];
+    _call_me_laters.erase(id);
+    if (date > call_me_later.time)
+    {
+        if (call_me_later.forWhat == batsched_tools::call_me_later_types::RESERVATION_START)
+            ((*w0)[call_me_later.job_id])->walltime -=( date - call_me_later.time);
+        return date - call_me_later.time;
+    }
+    else
+        return 0;
 }
 void SchedulingDecision::set_nb_call_me_laters(int nb)
 {

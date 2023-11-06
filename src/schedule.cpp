@@ -80,40 +80,52 @@ void Schedule::set_now(Rational now){
     _now = now;
     }
 }
+void Schedule::incorrect_call_me_later(double difference)
+{
+    //ok, it is a little after the time that a reservation should start
+    //the reservation will be ending a little later as well
+    //we increased the walltime to 1 second larger than a reservation's run time so there should be enough padding for when the reservation ends
+    //but we need to take care of the first time slice's end and also the next time slice's begin
+    auto slice = _profile.begin();
+    slice->end+=difference;
+    slice->length+=difference;
+    slice++;
+    slice->begin+=difference;
+
+}
 void Schedule::ingest_schedule(rapidjson::Document & doc)
 {
        
     using namespace rapidjson;
     //let's clear the schedule
     _profile.clear();
-    LOG_F(INFO,"here");
+    
     PPK_ASSERT_ERROR(doc.HasMember("Schedule"),"Trying to ingest schedule from checkpoint, but there is no 'Schedule' key");
     const Value & schedule = doc["Schedule"];
-    LOG_F(INFO,"here");
+    
     const Value & timeSlices = schedule["TimeSlices"].GetArray();
     PPK_ASSERT_ERROR(timeSlices.IsArray(), "Trying to ingest schedule from checkpoint, but Schedule is not an array");
-    LOG_F(INFO,"here");
+    
     for (SizeType i = 0;i<timeSlices.Size();i++)
     {
         _profile.push_back(TimeSlice_from_json(timeSlices[i]));
     }
-    LOG_F(INFO,"here");  
+      
     const Value & colors = schedule["_colors"].GetArray();
     std::vector<std::string> temp;
     for(SizeType i = 0;i<colors.Size();i++)
     {
         temp.push_back(colors[i].GetString());
     }
-    LOG_F(INFO,"here");
+    
     _colors = temp;
     _frame_number = schedule["_frame_number"].GetInt();
     _largest_time_slice_length = Rational(schedule["_largest_time_slice_length"].GetDouble());
     _nb_jobs_size = schedule["_nb_jobs_size"].GetInt();
     _nb_reservations_size = schedule["_nb_reservations_size"].GetInt();
     _output_number = schedule["_output_number"].GetInt();
-    _output_svg = schedule["_output_svg"].GetString();
     _previous_time_end = Rational(schedule["_previous_time_end"].GetDouble());
-    LOG_F(INFO,"here");
+    
     std::string repair_machines = schedule["_repair_machines"].GetString();
     if (repair_machines == "")
         _repair_machines = IntervalSet::empty_interval_set();
@@ -128,17 +140,15 @@ void Schedule::ingest_schedule(rapidjson::Document & doc)
     _reservation_colors = temp;
     _size = schedule["_size"].GetInt();
     _smallest_time_slice_length = Rational(schedule["_smallest_time_slice_length"].GetDouble());
-    _svg_frame_end = schedule["_svg_frame_end"].GetInt();
-    _svg_frame_start = schedule["_svg_frame_start"].GetInt();
+    
     std::string svg_highlight_machines = schedule["_svg_highlight_machines"].GetString();
     if (svg_highlight_machines == "")
         _svg_highlight_machines = IntervalSet::empty_interval_set();
     else
         _svg_highlight_machines = IntervalSet::from_string_hyphen(svg_highlight_machines);
-    _svg_output_end = schedule["_svg_output_end"].GetInt();
-    _svg_output_start = schedule["_svg_output_start"].GetInt();
+    
     _svg_prefix = schedule["_svg_prefix"].GetString();
-    LOG_F(INFO,"here");
+    
     const Value & svg_resvs = schedule["_svg_reservations"].GetArray();
     std::list<Schedule::ReservedTimeSlice> tempL;
     for(SizeType i = 0;i<svg_resvs.Size();i++)
@@ -162,26 +172,26 @@ std::vector<const Job *> Schedule::JobVector_from_json(const rapidjson::Value & 
 JobAlloc * Schedule::JobAlloc_from_json(const rapidjson::Value & Valloc)
 {
     JobAlloc *alloc = new JobAlloc;
-    LOG_F(INFO,"here");
+    
     if (Valloc.HasMember("begin"))
     {
-    LOG_F(INFO,"here");
+    
         alloc->begin = Rational(std::stod(Valloc["begin"].GetString()));
-        LOG_F(INFO,"here");
+        
         alloc->end = Rational(std::stod(Valloc["end"].GetString()));
-        LOG_F(INFO,"here");
+        
         alloc->has_been_inserted = Valloc["has_been_inserted"].GetBool();
-        LOG_F(INFO,"here");
+        
         alloc->started_in_first_slice = Valloc["started_in_first_slice"].GetBool();
     }
    // std::string job_id_str = Valloc["job"].GetString();
     
-    LOG_F(INFO,"here");
+    
     //a job has to have used_machines in a schedule
     std::string used_machines = Valloc["used_machines"].GetString();
     //PPK_ASSERT(used_machines != "","Error, job: %s has an empty string for used_machines in batsched_schedule.chkpt",job_id_str.c_str() );
     alloc->used_machines = IntervalSet::from_string_hyphen(used_machines);
-    LOG_F(INFO,"here");
+    
     return alloc;
 }
 Schedule::ReservedTimeSlice Schedule::ReservedTimeSlice_from_json(const rapidjson::Value & Vslice)
@@ -216,11 +226,11 @@ Schedule::TimeSlice Schedule::TimeSlice_from_json(const rapidjson::Value & Vslic
     using namespace rapidjson;
     TimeSlice slice;
     const Value & VTimeSlice= Vslice["Time slice"];
-    LOG_F(INFO,"here");
+    
     slice.begin = Rational(VTimeSlice["begin"].GetDouble());
-    LOG_F(INFO,"here slice_begin: %f",slice.begin.convert_to<double>());
+    //LOG_F(INFO,"here slice_begin: %f",slice.begin.convert_to<double>());
     slice.end = Rational(VTimeSlice["end"].GetDouble());
-    LOG_F(INFO,"here");
+    
     slice.length = Rational(VTimeSlice["length"].GetDouble());
     std::string available_machines = VTimeSlice["available_machines"].GetString();
     if (available_machines == "")
@@ -240,11 +250,11 @@ Schedule::TimeSlice Schedule::TimeSlice_from_json(const rapidjson::Value & Vslic
         slice.allocated_jobs = JobMap_from_json(VTimeSlice["allocated_jobs"].GetArray(),slice.begin);
         slice.allocated_machines = IntervalSet::from_string_hyphen(VTimeSlice["allocated_machines"].GetString());
     }
-    LOG_F(INFO,"here");
+    
     slice.has_reservation = VTimeSlice["has_reservation"].GetBool();
-    LOG_F(INFO,"here");
+    
     slice.nb_available_machines = VTimeSlice["nb_available_machines"].GetInt();
-    LOG_F(INFO,"here");
+    
     slice.nb_reservations = VTimeSlice["nb_reservations"].GetInt();
 
     return slice;
@@ -256,23 +266,23 @@ std::map<const Job *, IntervalSet, JobComparator>  Schedule::JobMap_from_json(co
     for(SizeType i = 0;i<Vjobs.Size();i++)
     {
         const Value & Vjob = Vjobs[i];
-        LOG_F(INFO,"here");
+        
         const Value & Vid = Vjob["job_id"];
-        LOG_F(INFO,"here"); 
+       
         const Value & Valloc = Vjob["alloc"];
         JobAlloc * alloc = JobAlloc_from_json(Valloc);
-        LOG_F(INFO,"here"); 
-        batsched_tools::job_parts parts = batsched_tools::get_job_parts(Vid.GetString());
-        LOG_F(INFO,"here"); 
-        const Job * job = (*_workload)[parts.next_checkpoint];
-        LOG_F(INFO,"here job:%s , alloc: %s",job->id.c_str()); 
-        ourMap[job]=IntervalSet::from_string_hyphen(job->checkpoint_job_data->allocation.c_str());
-        LOG_F(INFO,"here"); 
+        batsched_tools::job_parts parts = batsched_tools::get_job_parts(Vid.GetString()); 
+        std::string next_checkpoint = parts.next_checkpoint;
+    
+        const Job * job = (*_workload)[next_checkpoint];
+        //LOG_F(INFO,"here job:%s ",job->id.c_str());
+        ourMap[job]=alloc->used_machines;
+       
         alloc->job = job;
-        LOG_F(INFO,"here"); 
+      
         if (Valloc.HasMember("begin"))
             alloc->job->allocations[alloc->begin]=alloc;
-        LOG_F(INFO,"here"); 
+       
         
 
     }
@@ -326,6 +336,11 @@ void Schedule::set_output_svg(std::string output_svg){
         _debug = false;
         _short_debug = true;
     }
+}
+void Schedule::set_output_svg_method(std::string output_svg_method)
+{
+    _output_svg_method = output_svg_method;
+
 }
 void Schedule::set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end){
     _svg_frame_start = frame_start;
@@ -1326,6 +1341,7 @@ JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
         //    _output_number, to_string().c_str());
         output_to_svg("top add_job_first_fit_after_time_slice "+job->id);
     }
+    LOG_F(INFO,"add_job_first_fit_after_time_slice %s",job->id.c_str());
     _size++;
     _nb_jobs_size++;
     //LOG_F(INFO,"sched_size++ %d",_size);
@@ -1731,6 +1747,7 @@ bool Schedule::split_slice(Schedule::TimeSliceIterator slice_to_split, Rational 
         second_slice_after_split = _profile.insert(list_insert_it, new_slice);
         first_slice_after_split = second_slice_after_split;
         --first_slice_after_split;
+        LOG_F(INFO,"slice split, first:%f   second:%f",first_slice_after_split->end.convert_to<double>(),second_slice_after_split->end.convert_to<double>());
 
         return true;
     }
@@ -1965,39 +1982,39 @@ string Schedule::to_json_string() const
     string res;
     res = "{\n";
         res = res + "\t\"Schedule\":\n\t{\n";
-        LOG_F(INFO,"here");
+        
             res = res + "\t\t\"_colors\":" + batsched_tools::vector_to_json_string(_colors) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_frame_number\":" + batsched_tools::to_json_string(_frame_number) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_largest_time_slice_length\":" + batsched_tools::to_json_string(_largest_time_slice_length) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_nb_jobs_size\":" + batsched_tools::to_json_string(_nb_jobs_size) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_nb_reservations_size\":" + batsched_tools::to_json_string(_nb_reservations_size) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_output_number\":" + batsched_tools::to_json_string(_output_number) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_output_svg\":" + batsched_tools::to_json_string(_output_svg) + ",\n";
             res = res + "\t\t\"_previous_time_end\":" + batsched_tools::to_json_string(_previous_time_end) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_repair_machines\":" + batsched_tools::to_json_string(_repair_machines.to_string_hyphen()) + ",\n";
             res = res + "\t\t\"_reservation_colors\":" + batsched_tools::vector_to_json_string(_reservation_colors) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_size\":" + batsched_tools::to_json_string(_size) + ",\n";
             res = res + "\t\t\"_smallest_time_slice_length\":" + batsched_tools::to_json_string(_smallest_time_slice_length) + ",\n";
             res = res + "\t\t\"_svg_frame_end\":" + batsched_tools::to_json_string(_svg_frame_end) + ",\n";
             res = res + "\t\t\"_svg_frame_start\":" + batsched_tools::to_json_string(_svg_frame_start) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_svg_highlight_machines\":" + batsched_tools::to_json_string(_svg_highlight_machines.to_string_hyphen()) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_svg_output_end\":" + batsched_tools::to_json_string(_svg_output_end) + ",\n";
             res = res + "\t\t\"_svg_output_start\":" + batsched_tools::to_json_string(_svg_output_start) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_svg_prefix\":" + batsched_tools::to_json_string(_svg_prefix) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"_svg_reservations\":" + list_to_json_string(&_svg_reservations) + ",\n";
-            LOG_F(INFO,"here");
+            
             res = res + "\t\t\"TimeSlices\":\n\t\t[\n";
             
                 int count = _profile.size();
@@ -2318,7 +2335,7 @@ void Schedule::write_svg_to_file(const string &filename,
     f.close();
 }
 
-void Schedule::output_to_svg(const std::string &message)
+void Schedule::output_to_svg(const std::string &message,bool json)
 {
     if (_frame_number >= _svg_frame_start && (_frame_number <= _svg_frame_end || _svg_frame_end == -1)){
         if (_output_number >= _svg_output_start && (_output_number < _svg_output_end || _svg_output_end == -1)){
@@ -2337,9 +2354,18 @@ void Schedule::output_to_svg(const std::string &message)
             f.close();
             
             const std::list<ReservedTimeSlice> svg_reservations = _svg_reservations;
-            LOG_F(INFO,"Frame: %06d Output: %06d Sec: %.1f Msg: %s \n %s",_frame_number, _output_number,(double)_profile.begin()->begin,message.c_str(),to_string().c_str());
-        
-            write_svg_to_file(buf,message,svg_reservations);
+            if (!json)
+            {
+                if (_output_svg_method == "text" || _output_svg_method == "both")
+                    LOG_F(INFO,"Frame: %06d Output: %06d Sec: %.1f Msg: %s \n %s",_frame_number, _output_number,(double)_profile.begin()->begin,message.c_str(),to_string().c_str());
+            }
+            else
+            {
+                if (_output_svg_method == "text" || _output_svg_method == "both")
+                    LOG_F(INFO,"Frame: %06d Output: %06d Sec: %.1f Msg: %s \n %s",_frame_number, _output_number,(double)_profile.begin()->begin,message.c_str(),to_json_string().c_str());
+            }
+            if (_output_svg_method == "svg" || _output_svg_method == "both")
+                write_svg_to_file(buf,message,svg_reservations);
             if (_profile.size()>1)
             {
                 auto slice = _profile.end();
@@ -2557,10 +2583,22 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             {
                 auto previous = pit;
                 previous--;
-
+                LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
                 // The slices are merged if they have the same jobs
-                if (previous->allocated_jobs == pit->allocated_jobs)
+                std::vector<std::string> jobsV;
+                for (auto pair : previous->allocated_jobs)
+                    jobsV.push_back(pair.first->id);
+                std::string previousString = boost::algorithm::join(jobsV, ",");
+                jobsV.clear();
+                for (auto pair : pit->allocated_jobs)
+                    jobsV.push_back(pair.first->id);
+                std::string pitString = boost::algorithm::join(jobsV, ",");
+                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+
+                
+                if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
                 {
+                    LOG_F(INFO,"TRUE");
                     PPK_ASSERT_ERROR(previous->available_machines == pit->available_machines,
                         "Two consecutive time slices, do NOT use the same resources "
                         "whereas they contain the same jobs. Slices:\n%s%s",
@@ -2594,10 +2632,21 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 {
                     auto previous = pit;
                     previous--;
+                    LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
+                    std::vector<std::string> jobsV;
+                for (auto pair : previous->allocated_jobs)
+                    jobsV.push_back(pair.first->id);
+                std::string previousString = boost::algorithm::join(jobsV, ",");
+                jobsV.clear();
+                for (auto pair : pit->allocated_jobs)
+                    jobsV.push_back(pair.first->id);
+                std::string pitString = boost::algorithm::join(jobsV, ",");
+                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
 
-                    // The slices are merged if they have the same jobs
-                    if (previous->allocated_jobs == pit->allocated_jobs)
+                
+                if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
                     {
+                        LOG_F(INFO,"TRUE");
                         PPK_ASSERT_ERROR(previous->available_machines == pit->available_machines,
                             "Two consecutive time slices, do NOT use the same resources "
                             "whereas they contain the same jobs. Slices:\n%s%s",
@@ -2623,8 +2672,21 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                     previous--;
 
                     // The slices are merged if they have the same jobs
-                    if (previous->allocated_jobs == pit->allocated_jobs)
+                    LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
+                    std::vector<std::string> jobsV;
+                for (auto pair : previous->allocated_jobs)
+                    jobsV.push_back(pair.first->id);
+                std::string previousString = boost::algorithm::join(jobsV, ",");
+                jobsV.clear();
+                for (auto pair : pit->allocated_jobs)
+                    jobsV.push_back(pair.first->id);
+                std::string pitString = boost::algorithm::join(jobsV, ",");
+                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+
+                
+                if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
                     {
+                        LOG_F(INFO,"TRUE");
                         PPK_ASSERT_ERROR(previous->available_machines == pit->available_machines,
                             "Two consecutive time slices, do NOT use the same resources "
                             "whereas they contain the same jobs. Slices:\n%s%s",
@@ -2718,13 +2780,13 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
     for (auto mit : allocated_jobs)
     {
         const Job *job = mit.first;
-        LOG_F(INFO,"here");
-        LOG_F(INFO,"here %s",job->id.c_str());
-        LOG_F(INFO,"here");
-        LOG_F(INFO,"job_alloc_size: %d",job->allocations.size());
-        for (auto kv_pair:job->allocations)
-            LOG_F(INFO,"%.15f, ",kv_pair.first.convert_to<double>());
-        LOG_F(INFO,"here %.15f",this->begin.convert_to<double>());
+        
+        //LOG_F(INFO,"here %s",job->id.c_str());
+        
+        //LOG_F(INFO,"job_alloc_size: %d",job->allocations.size());
+        //for (auto kv_pair:job->allocations)
+        //    LOG_F(INFO,"%.15f, ",kv_pair.first.convert_to<double>());
+        //LOG_F(INFO,"here %.15f",this->begin.convert_to<double>());
         if (job->allocations.find(this->begin)!= job->allocations.end())
             jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":" +
                               batsched_tools::to_json_string(job->allocations[this->begin]) +"}");
@@ -2733,7 +2795,7 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
 
         
     }
-    LOG_F(INFO,"here");
+    
 
     return boost::algorithm::join(jobs_str, ",");
 }
@@ -2751,20 +2813,20 @@ string Schedule::TimeSlice::to_json_string(int initial_indent, int indent) const
         istr += "\t";
 
     res += iistr + "{\"Time slice\": {";
-    LOG_F(INFO,"here");
+    
     res += to_json_string_interval();
     res += iistr + istr + "\"available_machines\": \"" + available_machines.to_string_hyphen() + "\",\n";
-    LOG_F(INFO,"here");
+    
     res += iistr + istr + "\"allocated_jobs\": [" + to_string_allocated_jobs() + "],\n";
-    LOG_F(INFO,"here");
+    
     res += iistr + istr + "\"allocated_machines\":\"" +allocated_machines.to_string_hyphen()+"\",\n";
-    LOG_F(INFO,"here");
+    
     res += iistr + istr + "\"has_reservation\":"+(has_reservation ? "true" : "false")+",\n";
-    LOG_F(INFO,"here");
+    
     res += iistr + istr + "\"nb_available_machines\":" + std::to_string(nb_available_machines) + ",\n";
-    LOG_F(INFO,"here");
+    
     res += iistr + istr + "\"nb_reservations\":" + std::to_string(nb_reservations)+"\n";
-    LOG_F(INFO,"here");
+    
     res += iistr + "}}";
     
     

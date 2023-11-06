@@ -35,7 +35,8 @@ public:
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
                                 SortableJobOrder::CompareInformation * compare_info);
-    virtual void checkpoint_batsched(double date);
+    virtual void on_checkpoint_batsched(double date);
+    virtual void on_ingest_variables(const rapidjson::Document & doc);
     virtual void on_first_jobs_submitted(double date);
 
 private:
@@ -47,7 +48,6 @@ private:
     
     Schedule _schedule;
     Queue * _reservation_queue=nullptr;
-    std::string _output_folder;
     std::string _output_svg;
     long _svg_frame_start;
     long _svg_frame_end;

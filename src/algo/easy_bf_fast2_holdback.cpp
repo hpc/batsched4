@@ -152,7 +152,7 @@ void easy_bf_fast2_holdback::on_myKillJob_notify_event(double date){
 
 void easy_bf_fast2_holdback::on_machine_down_for_repair(double date){
     //get a random number of a machine to kill
-    int number = unif_distribution->operator()(generator2);
+    int number = machine_unif_distribution->operator()(generator_machine);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     //if the machine is already down for repairs ignore it.
@@ -199,7 +199,7 @@ void easy_bf_fast2_holdback::on_machine_down_for_repair(double date){
 
 void easy_bf_fast2_holdback::on_machine_instant_down_up(double date){
     //get a random number of a machine to kill
-    int number = unif_distribution->operator()(generator2);
+    int number = machine_unif_distribution->operator()(generator_machine);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     BLOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
@@ -238,7 +238,7 @@ void easy_bf_fast2_holdback::on_requested_call(double date,int id,batsched_tools
                             BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
-                                    double number = distribution->operator()(generator);
+                                    double number = failure_exponential_distribution->operator()(generator_failure);
                                     if (_workload->_repair_time == 0.0)
                                         on_machine_instant_down_up(date);
                                     else
@@ -251,7 +251,7 @@ void easy_bf_fast2_holdback::on_requested_call(double date,int id,batsched_tools
                         {
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                             {
-                                double number = distribution->operator()(generator);
+                                double number = failure_exponential_distribution->operator()(generator_failure);
                                 on_myKillJob_notify_event(date);
                                 _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
 

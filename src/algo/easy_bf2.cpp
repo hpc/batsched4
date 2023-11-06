@@ -92,7 +92,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
     };
    
     //get a random number of a machine to kill
-    int number = unif_distribution->operator()(generator2);
+    int number = machine_unif_distribution->operator()(generator_machine);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = (*_machines)[number]->id;
     
@@ -184,7 +184,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
 void EasyBackfilling2::on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date){
     (void) date;
     //get a random number of a machine to kill
-    int number = unif_distribution->operator()(generator2);
+    int number = machine_unif_distribution->operator()(generator_machine);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     _schedule.add_svg_highlight_machines(machine);
@@ -245,7 +245,7 @@ void EasyBackfilling2::on_requested_call(double date,int id,batsched_tools::call
                             //BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
-                                    double number = distribution->operator()(generator);
+                                    double number = failure_exponential_distribution->operator()(generator_failure);
                                     LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
                                     if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
                                         _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
