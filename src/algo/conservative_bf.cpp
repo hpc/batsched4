@@ -205,9 +205,8 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     _recover_from_checkpoint = true;
     _myBLOG = new b_log();
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
-    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
-    BLOG_F(blog_types::FAILURES,"Start");
-    BLOG_F(blog_types::SOFT_ERRORS,"Start");
+    //_myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
+    
    //we are going to wait on setting any generators
    
 
