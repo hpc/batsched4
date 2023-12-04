@@ -253,7 +253,7 @@ bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
     else
         return false;
 }
-void ISchedulingAlgorithm::ingest_variables()
+void ISchedulingAlgorithm::ingest_variables(double date)
 {
     
     std::string filename = _output_folder + "/start_from_checkpoint/batsched_variables.chkpt";
@@ -271,13 +271,13 @@ void ISchedulingAlgorithm::ingest_variables()
     rapidjson::Document variablesDoc;
     variablesDoc.Parse(content.c_str());
     LOG_F(INFO,"here");
-    ISchedulingAlgorithm::on_ingest_variables(variablesDoc);
+    ISchedulingAlgorithm::on_ingest_variables(variablesDoc,date);
     LOG_F(INFO,"here");
     if (variablesDoc.HasMember("derived"))
-        on_ingest_variables(variablesDoc);
+        on_ingest_variables(variablesDoc,date);
 
 }
-void ISchedulingAlgorithm::on_ingest_variables(const rapidjson::Document & doc)
+void ISchedulingAlgorithm::on_ingest_variables(const rapidjson::Document & doc,double date)
 {
     std::string checkpoint_dir = _output_folder + "/start_from_checkpoint";
     //first get generators and distributions

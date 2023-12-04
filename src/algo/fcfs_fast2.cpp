@@ -64,7 +64,7 @@ void FCFSFast2::on_simulation_start(double date,
         logBLog = batsim_config["log_b_log"].GetBool();
     //log BLogs, add log files that you want logged to.
     if (logBLog){
-        _myBLOG->add_log_file(_output_folder+"/log/failures.log",b_log::FAILURES);
+        _myBLOG->add_log_file(_output_folder+"/log/failures.log",blog_types::FAILURES);
     }
     ISchedulingAlgorithm::set_generators(date);
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
@@ -150,7 +150,7 @@ void FCFSFast2::on_machine_down_for_repair(double date){
     IntervalSet machine = number;
     //if the machine is already down for repairs ignore it.
     //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-    BLOG_F(b_log::FAILURES,"Machine Repair: %d",number);
+    BLOG_F(blog_types::FAILURES,"Machine Repair: %d",number);
     if ((machine & _repair_machines).is_empty())
     {
         //ok the machine is not down for repairs
@@ -180,14 +180,14 @@ void FCFSFast2::on_machine_down_for_repair(double date){
                     msg->forWhat = batsched_tools::KILL_TYPES::NONE;
                     _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                     LOG_F(INFO,"Killing Job: %s",key_value.first.c_str());
-                    BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
+                    BLOG_F(blog_types::FAILURES,"Killing Job: %s",key_value.first.c_str());
                 }
             }
         }
     }
     else
     {
-        BLOG_F(b_log::FAILURES,"Machine Already Being Repaired: %d",number);
+        BLOG_F(blog_types::FAILURES,"Machine Already Being Repaired: %d",number);
     }
 }
 
@@ -197,7 +197,7 @@ void FCFSFast2::on_machine_instant_down_up(double date){
     int number = machine_unif_distribution->operator()(generator_machine);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
-    BLOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
+    BLOG_F(blog_types::FAILURES,"Machine Instant Down Up: %d",number);
     //if there are no running jobs, then there are none to kill
     if (!_running_jobs.empty()){
         for(auto key_value : _current_allocations)   
@@ -208,7 +208,7 @@ void FCFSFast2::on_machine_instant_down_up(double date){
                     msg->id = key_value.first;
                     msg->forWhat = batsched_tools::KILL_TYPES::NONE;
                     _my_kill_jobs.insert(std::make_pair(job_ref,msg));
-	                BLOG_F(b_log::FAILURES,"Killing Job: %s",key_value.first.c_str());
+	                BLOG_F(blog_types::FAILURES,"Killing Job: %s",key_value.first.c_str());
             	}
 	}
     }
@@ -230,7 +230,7 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
             case batsched_tools::call_me_later_types::SMTBF:
                         {
                             //Log the failure
-                            BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
+                            BLOG_F(blog_types::FAILURES,"FAILURE SMTBF");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = failure_exponential_distribution->operator()(generator_failure);
@@ -257,7 +257,7 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
                         break;
             case batsched_tools::call_me_later_types::FIXED_FAILURE:
                         {
-                            BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
+                            BLOG_F(blog_types::FAILURES,"FAILURE FIXED_FAILURE");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = _workload->_fixed_failures;
@@ -271,7 +271,7 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
                         break;
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                         {
-                            BLOG_F(b_log::FAILURES,"REPAIR_DONE");
+                            BLOG_F(blog_types::FAILURES,"REPAIR_DONE");
                             //a repair is done, all that needs to happen is add the machines to available
                             //and remove them from repair machines and add one to the number of available
                             IntervalSet machine = id;

@@ -10,12 +10,7 @@
 
 class AbstractProtocolWriter;
 class RedisStorage;
-struct CALL_ME_LATERS{
-    double time;
-    int id;
-    batsched_tools::call_me_later_types forWhat;
-    std::string job_id="null";
-};
+
 class SchedulingDecision
 {
 public:
@@ -66,6 +61,12 @@ public:
                                           double estimated_waiting_time,
                                           double date);
     double remove_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double date,Workload * w0);
+    std::map<int,batsched_tools::CALL_ME_LATERS> get_call_me_laters();
+    void set_call_me_laters(std::map<int,batsched_tools::CALL_ME_LATERS> & cml,double date,bool dispatch=false);
+    void set_blocked_call_me_laters(std::set<batsched_tools::call_me_later_types> &blocked_cmls);
+    void clear_blocked_call_me_laters();
+    void add_blocked_call_me_later(batsched_tools::call_me_later_types type);
+    void remove_blocked_call_me_later(batsched_tools::call_me_later_types type);
             
 
     void clear();
@@ -92,6 +93,7 @@ private:
     bool _redis_enabled = false;
     RedisStorage * _redis = nullptr;
     int _nb_call_me_laters=0;
-    std::map<int,CALL_ME_LATERS> _call_me_laters;
+    std::map<int,batsched_tools::CALL_ME_LATERS> _call_me_laters;
+    std::set<batsched_tools::call_me_later_types> _blocked_cmls;
     
 };

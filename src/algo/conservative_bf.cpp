@@ -60,8 +60,10 @@ void ConservativeBackfilling::on_checkpoint_batsched(double date)
          <<"\t\"_resubmitted_jobs\":"<<batsched_tools::map_to_json_string(&_resubmitted_jobs)<<","<<std::endl
          <<"\t\"_resubmitted_jobs_released\":"<<batsched_tools::vector_pair_to_json_string(&_resubmitted_jobs_released)<<","<<std::endl
          <<"\t\"_on_machine_instant_down_ups\":"<<batsched_tools::vector_to_json_string(&_on_machine_instant_down_ups)<<","<<std::endl
-         <<"\t\"_on_machine_down_for_repairs\":"<<batsched_tools::vector_to_json_string(&_on_machine_down_for_repairs)<<std::endl
-
+         <<"\t\"_on_machine_down_for_repairs\":"<<batsched_tools::vector_to_json_string(&_on_machine_down_for_repairs)<<","<<std::endl
+         <<"\t\"_call_me_laters\":"<<batsched_tools::map_to_json_string(_decision->get_call_me_laters())<<","<<std::endl
+         <<"\t\"SIMULATED_CHECKPOINT_TIME\":"<<batsched_tools::to_json_string(date)<<","<<std::endl
+         <<"\t\"REAL_CHECKPOINT_TIME\":"<<batsched_tools::to_json_string(_real_time)<<std::endl
          
          <<"}";//closes derived, still a brace open
 
@@ -69,7 +71,7 @@ void ConservativeBackfilling::on_checkpoint_batsched(double date)
     }
     _need_to_checkpoint=false;
 }
-void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & doc)
+void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & doc,double date)
 {
     using namespace rapidjson;
     const Value & derived = doc["derived"];
@@ -101,10 +103,31 @@ void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & do
         _on_machine_instant_down_ups.push_back(static_cast<batsched_tools::KILL_TYPES>(Vomidu[i].GetInt()));
     }
     const Value & Vomdfr = derived["_on_machine_down_for_repairs"].GetArray();
-     for (SizeType i=0;i<Vomdfr.Size();i++)
+    for (SizeType i=0;i<Vomdfr.Size();i++)
     {
         _on_machine_down_for_repairs.push_back(static_cast<batsched_tools::KILL_TYPES>(Vomdfr[i].GetInt()));
     }
+    const Value & Vcml = derived["_call_me_laters"].GetArray();
+    LOG_F(INFO,"here");
+    std::map<int,batsched_tools::CALL_ME_LATERS> cmls;
+    LOG_F(INFO,"here");
+    for (SizeType i=0;i<Vcml.Size();i++)
+    {
+        batsched_tools::CALL_ME_LATERS cml;
+        LOG_F(INFO,"here");
+        cml.time = Vcml[i]["value"]["time"].GetDouble();
+        LOG_F(INFO,"here");
+        cml.forWhat = static_cast<batsched_tools::call_me_later_types>(Vcml[i]["value"]["forWhat"].GetInt());
+        LOG_F(INFO,"here");
+        cml.job_id = Vcml[i]["value"]["job_id"].GetString();
+        LOG_F(INFO,"here");
+        cml.id = Vcml[i]["value"]["id"].GetInt();
+        LOG_F(INFO,"here");
+        cmls[cml.id]=cml;
+    }
+    _decision->set_call_me_laters(cmls,date,true);
+    LOG_F(INFO,"here");
+
 
 
 
@@ -139,6 +162,12 @@ ConservativeBackfilling::~ConservativeBackfilling()
 
 void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_event){
     //lets do all the normal stuff first
+    std::set<batsched_tools::call_me_later_types> blocked_cmls;
+    blocked_cmls.insert(batsched_tools::call_me_later_types::FIXED_FAILURE);
+    blocked_cmls.insert(batsched_tools::call_me_later_types::MTBF);
+    blocked_cmls.insert(batsched_tools::call_me_later_types::SMTBF);
+    blocked_cmls.insert(batsched_tools::call_me_later_types::REPAIR_DONE);
+    _decision->set_blocked_call_me_laters(blocked_cmls);
     pid_t pid = batsched_tools::get_batsched_pid();
     _decision->add_generic_notification("PID",std::to_string(pid),date);
     const rapidjson::Value & batsim_config = batsim_event["config"];
@@ -174,6 +203,11 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     _schedule.set_start_from_checkpoint(&_start_from_checkpoint);
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
     _recover_from_checkpoint = true;
+    _myBLOG = new b_log();
+    _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
+    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
+    BLOG_F(blog_types::FAILURES,"Start");
+    BLOG_F(blog_types::SOFT_ERRORS,"Start");
    //we are going to wait on setting any generators
    
 
@@ -183,6 +217,7 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
     //ok we need to update things now
     //workload should have our jobs now
     //lets ingest our schedule
+    _decision->clear_blocked_call_me_laters();
     std::string schedule_filename = _output_folder + "/start_from_checkpoint/batsched_schedule.chkpt";
     ifstream ifile(schedule_filename);
     PPK_ASSERT_ERROR(ifile.is_open(), "Cannot read schedule file '%s'", schedule_filename.c_str());
@@ -199,7 +234,7 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
     scheduleDoc.Parse(content.c_str());
     LOG_F(INFO,"here");
     _schedule.ingest_schedule(scheduleDoc);
-    ingest_variables();
+    ingest_variables(date);
     LOG_F(INFO,"here");
     content = "";
     std::string batsim_filename = _output_folder + "/start_from_checkpoint/batsim_variables.chkpt";
@@ -300,6 +335,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
     
     LOG_F(INFO,"output folder %s",_output_folder.c_str());
+   
     
     Schedule::convert_policy(batsim_config["reschedule-policy"].GetString(),_reschedule_policy);
     Schedule::convert_policy(batsim_config["impact-policy"].GetString(),_impact_policy);
@@ -313,7 +349,7 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     ISchedulingAlgorithm::set_generators(date);
     
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
-
+    
     //re-intialize queue if necessary
     /*
     if (batsim_config["queue-policy"].GetString() == "ORIGINAL-FCFS")
@@ -325,7 +361,9 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
 
     }
 */
-    
+    _myBLOG = new b_log();
+    _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
+    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
     (void) batsim_config;
 }
 
@@ -355,6 +393,7 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
    
     //get a random number of a machine to kill
     int number = machine_unif_distribution->operator()(generator_machine);
+    BLOG_F(blog_types::FAILURES,"On_Machine_Down_For_Repair: %d",number);
     nb_machine_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = (*_machines)[number]->id;
@@ -506,6 +545,7 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
     //get a random number of a machine to kill
     LOG_F(INFO,"here");
     int number = machine_unif_distribution->operator()(generator_machine);
+    BLOG_F(blog_types::FAILURES,"Instant_Down_Up: %d",number);
     nb_machine_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
@@ -564,7 +604,7 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
             case batsched_tools::call_me_later_types::SMTBF:
                         {
                             //Log the failure
-                            //BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
+                            BLOG_F(blog_types::FAILURES,"FAILURE SMTBF");
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = failure_exponential_distribution->operator()(generator_failure);
@@ -595,7 +635,7 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
             */
             case batsched_tools::call_me_later_types::FIXED_FAILURE:
                         {
-                            //BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
+                            BLOG_F(blog_types::FAILURES,"FAILURE FIXED_FAILURE");
                             LOG_F(INFO,"DEBUG");
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
@@ -612,7 +652,7 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
             
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                         {
-                            //BLOG_F(b_log::FAILURES,"REPAIR_DONE");
+                            BLOG_F(blog_types::FAILURES,"REPAIR_DONE");
                             //a repair is done, all that needs to happen is add the machines to available
                             //and remove them from repair machines and add one to the number of available
                             if (_output_svg == "all")
@@ -645,6 +685,7 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
         if (difference != 0 && forWhat == batsched_tools::call_me_later_types::RESERVATION_START)
         {
             LOG_F(INFO,"difference: %f",difference);
+            BLOG_F(blog_types::SOFT_ERRORS,"There was a requested_call error. The original date was %.15f, but was pushed out %.15f seconds, resulting in time %.15f",date-difference,difference,date);
             _schedule.incorrect_call_me_later(difference);
         }
     

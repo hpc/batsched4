@@ -161,8 +161,8 @@ public:
     bool send_batsim_checkpoint_if_ready(double date);
     bool check_checkpoint_time(double date);
     void checkpoint_batsched(double date);
-    void ingest_variables();
-    virtual void on_ingest_variables(const rapidjson::Document & doc);
+    void ingest_variables(double date);
+    virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_checkpoint_batsched(double date);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
     virtual void on_first_jobs_submitted(double date) {}

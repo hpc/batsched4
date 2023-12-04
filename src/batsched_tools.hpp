@@ -25,17 +25,20 @@ class b_log{
 public:
 b_log();
 ~b_log();
-enum logging_type{FAILURES};
-const char * logging_types = {"FAILURES"};
-void blog(logging_type type,std::string fmt, double date,...);
-void add_log_file(std::string file, logging_type type);
+void blog(std::string type,std::string fmt, double date,...);
+void add_log_file(std::string file, std::string type);
 
-std::unordered_map<logging_type,FILE*> _files;
+std::unordered_map<std::string,FILE*> _files;
 };
-
+namespace blog_types
+    {
+        const std::string SOFT_ERRORS="SOFT_ERRORS";
+        const std::string FAILURES="FAILURES";
+    };
 
 
 namespace batsched_tools{
+    
     enum class reservation_types{RESERVATION,REPAIR}; //not used yet
     enum class call_me_later_types 
     {
@@ -115,6 +118,12 @@ namespace batsched_tools{
       std::string checkpoint_folder="null"; //the actual folder to read in from
       bool received_submitted_jobs = false;
     };
+    struct CALL_ME_LATERS{
+        double time;
+        int id;
+        batsched_tools::call_me_later_types forWhat;
+        std::string job_id="null";
+    };
 
     struct batsched_tools::job_parts get_job_parts(std::string job_id);
 
@@ -178,6 +187,8 @@ namespace batsched_tools{
     std::string to_json_string(batsched_tools::KILL_TYPES kt);
     std::string to_json_string(const IntervalSet is);
     std::string to_json_string(const batsched_tools::Job_Message * jm);
+    std::string to_json_string(const batsched_tools::CALL_ME_LATERS &cml);
+    std::string to_json_string(const std::chrono::_V2::system_clock::time_point &tp);
     //std::string to_json_string(Schedule::ReservedTimeSlice rts);
     //std::string to_json_string(const Schedule::ReservedTimeSlice rts);
     //std::string to_json_string(Schedule::ReservedTimeSlice * rts);

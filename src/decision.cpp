@@ -488,11 +488,36 @@ void SchedulingDecision::add_set_job_metadata(const string &job_id,
 {
     _proto_writer->append_set_job_metadata(job_id, metadata, date);
 }
+void set_blocked_call_me_laters(std::set<batsched_tools::call_me_later_types> &blocked_cmls);
+    
+    
+    
+
+void SchedulingDecision::set_blocked_call_me_laters(std::set<batsched_tools::call_me_later_types> &blocked_cmls)
+{
+    _blocked_cmls = blocked_cmls;
+}
+void SchedulingDecision::clear_blocked_call_me_laters()
+{
+    _blocked_cmls.clear();
+}
+void SchedulingDecision::add_blocked_call_me_later(batsched_tools::call_me_later_types type)
+{
+    _blocked_cmls.insert(type);
+}
+void SchedulingDecision::remove_blocked_call_me_later(batsched_tools::call_me_later_types type)
+{
+    _blocked_cmls.erase(type);
+}
 
 void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date, double date,std::string job_id)
 {
+    //first check if we do anything with the call me later.
+    //if it is blocked then just return
+    if (_blocked_cmls.find(forWhat) != _blocked_cmls.end())
+        return;
     _proto_writer->append_call_me_later(forWhat,_nb_call_me_laters, future_date, date);
-    CALL_ME_LATERS call_me_later;
+    batsched_tools::CALL_ME_LATERS call_me_later;
     call_me_later.forWhat = forWhat;
     call_me_later.job_id = job_id;
     call_me_later.time = future_date;
@@ -502,7 +527,7 @@ void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types f
 }
 double SchedulingDecision::remove_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double date, Workload * w0)
 {
-    CALL_ME_LATERS call_me_later = _call_me_laters[id];
+    batsched_tools::CALL_ME_LATERS call_me_later = _call_me_laters[id];
     _call_me_laters.erase(id);
     if (date > call_me_later.time)
     {
@@ -512,6 +537,21 @@ double SchedulingDecision::remove_call_me_later(batsched_tools::call_me_later_ty
     }
     else
         return 0;
+}
+std::map<int,batsched_tools::CALL_ME_LATERS> SchedulingDecision::get_call_me_laters()
+{
+    return _call_me_laters;
+}
+void SchedulingDecision::set_call_me_laters(std::map<int,batsched_tools::CALL_ME_LATERS> & cml,double date,bool dispatch)
+{
+
+    if (dispatch)
+    {
+        for (auto c : cml)
+            add_call_me_later(c.second.forWhat,c.second.id,c.second.time,date,c.second.job_id);
+    }
+    else
+        _call_me_laters = cml;
 }
 void SchedulingDecision::set_nb_call_me_laters(int nb)
 {

@@ -15,11 +15,11 @@ b_log::~b_log(){
  for (auto key_value:_files)
     fclose(key_value.second);
 }
-void b_log::add_log_file(std::string file,logging_type type){
+void b_log::add_log_file(std::string file,std::string type){
     FILE* myFile=fopen(file.c_str(),"w");
     _files[type]=myFile;
 }
-void b_log::blog(logging_type type, std::string fmt, double date, ...){
+void b_log::blog(std::string type, std::string fmt, double date, ...){
     
     if (_files.size() > 0 && _files.find(type) != _files.end()){
         va_list args;
@@ -29,6 +29,7 @@ void b_log::blog(logging_type type, std::string fmt, double date, ...){
         fmt=fmt + "\n";
         std::vfprintf(file,fmt.c_str(),args);
         va_end(args);
+        fflush(file);
     }
     
 }
@@ -311,6 +312,24 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
             s+=",\"job\":\""+alloc->job->id+"\"";
         s+="}";
         return s;
+    }
+    std::string batsched_tools::to_json_string(const batsched_tools::CALL_ME_LATERS &cml)
+    {
+        std::string s;
+            s = "{";
+            s += "\"time\":"        +   batsched_tools::to_json_string(cml.time)                                        + ",";
+            s += "\"id\":"          +   batsched_tools::to_json_string(cml.id)                                          + ",";
+            s += "\"forWhat\":"     +   batsched_tools::to_json_string(static_cast<int>(cml.forWhat))                   + ",";
+            s += "\"job_id\":"      +   batsched_tools::to_json_string(cml.job_id)                                           ;
+            s += "}";
+        return s;
+    }
+    std::string batsched_tools::to_json_string(const std::chrono::_V2::system_clock::time_point &tp)
+    {
+        std::time_t myTime = std::chrono::system_clock::to_time_t(tp);
+        char timeString[std::size("yyyy-mm-dd HH:MM:SS")];
+        std::strftime(std::data(timeString),std::size(timeString),"%F %T\n",std::localtime(&myTime));
+        return "\""+std::string(timeString)+"\"";
     }
     
     

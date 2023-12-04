@@ -36,7 +36,7 @@ public:
                                 SortableJobOrder::UpdateInformation * update_info,
                                 SortableJobOrder::CompareInformation * compare_info);
     virtual void on_checkpoint_batsched(double date);
-    virtual void on_ingest_variables(const rapidjson::Document & doc);
+    virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_first_jobs_submitted(double date);
 
 private:
