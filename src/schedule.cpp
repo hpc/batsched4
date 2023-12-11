@@ -232,7 +232,8 @@ Schedule::TimeSlice Schedule::TimeSlice_from_json(const rapidjson::Value & Vslic
     //LOG_F(INFO,"here slice_begin: %f",slice.begin.convert_to<double>());
     slice.end = Rational(VTimeSlice["end"].GetDouble());
     
-    slice.length = Rational(VTimeSlice["length"].GetDouble());
+    //slice.length = Rational(VTimeSlice["length"].GetDouble());
+    slice.length = slice.end - slice.begin;
     std::string available_machines = VTimeSlice["available_machines"].GetString();
     if (available_machines == "")
         slice.available_machines = IntervalSet::empty_interval_set();
@@ -2584,7 +2585,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
             {
                 auto previous = pit;
                 previous--;
-                LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
+                //LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
                 // The slices are merged if they have the same jobs
                 std::vector<std::string> jobsV;
                 for (auto pair : previous->allocated_jobs)
@@ -2594,7 +2595,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 for (auto pair : pit->allocated_jobs)
                     jobsV.push_back(pair.first->id);
                 std::string pitString = boost::algorithm::join(jobsV, ",");
-                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+                //LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
 
                 
                 if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
@@ -2633,7 +2634,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 {
                     auto previous = pit;
                     previous--;
-                    LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
+                    //LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
                     std::vector<std::string> jobsV;
                 for (auto pair : previous->allocated_jobs)
                     jobsV.push_back(pair.first->id);
@@ -2642,7 +2643,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 for (auto pair : pit->allocated_jobs)
                     jobsV.push_back(pair.first->id);
                 std::string pitString = boost::algorithm::join(jobsV, ",");
-                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+                //LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
 
                 
                 if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
@@ -2673,7 +2674,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                     previous--;
 
                     // The slices are merged if they have the same jobs
-                    LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
+                    //LOG_F(INFO,"remove_job_internal: %s \nbegin:%f  end:%f\nbegin:%f  end:%f",job->id.c_str(),previous->begin.convert_to<double>(),previous->end.convert_to<double>(),pit->begin.convert_to<double>(),pit->end.convert_to<double>());
                     std::vector<std::string> jobsV;
                 for (auto pair : previous->allocated_jobs)
                     jobsV.push_back(pair.first->id);
@@ -2682,7 +2683,7 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 for (auto pair : pit->allocated_jobs)
                     jobsV.push_back(pair.first->id);
                 std::string pitString = boost::algorithm::join(jobsV, ",");
-                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+                //LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
 
                 
                 if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))

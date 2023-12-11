@@ -174,6 +174,7 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     LOG_F(INFO,"***** on_start_from_checkpoint ******");
     _output_svg=batsim_config["output-svg"].GetString();
     std::string output_svg_method = batsim_config["output-svg-method"].GetString();
+    //output_svg_method = "text";
     _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
@@ -786,6 +787,7 @@ void ConservativeBackfilling::make_decisions(double date,
         _schedule.output_to_svg("make_decisions",true);
     // Let's update the schedule's present. it may put a reservation in a position to run
     _schedule.update_first_slice(date);
+    if (_output_svg == "all" )
     _schedule.output_to_svg("after update first slice",true);
     //check if the first slice has a reservation to run (by checking _start_a_reservation)
     //this starts out as false
@@ -796,6 +798,7 @@ void ConservativeBackfilling::make_decisions(double date,
         
         if(_schedule.remove_reservations_if_ready(jobs_removed))
         {
+                if (_output_svg == "all")
                 _schedule.output_to_svg("after reservations if ready",true);
                 //traverse the reservations removed         
                 for(const Job * job : jobs_removed)
@@ -895,8 +898,10 @@ void ConservativeBackfilling::make_decisions(double date,
     LOG_F(INFO,"here");
     //this handles the schedule including any compressing that might need to be done
     LOG_F(INFO,"%s",_queue->to_json_string().c_str());
+    if (_output_svg == "all")
     _schedule.output_to_svg("before handle",true);
     handle_schedule(recently_queued_jobs,date);
+    if (_output_svg == "all")
     _schedule.output_to_svg("after handle",true);
 
 LOG_F(INFO,"here");
@@ -967,6 +972,7 @@ LOG_F(INFO,"here");
         }
         
     }
+    
 
     _decision->add_generic_notification("queue_size",std::to_string(_queue->nb_jobs()),date);
     _decision->add_generic_notification("schedule_size",std::to_string(_schedule.size()),date);
@@ -1084,7 +1090,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
             //LOG_F(INFO,"DEBUG line 375");
             JobAlloc alloc = _schedule.add_job_first_fit(job, _selector,false); 
             
-            LOG_F(INFO,"ALLOC: %s  begin:%f  end:%f used:%s",job->id.c_str(),alloc.begin.convert_to<double>(),alloc.end.convert_to<double>(),alloc.used_machines.to_string_hyphen().c_str());  
+            //LOG_F(INFO,"ALLOC: %s  begin:%f  end:%f used:%s",job->id.c_str(),alloc.begin.convert_to<double>(),alloc.end.convert_to<double>(),alloc.used_machines.to_string_hyphen().c_str());  
     //            if (_dump_provisional_schedules)
     //                _schedule.incremental_dump_as_batsim_jobs_file(_dump_prefix);
             if (!alloc.used_machines.is_empty())
