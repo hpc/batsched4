@@ -30,6 +30,10 @@ public:
                                                 const Job *& priority_job_after,
                                                 SortableJobOrder::UpdateInformation * update_info,
                                                 SortableJobOrder::CompareInformation * compare_info);
+    virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
+    virtual void on_checkpoint_batsched(double date);
+    virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
+    virtual void on_first_jobs_submitted(double date);
 
     //added
     void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date);

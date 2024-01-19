@@ -76,6 +76,11 @@ void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & do
     using namespace rapidjson;
     const Value & derived = doc["derived"];
 
+    _output_svg = derived["_output_svg"].GetString();
+    _svg_frame_start = derived["_svg_frame_start"].GetInt();
+    _svg_frame_end = derived["_svg_frame_end"].GetInt();
+    _svg_output_start = derived["_svg_output_start"].GetInt();
+    _svg_output_end = derived["_svg_output_end"].GetInt();
     _reschedule_policy = static_cast<Schedule::RESCHEDULE_POLICY>(derived["_reschedule_policy"].GetInt());
     _impact_policy = static_cast<Schedule::IMPACT_POLICY>(derived["_impact_policy"].GetInt());
     _previous_date = derived["_previous_date"].GetDouble();
@@ -93,7 +98,7 @@ void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & do
         _recently_under_repair_machines = IntervalSet::empty_interval_set();
     else
         _recently_under_repair_machines = IntervalSet::from_string_hyphen(rurm);
-    //not going to get _need_to_compress
+    _need_to_compress = derived["_need_to_compress"].GetBool();
     _checkpointing_on = derived["_checkpointing_on"].GetBool();
     _start_a_reservation = derived["_start_a_reservation"].GetBool();
     //not going to get _resubmitted_jobs _resubmitted_jobs_released
@@ -126,6 +131,7 @@ void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & do
         cmls[cml.id]=cml;
     }
     _decision->set_call_me_laters(cmls,date,true);
+    _decision->remove_blocked_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED);
     LOG_F(INFO,"here");
 
 
@@ -163,10 +169,12 @@ ConservativeBackfilling::~ConservativeBackfilling()
 void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_event){
     //lets do all the normal stuff first
     std::set<batsched_tools::call_me_later_types> blocked_cmls;
+    _block_checkpoint = true;
     blocked_cmls.insert(batsched_tools::call_me_later_types::FIXED_FAILURE);
     blocked_cmls.insert(batsched_tools::call_me_later_types::MTBF);
     blocked_cmls.insert(batsched_tools::call_me_later_types::SMTBF);
     blocked_cmls.insert(batsched_tools::call_me_later_types::REPAIR_DONE);
+    blocked_cmls.insert(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED);
     _decision->set_blocked_call_me_laters(blocked_cmls);
     pid_t pid = batsched_tools::get_batsched_pid();
     _decision->add_generic_notification("PID",std::to_string(pid),date);
@@ -218,6 +226,8 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
     //workload should have our jobs now
     //lets ingest our schedule
     _decision->clear_blocked_call_me_laters();
+    _decision->add_blocked_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED);
+    _block_checkpoint = false;
     std::string schedule_filename = _output_folder + "/start_from_checkpoint/batsched_schedule.chkpt";
     ifstream ifile(schedule_filename);
     PPK_ASSERT_ERROR(ifile.is_open(), "Cannot read schedule file '%s'", schedule_filename.c_str());
@@ -313,6 +323,7 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
     }
     //now touch back with batsim just to get things solidified
     _decision->add_generic_notification("recover_from_checkpoint","",date);
+    _start_from_checkpoint_time = date;
     
     
 }
@@ -346,7 +357,8 @@ void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::
     _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
-    ISchedulingAlgorithm::set_generators(date);
+    if (_file_failures.empty())
+        ISchedulingAlgorithm::set_generators(date);
     
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
     
@@ -544,7 +556,11 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
     (void) date;
     //get a random number of a machine to kill
     LOG_F(INFO,"here");
-    int number = machine_unif_distribution->operator()(generator_machine);
+    int number;
+    if(_file_failures.empty())
+        number = machine_unif_distribution->operator()(generator_machine);
+    else
+        number = _file_failures[date].machine_down;
     BLOG_F(blog_types::FAILURES,"Instant_Down_Up: %d",number);
     nb_machine_unif_distribution++;
     //make it an intervalset so we can find the intersection of it with current allocations
@@ -597,6 +613,7 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
 }
 void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
 {
+        LOG_F(ERROR,"here");
         if (_output_svg != "none")
             _schedule.set_now((Rational)date);
         switch (forWhat){
@@ -607,14 +624,24 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                             BLOG_F(blog_types::FAILURES,"FAILURE SMTBF");
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
-                                    double number = failure_exponential_distribution->operator()(generator_failure);
-                                    nb_failure_exponential_distribution++;
-                                    LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
-                                    if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
-                                        _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
-                                    else
-                                        _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::SMTBF);
-                                    _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
+                                    
+                                    LOG_F(ERROR,"here");
+                                    double number;
+                                        if (_file_failures.empty())
+                                            number = failure_exponential_distribution->operator()(generator_failure);
+                                        LOG_F(ERROR,"here");
+                                        nb_failure_exponential_distribution++;
+                                        LOG_F(ERROR,"here");
+                                        LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
+                                        LOG_F(ERROR,"here");
+                                        if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
+                                            _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
+                                        else
+                                            _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::SMTBF);
+                                        if (_file_failures.empty())
+                                            _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
+                                            LOG_F(ERROR,"here");
+                                 
                                 }
                         }
                         break;
@@ -633,7 +660,8 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                         }
                         break;
             */
-            case batsched_tools::call_me_later_types::FIXED_FAILURE:
+
+             case batsched_tools::call_me_later_types::FIXED_FAILURE:
                         {
                             BLOG_F(blog_types::FAILURES,"FAILURE FIXED_FAILURE");
                             LOG_F(INFO,"DEBUG");
@@ -645,7 +673,8 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                                         _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);//defer to after make_decisions
                                     else
                                         _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);
-                                    _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
+                                    if (_file_failures.empty())
+                                        _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
                                 }
                         }
                         break;
@@ -898,10 +927,10 @@ void ConservativeBackfilling::make_decisions(double date,
     LOG_F(INFO,"here");
     //this handles the schedule including any compressing that might need to be done
     LOG_F(INFO,"%s",_queue->to_json_string().c_str());
-    if (_output_svg == "all")
+    //if (_output_svg == "all")
     _schedule.output_to_svg("before handle",true);
     handle_schedule(recently_queued_jobs,date);
-    if (_output_svg == "all")
+    //if (_output_svg == "all")
     _schedule.output_to_svg("after handle",true);
 
 LOG_F(INFO,"here");

@@ -70,6 +70,11 @@ namespace batsched_tools{
     ,JOB_STATE_REJECTED                     //!< The job has been rejected by the scheduler.
 };
     
+    struct failure_tuple{
+        int machine_down;
+        batsched_tools::call_me_later_types type;
+        std::string method;
+    };
     struct id_separation{
         std::string basename;
         std::string resubmit_string;

@@ -167,6 +167,7 @@ public:
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
     virtual void on_first_jobs_submitted(double date) {}
     void on_signal_checkpoint();
+    void set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map);
     
     
     
@@ -228,6 +229,9 @@ protected:
     std::string _output_folder;
     bool _exit_make_decisions = false;
     bool _recover_from_checkpoint = false;
+    bool _block_checkpoint = false;
+    std::map<double,batsched_tools::failure_tuple> _file_failures;
+    double _start_from_checkpoint_time=0;
     
 
     

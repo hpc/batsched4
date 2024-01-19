@@ -307,7 +307,7 @@ int main(int argc, char ** argv)
         if (scheduling_variant == "easy_bf")
             algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "easy_bf2")
-            algo = new EasyBackfilling(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
+            algo = new EasyBackfilling2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         //if (scheduling_variant == "easy_bf2")
         //    algo = new EasyBackfilling2(&w, &decision, queue, selector, rjms_delay, &json_doc_variant_options);
         /*
@@ -404,6 +404,43 @@ int main(int argc, char ** argv)
 void on_signal_checkpoint(int signum)
 {
     batsim_checkpoint=true;
+}
+std::map<double,batsched_tools::failure_tuple> parse_failure_file(std::string failure_file_path)
+{
+ std::map<double,batsched_tools::failure_tuple> myMap;
+std::string line;
+    std::ifstream file(failure_file_path);
+    if (file.is_open()) {
+        batsched_tools::failure_tuple atuple;
+        while (getline(file, line)) {
+            std::smatch sm;
+                LOG_F(ERROR,"here 417");
+                std::regex re("([0-9]+[.][0-9]*)[ ]+[|][|]FAILURE ([A-Za-z]+)");
+                if (std::regex_match(line,sm,re))
+                {
+                    if (sm[2] == "SMTBF")
+                        atuple.type = batsched_tools::call_me_later_types::SMTBF;
+                    else if (sm[2]=="MTBF")
+                        atuple.type = batsched_tools::call_me_later_types::MTBF;
+                    else if (sm[2]=="FIXED_FAILURE")
+                        atuple.type = batsched_tools::call_me_later_types::FIXED_FAILURE;
+                    LOG_F(ERROR,"here 427");
+                    continue;
+                }
+                re = "([0-9]+[.][0-9]*)[ ]+[|][|]([A-Za-z_]+): ([0-9]+)";
+                if (std::regex_match(line,sm,re))
+                {
+                    atuple.method = sm[2];
+                    atuple.machine_down = std::stoi(sm[3]);
+                    myMap[std::stod(sm[1])]=atuple;
+                    std::string myString(sm[1]);
+                    LOG_F(ERROR,"here 436 %s",myString.c_str());
+                }
+
+        }
+    file.close();
+    }
+    return myMap;
 }
 
 void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
@@ -508,6 +545,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     redis.connect_to_server(redis_hostname, redis_port, nullptr);
                     redis.set_instance_key_prefix(redis_prefix);
                 }
+
                 //get the workloads
                 
                 
@@ -561,10 +599,22 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
                 workload._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
                 workload._checkpointing_interval = event_data["config"]["checkpointing_interval"].GetDouble();
-                workload._MTBF = event_data["config"]["MTBF"].GetDouble();
-                workload._SMTBF = event_data["config"]["SMTBF"].GetDouble();
+                std::string failure_file_path = event_data["config"]["failure-from-file"].GetString();
+                LOG_F(ERROR,"fff: %s",failure_file_path.c_str());
+                if (failure_file_path != "none")
+                {
+                   LOG_F(ERROR,"here");
+                    std::map<double,batsched_tools::failure_tuple> failure_map = parse_failure_file(failure_file_path);
+                    for (auto myPair:failure_map)
+                        LOG_F(ERROR,"%f %d",myPair.first,myPair.second.machine_down);
+                    algo->set_failure_map(failure_map);
+                }
+                
+                    workload._MTBF = event_data["config"]["MTBF"].GetDouble();
+                    workload._SMTBF = event_data["config"]["SMTBF"].GetDouble();
+                    workload._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
+                
                 workload._repair_time = event_data["config"]["repair_time"].GetDouble();
-                workload._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 workload._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
                 workload._seed_failures = event_data["config"]["seed-failures"].GetBool();
                 workload._queue_depth = event_data["config"]["scheduler-queue-depth"].GetInt();

@@ -82,6 +82,22 @@ void EasyBackfilling2::on_simulation_end(double date)
 void EasyBackfilling2::set_machines(Machines *m){
     _machines = m;
 }
+void EasyBackfilling2::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
+    (void) date;
+    (void) batsim_config;
+}
+void EasyBackfilling2::on_checkpoint_batsched(double date)
+{
+
+}
+void EasyBackfilling2::on_ingest_variables(const rapidjson::Document & doc,double date)
+{
+
+}
+void EasyBackfilling2::on_first_jobs_submitted(double date)
+{
+
+}
 void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date){
     (void) date;
     auto sort_original_submit_pair = [](const std::pair<const Job *,IntervalSet> j1,const std::pair<const Job *,IntervalSet> j2)->bool{
@@ -142,12 +158,14 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
                 
                 std::vector<batsched_tools::Job_Message *> msgs;
                 for (auto job_id : jobs_to_kill){
+                    LOG_F(INFO,"killing job %s",job_id.c_str());
                     auto msg = new batsched_tools::Job_Message;
                     msg->id = job_id;
                     msg->forWhat = forWhat;
                     msgs.push_back(msg);
                 }
-                _killed_jobs=true;
+               
+                
                 _decision->add_kill_job(msgs,date);
                 for (auto job_id:jobs_to_kill)
                     _schedule.remove_job_if_exists((*_workload)[job_id]);
@@ -196,15 +214,14 @@ void EasyBackfilling2::on_machine_instant_down_up(batsched_tools::KILL_TYPES for
     //if there are no running jobs, then there are none to kill
     if (_schedule.get_number_of_running_jobs() > 0){
         //ok so there are running jobs
-        LOG_F(INFO,"instant down up");
+       
         std::vector<std::string> jobs_to_kill;
         _schedule.get_jobs_running_on_machines(machine,jobs_to_kill);
-         LOG_F(INFO,"instant down up");
-        
-        LOG_F(INFO,"instant down up");
+                 
+       
         if (!jobs_to_kill.empty())
         {
-            _killed_jobs = true;
+            
             std::vector<batsched_tools::Job_Message *> msgs;
             for (auto job_id : jobs_to_kill){
                 auto msg = new batsched_tools::Job_Message;
@@ -243,6 +260,7 @@ void EasyBackfilling2::on_requested_call(double date,int id,batsched_tools::call
                         {
                             //Log the failure
                             //BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
+                            
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = failure_exponential_distribution->operator()(generator_failure);
@@ -325,7 +343,7 @@ void EasyBackfilling2::make_decisions(double date,
 
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently)
-        _schedule.remove_job((*_workload)[ended_job_id]);
+        _schedule.remove_job_if_exists((*_workload)[ended_job_id]);
 
     // Let's handle recently released jobs
     std::vector<std::string> recently_queued_jobs;
@@ -373,8 +391,7 @@ void EasyBackfilling2::make_decisions(double date,
     }
     //ok we handled them all, clear the container
     _on_machine_down_for_repairs.clear();
-
-
+    _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
 
 
     // Queue sorting
@@ -405,7 +422,7 @@ void EasyBackfilling2::make_decisions(double date,
                     nb_available_machines -= new_job->nb_requested_resources;
                 }
                 else
-                    _schedule.remove_job(new_job);
+                    _schedule.remove_job_if_exists(new_job);
             }
         }
     }
@@ -421,7 +438,7 @@ void EasyBackfilling2::make_decisions(double date,
             const Job * job = (*job_it)->job;
 
             if (_schedule.contains_job(job))
-                _schedule.remove_job(job);
+                _schedule.remove_job_if_exists(job);
 
             if (job == priority_job_after) // If the current job is priority
             {
@@ -447,12 +464,66 @@ void EasyBackfilling2::make_decisions(double date,
                 }
                 else
                 {
-                    _schedule.remove_job(job);
+                    _schedule.remove_job_if_exists(job);
                     ++job_it;
                 }
             }
         }
     }
+
+    if (!_killed_jobs && _jobs_killed_recently.empty() && _queue->is_empty()  && _schedule.size() == 0 &&
+             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
+    {
+      //  LOG_F(INFO,"finished_submitting_jobs sent");
+        _decision->add_scheduler_finished_submitting_jobs(date);
+        if (_output_svg == "all" || _output_svg == "short")
+            _schedule.output_to_svg("Simulation Finished");
+        _schedule.set_output_svg("none");
+        _output_svg = "none";
+        _need_to_send_finished_submitting_jobs = false;
+    }
+    LOG_F(INFO,"here");
+    //descriptive log statement
+    //LOG_F(INFO,"!killed= %d  jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
+    //!_killed_jobs,_jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
+    //         _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
+
+    //if there are jobs that can't run then we need to start rejecting them at this point
+    if (!_killed_jobs && _jobs_killed_recently.empty() && _schedule.size() == 0 &&
+             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
+    {
+      //  LOG_F(INFO,"here");
+        bool able=false; //this will stay false unless there is a job that can run
+        auto previous_to_end = _schedule.end();
+        previous_to_end--;
+        for (auto itr = _queue->begin();itr!=_queue->end();++itr)
+        {
+        //     LOG_F(INFO,"here");
+            
+            if ((*itr)->job->nb_requested_resources <= previous_to_end->available_machines.size())
+                able=true;
+          //   LOG_F(INFO,"here");
+        }
+        if (!able)
+        {
+            // LOG_F(INFO,"here");
+            //ok we are not able to run things, start rejecting the jobs
+            for ( auto itr = _queue->begin();itr!=_queue->end();++itr)
+            {
+              //   LOG_F(INFO,"here");
+              //  LOG_F(INFO,"Rejecting job %s",(*itr)->job->id.c_str());
+                _decision->add_reject_job((*itr)->job->id,date);
+                itr=_queue->remove_job(itr);
+                // LOG_F(INFO,"here");
+            }
+        }
+        
+    }
+    _decision->add_generic_notification("queue_size",std::to_string(_queue->nb_jobs()),date);
+    _decision->add_generic_notification("schedule_size",std::to_string(_schedule.size()),date);
+    _decision->add_generic_notification("number_running_jobs",std::to_string(_schedule.get_number_of_running_jobs()),date);
+    _decision->add_generic_notification("utilization",std::to_string(_schedule.get_utilization()),date);
+    _decision->add_generic_notification("utilization_no_resv",std::to_string(_schedule.get_utilization_no_resv()),date);
 }
 
 

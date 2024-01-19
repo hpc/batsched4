@@ -14,7 +14,14 @@ namespace fs = std::experimental::filesystem;
 #endif
 
 using namespace std;
-
+void ISchedulingAlgorithm::set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map)
+{
+ _file_failures = failure_map;
+ for (auto myPair: failure_map)
+ {
+    _decision->add_call_me_later(myPair.second.type,1,myPair.first,0,"null");
+ }   
+}
 void ISchedulingAlgorithm::set_nb_machines(int nb_machines)
 {
     PPK_ASSERT_ERROR(_nb_machines == -1);
@@ -219,9 +226,11 @@ void ISchedulingAlgorithm::set_checkpoint_time(long seconds,std::string checkpoi
 }
 bool ISchedulingAlgorithm::check_checkpoint_time(double date)
 {
+    double epsilon = 1e-4;
     if (_batsim_checkpoint_interval_type == "simulated")
     {
-        if (date >= _batsim_checkpoint_interval_seconds*(_nb_batsim_checkpoints + 1))
+        LOG_F(INFO,"_nb_batsim_checkpoints: %d",_nb_batsim_checkpoints);
+        if ((date >= _batsim_checkpoint_interval_seconds*(_nb_batsim_checkpoints + 1)) && (date > _start_from_checkpoint_time+epsilon))
             return true;
         else
             return false;
@@ -238,15 +247,14 @@ bool ISchedulingAlgorithm::check_checkpoint_time(double date)
 }
 bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
     LOG_F(INFO,"here");
-    if ((_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))||_need_to_send_checkpoint)
+    if (((_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))||_need_to_send_checkpoint) && !_block_checkpoint)
     {
        LOG_F(INFO,"here");
         _decision->add_generic_notification("checkpoint","",date);
         LOG_F(INFO,"here");
-        _need_to_send_checkpoint=false;
-        //_decision->add_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED,_nb_batsim_checkpoints,date,date);
         if (!_need_to_send_checkpoint)//check that this is a scheduled checkpoint
             _nb_batsim_checkpoints +=1;
+        _need_to_send_checkpoint=false;
         LOG_F(INFO,"here");
         return true;
     }
@@ -391,6 +399,7 @@ LOG_F(INFO,"here");
     }
     LOG_F(INFO,"here");
     _nb_call_me_laters = base["_nb_call_me_laters"].GetInt();
+    _nb_batsim_checkpoints = base["_nb_batsim_checkpoints"].GetInt();
     //not doing any of the other variables
     //end: jobs shouldn't have been ended between the time batsched tells batsim to checkpoint and then batsched checkpoints
     //released: should've already been handled
@@ -466,7 +475,8 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         <<"\t\t\"_jobs_killed_recently\":"                                <<  batsched_tools::unordered_map_to_json_string(_jobs_killed_recently) <<","<<std::endl
         <<"\t\t\"_jobs_ended_recently\":"                                 <<  batsched_tools::vector_to_json_string(_jobs_ended_recently)     <<","<<std::endl
         <<"\t\t\"_jobs_released_recently\":"                              <<  batsched_tools::vector_to_json_string(_jobs_released_recently)  <<","<<std::endl
-        <<"\t\t\"_nb_call_me_laters\":"                                   <<  batsched_tools::to_json_string(_nb_call_me_laters)              <<std::endl
+        <<"\t\t\"_nb_call_me_laters\":"                                   <<  batsched_tools::to_json_string(_nb_call_me_laters)              <<","<<std::endl
+        <<"\t\t\"_nb_batsim_checkpoints\":"                               <<  batsched_tools::to_json_string(_nb_batsim_checkpoints)          <<std::endl
         <<"\t}"<<std::endl; //closes base brace, leaves a brace open
         f.close();
 
