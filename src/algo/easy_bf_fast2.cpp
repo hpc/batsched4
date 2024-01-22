@@ -322,14 +322,15 @@ void easy_bf_fast2::make_decisions(double date,
     std::vector<int> mapping = {0};
     if (_oldDate == -1)
         _oldDate=date;
-    // This algorithm is a fast version of FCFS without backfilling.
+    // This algorithm is a fast version of EASY backfilling.
     // It is meant to be fast in the usual case, not to handle corner cases.
     // It is not meant to be easily readable or hackable ;).
 
-    // This fast FCFS variant in a few words:
+    // This fast EASY backfilling variant in a few words:
     // - only handles the FCFS queue order
     // - only handles the basic resource selection policy
-    // - only handles finite jobs (no switchoff)
+    // - only handles finite jobs (no switchoff), with walltimes
+    // - only handles one priority job (the first of the queue)
     // - only handles time as floating-point (-> precision errors).
 
     
