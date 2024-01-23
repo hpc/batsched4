@@ -4,7 +4,6 @@
 #include "../batsched_tools.hpp"
 using namespace std;
 
-
 EasyBackfilling3::EasyBackfilling3(Workload * workload,
                                  SchedulingDecision * decision,
                                  Queue * queue,
@@ -13,9 +12,10 @@ EasyBackfilling3::EasyBackfilling3(Workload * workload,
                                  rapidjson::Document * variant_options) :
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay, variant_options)
 {
-    // @note LH: test csv file
-    _logTime = new b_log();
+    // @note allocate priority job
     _p_job = new Priority_Job();
+    // @note failures logs
+    _logFailure = new b_log();
     (void) queue;
 }
 
@@ -26,30 +26,27 @@ EasyBackfilling3::~EasyBackfilling3()
 }
 
 /*********************************************************
- *                   MODIFIED FUNCTIONS                  *
+ *            MODIFIED STATE HANDLING FUNCTIONS          *
 **********************************************************/
 
 void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
-    // @note LH added for time analysis
-    GET_TIME(_begin_overall);
-
     LOG_F(INFO,"on simulation start");
     pid_t pid = batsched_tools::get_batsched_pid();
     _decision->add_generic_notification("PID",std::to_string(pid),date);
     const rapidjson::Value & batsim_config = batsim_event["config"];
 
+    // @note LH: set output folder for logging
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
     LOG_F(INFO,"output folder %s",_output_folder.c_str());
 
-    //@note LH: added csv file to update timing data (using append mode to record multiple simulations)
-    string time_dir="experiments/";
-    string time_path= _output_folder.substr(0,_output_folder.find(time_dir));
-    _logTime->update_log_file(time_path+time_dir+SRC_FILE+"_time_data.csv",b_log::TIME);
+    // @note LH: config options for logging failures
+    if(batsim_config["log_b_log"].GetBool()){
+        _logFailure->add_log_file(_output_folder+"/log/failures.log",blog_types::FAILURES);
+    }
 
-    //was there
-    ISchedulingAlgorithm::set_generators(date);
+    // @note get interval set of machine id's and total number of machines
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     _nb_available_machines = _nb_machines;
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
@@ -59,40 +56,170 @@ void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value &
         both the schedule and queue are pointer vectors, so reserved memory will be negligible */
     _scheduled_jobs.reserve(_nb_machines);
     _waiting_jobs.reserve(_nb_machines);
-    
+
+    // @note LH: for seeding failures
+    ISchedulingAlgorithm::set_generators(date);
+
+    // @note LH: Get the queue policy, only "FCFS" and "ORIGINAL-FCFS" are valid
     _queue_policy=batsim_config["queue-policy"].GetString();
-    LOG_F(ERROR, "QUEUE POLICY = %s", _queue_policy.c_str());
+    PPK_ASSERT_ERROR(_queue_policy == "FCFS" || _queue_policy == "ORIGINAL-FCFS");
+    LOG_F(INFO, "queue-policy = %s", _queue_policy.c_str());
+
     (void) batsim_config;
 }
 
 void EasyBackfilling3::on_simulation_end(double date)
 {
-
-    // @note LH added for time analysis
-    double end_overall = 0.0;
-    GET_TIME(end_overall);
-    // @note create csv row with simulation timing data
-    string row_fmt = "%d,%d,%d,%.15f,%.15f";
-    auto time_str = batsched_tools::string_format(
-            row_fmt,
-                _workload->nb_jobs(),
-                _nb_machines,
-                _backfill_counter,
-                end_overall-_begin_overall,
-                _decision_time
-    );
-    //  @note update csv file with the timing data
-    TCSV_F(b_log::TIME, date, "%s", time_str.c_str());
     (void) date;
 }
+
+/*********************************************************
+ *      MODIFIED SIMULATED CHECKPOINTING FUNCTIONS       *
+**********************************************************/
+void EasyBackfilling3::on_machine_down_for_repair(double date){
+    //get a random number of a machine to kill
+    int number = machine_unif_distribution->operator()(generator_machine);
+    //make it an intervalset so we can find the intersection of it with current allocations
+    IntervalSet machine = number;
+    //if the machine is already down for repairs ignore it.
+    BLOG_F(blog_types::FAILURES,"Machine Repair: %d",number);
+    if ((machine & _repair_machines).is_empty())
+    {
+        //ok the machine is not down for repairs
+        //it will be going down for repairs now
+        _available_machines-=machine;
+        _repair_machines+=machine;
+        _nb_available_machines=_available_machines.size();
+        double repair_time = _workload->_repair_time;
+
+        if (_workload->_MTTR != -1.0)
+        repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
+        //call me back when the repair is done
+        _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
+        //now kill the jobs that are running on machines that need to be repaired.        
+        //if there are no running jobs, then there are none to kill
+        if (!_scheduled_jobs.empty()) {
+            //ok there are jobs to kill
+            for(auto sj : _scheduled_jobs) {
+                if (!((sj->allocated_machines & machine).is_empty())) {
+                    Job * job_ref = (*_workload)[sj->id];
+                    batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
+                    msg->id = sj->id;
+                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                    _my_kill_jobs.insert(std::make_pair(job_ref,msg));
+                    LOG_F(INFO,"Killing Job: %s",sj->id.c_str());
+                    BLOG_F(blog_types::FAILURES,"Killing Job: %s",sj->id.c_str());
+                }
+            }
+        }
+    }
+    else BLOG_F(blog_types::FAILURES,"Machine Already Being Repaired: %d",number);
+}
+
+void EasyBackfilling3::on_machine_instant_down_up(double date){
+    //get a random number of a machine to kill
+    int number = machine_unif_distribution->operator()(generator_machine);
+    //make it an intervalset so we can find the intersection of it with current allocations
+    IntervalSet machine = number;
+    BLOG_F(blog_types::FAILURES,"Machine Instant Down Up: %d",number);
+    //if there are no running jobs, then there are none to kill
+    if (!_scheduled_jobs.empty()){
+        //ok there are jobs to kill
+        for(auto sj : _scheduled_jobs)
+        {
+            if (!((sj->allocated_machines & machine).is_empty())){
+                Job * job_ref = (*_workload)[sj->id];
+                batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
+                msg->id = sj->id;
+                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                _my_kill_jobs.insert(std::make_pair(job_ref,msg));
+                BLOG_F(blog_types::FAILURES,"Killing Job: %s",sj->id.c_str());
+            }
+        }
+    }
+}
+
+void EasyBackfilling3::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
+{
+    switch (forWhat){
+        case batsched_tools::call_me_later_types::SMTBF: {
+            //Log the failure
+            BLOG_F(blog_types::FAILURES,"FAILURE SMTBF");
+            if ( !_scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received)
+                {
+                    double number = failure_exponential_distribution->operator()(generator_failure);
+                    if (_workload->_repair_time == 0.0)
+                        on_machine_instant_down_up(date);
+                    else
+                        on_machine_down_for_repair(date);
+                    _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
+                }
+        }
+        break;
+        case batsched_tools::call_me_later_types::MTBF: {
+            if (! _scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received) {
+                double number = failure_exponential_distribution->operator()(generator_failure);
+                on_myKillJob_notify_event(date);
+                _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
+            }
+        }
+        break;
+        case batsched_tools::call_me_later_types::FIXED_FAILURE: {
+                BLOG_F(blog_types::FAILURES,"FAILURE FIXED_FAILURE");
+                if (! _scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received){
+                    double number = _workload->_fixed_failures;
+                    if (_workload->_repair_time == 0.0)
+                        on_machine_instant_down_up(date);
+                    else
+                        on_machine_down_for_repair(date);
+                    _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
+                }
+        }
+        break;
+        case batsched_tools::call_me_later_types::REPAIR_DONE: {
+            BLOG_F(blog_types::FAILURES,"REPAIR_DONE");
+            //a repair is done, all that needs to happen is add the machines to available
+            //and remove them from repair machines and add one to the number of available
+            IntervalSet machine = id;
+            _available_machines += machine;
+            _repair_machines -= machine;
+            _nb_available_machines=_available_machines.size();
+            _machines_that_became_available_recently += machine;
+        }
+        break;
+    }
+}
+
+void EasyBackfilling3::on_myKillJob_notify_event(double date){
+    if (!_scheduled_jobs.empty()){
+        batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
+        msg->id = (*_scheduled_jobs.begin())->id;
+        msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+        _my_kill_jobs.insert(std::make_pair((*_workload)[(*_scheduled_jobs.begin())->id], msg));
+    }
+}
+
+void EasyBackfilling3::on_no_more_static_job_to_submit_received(double date){
+    ISchedulingAlgorithm::on_no_more_static_job_to_submit_received(date);
+}
+
+void EasyBackfilling3::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){}
+
+void EasyBackfilling3::on_checkpoint_batsched(double date){}
+
+void EasyBackfilling3::on_ingest_variables(const rapidjson::Document & doc,double date){}
+
+void EasyBackfilling3::on_first_jobs_submitted(double date){}
+
+/*********************************************************
+ *             MODIFIED DECISION FUNCTIONS               *
+**********************************************************/
 
 void EasyBackfilling3::make_decisions(double date,
                                      SortableJobOrder::UpdateInformation *update_info,
                                      SortableJobOrder::CompareInformation *compare_info)
 {
-    // @note LH added for time analysis
-    GET_TIME(_begin_decision);
-
+    (void) compare_info;
     Job * priority_job_before = get_first_waiting_job();
 
     // Let's remove finished jobs from the schedule
@@ -100,6 +227,20 @@ void EasyBackfilling3::make_decisions(double date,
         handle_finished_job(ended_job_id, date);
     }
     
+    //  Handle any killed jobs
+    if(!_my_kill_jobs.empty()){
+        std::vector<batsched_tools::Job_Message *> kills;
+        for( auto job_msg_pair:_my_kill_jobs)
+        {
+            LOG_F(INFO,"adding kill job %s",job_msg_pair.first->id.c_str());
+            kills.push_back(job_msg_pair.second);
+        }
+        _decision->add_kill_job(kills,date);
+        _my_kill_jobs.clear();
+    }
+    // Handle resubmitting killed jobs to queue back up
+    _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
+
     // Let's handle recently released jobs
     std::vector<std::string> recently_queued_jobs;
     for (const string & new_job_id : _jobs_released_recently)
@@ -121,12 +262,12 @@ void EasyBackfilling3::make_decisions(double date,
             _waiting_jobs.push_back(new_job);
             recently_queued_jobs.push_back(new_job_id);
         }
-    }
+    }    
 
     // Queue sorting
     Job * priority_job_after = nullptr;
     sort_queue_while_handling_priority_job(priority_job_before, priority_job_after, update_info);
-    
+
     // If no resources have been released, we can just try to backfill the newly-released jobs
     if (_jobs_ended_recently.empty())
     {
@@ -134,9 +275,9 @@ void EasyBackfilling3::make_decisions(double date,
         {
             const string & new_job_id = recently_queued_jobs[i];
             const Job * new_job = (*_workload)[new_job_id];
+            
             // The job could have already been executed by sort_queue_while_handling_priority_job,
             // that's why we check whether the queue contains the job.
-
             auto wj_it = find_waiting_job(new_job_id);
             if (wj_it != _waiting_jobs.end() && new_job != priority_job_after)
             {
@@ -150,9 +291,9 @@ void EasyBackfilling3::make_decisions(double date,
     }
     else
     {   
-        // Some resources have been released, the whole queue should be traversed.
+        /* Some resources have been released, the whole queue should be traversed.
+           Let's try to backfill all the jobs */
         auto job_it = _waiting_jobs.begin();
-        // Let's try to backfill all the jobs
         while (job_it != _waiting_jobs.end() && _nb_available_machines > 0)
         {
             Job * job = *job_it;
@@ -167,27 +308,31 @@ void EasyBackfilling3::make_decisions(double date,
             }else ++job_it;  
         }
     }
-    
+
+    // @note LH: conditions for ending the simulation with dynamic jobs
+    if (_jobs_killed_recently.empty() && _waiting_jobs.empty() && _scheduled_jobs.empty() &&
+            _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
+    {
+        _decision->add_scheduler_finished_submitting_jobs(date);
+        _need_to_send_finished_submitting_jobs = false;
+    }
 
     // @note LH: adds queuing info to the out_jobs_extra.csv file
     _decision->add_generic_notification("queue_size",std::to_string(_waiting_jobs.size()),date);
     _decision->add_generic_notification("schedule_size",std::to_string(_scheduled_jobs.size()),date);
-/*    // @todo LH: fix this
-    _decision->add_generic_notification("number_running_jobs",std::to_string(_schedule.get_number_of_running_jobs()),date);
-    _decision->add_generic_notification("utilization",std::to_string(_schedule.get_utilization()),date);
-    _decision->add_generic_notification("utilization_no_resv",std::to_string(_schedule.get_utilization_no_resv()),date);
-*/
-    // @note LH added for time analysis
-    GET_TIME(_end_decision);
-    _decision_time += (_end_decision-_begin_decision);
+    _decision->add_generic_notification("number_running_jobs",std::to_string(_scheduled_jobs.size()),date);
+    // @todo fix this
+    //_decision->add_generic_notification("utilization",std::to_string(get_utilization()),date);
 }
 
 void EasyBackfilling3::sort_queue_while_handling_priority_job(Job * priority_job_before,
                                                              Job *& priority_job_after,
                                                              SortableJobOrder::UpdateInformation * update_info)
 {
-    // Let's sort the queue
-    sort_max_heap(_waiting_jobs);
+    // @note LH: set how queue should compare jobs
+    CompareQueue compare(_queue_policy == "ORIGINAL-FCFS");
+    // @note LH: sort the queue
+    heap_sort_queue(_waiting_jobs.size(), compare);
 
     // Let the new priority job be computed
     priority_job_after = get_first_waiting_job();
@@ -200,9 +345,8 @@ void EasyBackfilling3::sort_queue_while_handling_priority_job(Job * priority_job
         for (bool could_run_priority_job = true; could_run_priority_job && priority_job_after != nullptr; )
         {
             could_run_priority_job = false;
-
-            // @note LH: (1) Initial scheduling of jobs
             check_priority_job(priority_job_after, C2DBL(update_info->current_date));
+
             if(_can_run){
                 _decision->add_execute_job(priority_job_after->id, _tmp_job->allocated_machines, C2DBL(update_info->current_date));
                 delete_waiting_job(priority_job_after->id);
@@ -235,12 +379,8 @@ void EasyBackfilling3::check_priority_job(const Job * priority_job, double date)
     _can_run = _p_job->requested_resources <= machine_count;
 
     if(_can_run){
-
         // @note priority job can run so add it to the schedule
         handle_scheduled_job(priority_job,date);
-
-        // @note sort the schedule
-        sort_max_heap(_scheduled_jobs);
     }else{
 
         // @note if the priority job can't run then calculate when it will 
@@ -279,11 +419,7 @@ void EasyBackfilling3::check_next_job(const Job * next_job, double date){
             - sort the schedule
             - increase backfilled jobs count
     */ 
-    if(_can_run){
-        handle_scheduled_job(next_job, date);
-        sort_max_heap(_scheduled_jobs);
-        _backfill_counter++;
-    }
+    if(_can_run) handle_scheduled_job(next_job, date);
 }
 
 //@note LH: added function to add jobs to the schedule
@@ -306,24 +442,29 @@ void EasyBackfilling3::handle_scheduled_job(const Job * job, double date){
     // @note remove allocated nodes from intervalset and subtract from machine count
     _available_machines -= _tmp_job->allocated_machines;
     _nb_available_machines -= _tmp_job->requested_resources;
+    heap_sort_schedule(_scheduled_jobs.size());
 }
 
-//@notw LH: added function that handles deallocating finished jobs
+//@note LH: added function that handles deallocating finished jobs
 void EasyBackfilling3::handle_finished_job(string job_id, double date){
-    // @note LH: get finished job from scheduler
-    auto fj_it = find_if(_scheduled_jobs.begin(), _scheduled_jobs.end(), [job_id](Scheduled_Job *sj) { 
-        return (sj->id == job_id);
+    // @note LH: get finished job from schedule
+    auto fj_it = find_if(_scheduled_jobs.begin(), _scheduled_jobs.end(), 
+        [job_id](Scheduled_Job *sj){ 
+            return (sj->id == job_id);
     });
+
+    // @note LH: if the job exists, find it, and retrieve it
     if(fj_it != _scheduled_jobs.end()){
         auto fj_idx = distance(_scheduled_jobs.begin(), fj_it);
         _tmp_job = _scheduled_jobs.at(fj_idx);
+        
         // @note LH: return allocated machines to intervalset and add to machine count
         _available_machines.insert(_tmp_job->allocated_machines);
         _nb_available_machines += _tmp_job->requested_resources;
 
         // @note deallocate finished job struct
         delete _tmp_job;
-        // @note LH: delete the pointer to the job struct from the vector
+        // @note LH: delete the job pointer in the schedule
         _scheduled_jobs.erase(fj_it);
     }
 }
@@ -333,104 +474,111 @@ void EasyBackfilling3::handle_finished_job(string job_id, double date){
 **********************************************************/
 
 //@note LH: added helper sub-function to turn schedule into a maximum heap
-void EasyBackfilling3::max_heapify(int root, int size, vector<Scheduled_Job *> job_vect){
+void EasyBackfilling3::max_heapify_schedule(int root, int size){
     // @note find the max root node, left node, and right node
     int max = root, left = (2 * root) + 1, right = left + 1;
 
-    // @note LH: if not the last node -AND- the left is more than the root, set left node as new max root
-    if (left < size && job_vect[left]->est_finish_time > job_vect[max]->est_finish_time){
+    // @note LH: if left exists -AND- left is more than max, set left as new max
+    if (left < size && _scheduled_jobs[left]->est_finish_time > _scheduled_jobs[max]->est_finish_time){
         max = left;
     }
-    // @note LH: if not the last node -AND- right node is more than the root, set right node as new max root
-    if (right < size && job_vect[right]->est_finish_time  > job_vect[max]->est_finish_time){
+
+    // @note LH: if right exists -AND- right is more than max, set right as new max
+    if (right < size && _scheduled_jobs[right]->est_finish_time  > _scheduled_jobs[max]->est_finish_time){
         max = right;
     }
 
-    // @note swap[max_root(max),last_node(size)] and heapify the new max root
+    // @note swap[max_root(max),last_node(size)] and continue sorting
     if (max != root) {
-        swap(job_vect[root], job_vect[max]);
-        max_heapify(max, size, job_vect);
+        swap(_scheduled_jobs[root], _scheduled_jobs[max]);
+        max_heapify_schedule(max, size);
     }
 }
 
 //@note LH: added heaper function for heap sorting the schedule
-void EasyBackfilling3::sort_max_heap(vector<Scheduled_Job *> job_vect){
-    int size = job_vect.size();
+void EasyBackfilling3::heap_sort_schedule(int size){
     //@note LH: no need to sort if there is less than 2 jobs
     if(size < 2) return;
 
     // @note LH: build the new max heap
-    for(int i = size / 2; i >= 0; i--){
-        max_heapify(i, size, job_vect);
+    for(int i = (size/2)-1; i >= 0; --i){
+        max_heapify_schedule(i, size);
     }
 
     // @note LH: sort the new max heap
-    for(int j = size - 1; j > 0; j--){
-        swap(job_vect[0], job_vect[j]);
-        max_heapify(0, j, job_vect);
+    for(int j = size-1; j >= 0; --j){
+        swap(_scheduled_jobs[0], _scheduled_jobs[j]);
+        max_heapify_schedule(0, j);
     }
 }
 
+// @note LH: added helper function to set if queue should sort by orginal submission times 
+EasyBackfilling3::CompareQueue::CompareQueue(bool compare_original) : compare_original(compare_original) {}
+
+inline bool EasyBackfilling3::CompareQueue::operator()(Job* jobA, Job* jobB) const {
+    // @note LH: get the numeric part of a jobs id string 
+    auto extractNumericId = [](const std::string& str_id) {
+        size_t pos1 = str_id.find('!') + 1;
+        size_t pos2 = str_id.find_first_not_of("0123456789", pos1);
+        return std::stoi(str_id.substr(pos1, pos2 - pos1));
+    };
+    // @note LH: compare_orginal is true if _queue_policy is "ORIGINAL_FCFS"
+    if (compare_original) {
+        // @note LH: if submission times are the same, sort by id 
+        if (jobA->submission_times[0] == jobB->submission_times[0]) {
+            return extractNumericId(jobA->id) > extractNumericId(jobB->id);
+        }
+         // @note LH: otherwise sort by subbmission time
+        return jobA->submission_times[0] > jobB->submission_times[0];
+    } else {
+        if (jobA->submission_time == jobB->submission_time) {
+            return extractNumericId(jobA->id) > extractNumericId(jobB->id);
+        }
+        return jobA->submission_time > jobB->submission_time;
+    }
+}
 
 //@note LH: added helper sub-function to turn the queue into a maximum heap
-void EasyBackfilling3::max_heapify(int root, int size, vector<Job *> job_vect){  
-
-    // @note find the max root node, left node, and right node
+void EasyBackfilling3::max_heapify_queue(int root, int size, const CompareQueue &comp){  
+    // @note LH: find the max root node, left node, and right node
     int max = root, left = (2 * root) + 1, right = left + 1;
-    bool left_exists = left < size, right_exists =  right < size;
-    double left_node = -1, right_node = -1, max_node = -1;
 
-    if(_queue_policy == "FCFS"){
-        if(left_exists) left_node = job_vect[left]->submission_time;
-        if(right_exists) right_node = job_vect[right]->submission_time;
-        max_node = job_vect[max]->submission_time;
+    // @note LH: if left exists -AND- left is more than max, set left as new max
+    if (left < size && comp(_waiting_jobs[left], _waiting_jobs[max])) {
+        max = left;
     }
 
-    if(_queue_policy == "ORGINAL-FCFS"){
-        if(left_exists) left_node = job_vect[left]->submission_times[0];
-        if(right_exists) right_node = job_vect[right]->submission_times[0];
-        max_node = job_vect[max]->submission_times[0];
+    // @note LH: if right exists -AND- right is more than max, set right as new max
+    if (right < size && comp(_waiting_jobs[right], _waiting_jobs[max])) {
+        max = right;
     }
 
-    if((left_exists && right_exists) && left_node == right_node){
-        left_node = stod(job_vect[left]->id.substr(3));
-        right_node = stod(job_vect[right]->id.substr(3));
-        max_node = stod(job_vect[max]->id.substr(3));
-    }
-    
-    // @note LH: if not the last node -AND- the left is more than the root, set left node as new max root
-    if (left_exists && left_node > max_node) max = left;
-
-    // @note LH: if not the last node -AND- right node is more than the root, set right node as new max root
-    if (right_exists && right_node > max_node) max = right;
-
-    // @note swap[max_root(max),last_node(size)] and heapify the new max root
+    // @note swap[max_root(max),last_node(size)] and continue sorting
     if (max != root) {
-        swap(job_vect[root], job_vect[max]);
-        max_heapify(max, size, job_vect);
+        swap(_waiting_jobs[root], _waiting_jobs[max]);
+        max_heapify_queue(max, size, comp);
     }
 }
 
-//@note LH: added heaper function for heap sorting the queue
-void EasyBackfilling3::sort_max_heap(vector<Job *> job_vect){
-    int size = job_vect.size();
+//@note LH: added helper function for heap sorting the queue
+void EasyBackfilling3::heap_sort_queue(int size, const CompareQueue &comp){
     //@note LH: no need to sort if there is less than 2 jobs
     if(size < 2) return;
 
     // @note LH: build the new max heap
-    for(int i = size / 2; i >= 0; i--){
-        max_heapify(i, size, job_vect);
+    for(int i = (size/2)-1; i >= 0; --i){
+        max_heapify_queue(i, size, comp);
     }
 
     // @note LH: sort the new max heap
-    for(int j = size - 1; j > 0; j--){
-        swap(job_vect[0], job_vect[j]);
-        max_heapify(0, j, job_vect);
+    for(int j = size-1; j >= 0; --j){
+        swap(_waiting_jobs[0], _waiting_jobs[j]);
+        max_heapify_queue(0, j, comp);
     }
 }
 
 /*********************************************************
- * QUEUE REPLACEMENT ADDITIONS
+ *              QUEUE REPLACEMENT ADDITIONS              *
 **********************************************************/
 
 //@note LH: added helper function to return the first waiting job 

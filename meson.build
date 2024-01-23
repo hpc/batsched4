@@ -94,6 +94,8 @@ batsched_deps = [
 #    'src/data_storage.hpp'
 
 src = [
+    'src/algo/easy_bf3.cpp',
+    'src/algo/easy_bf3.hpp',
     'src/algo/easy_bf2.cpp',
     'src/algo/easy_bf2.hpp',
     'src/algo/easy_bf.cpp',
