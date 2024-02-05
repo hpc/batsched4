@@ -927,10 +927,10 @@ void ConservativeBackfilling::make_decisions(double date,
     LOG_F(INFO,"here");
     //this handles the schedule including any compressing that might need to be done
     LOG_F(INFO,"%s",_queue->to_json_string().c_str());
-    //if (_output_svg == "all")
+    if (_output_svg == "all")
     _schedule.output_to_svg("before handle",true);
     handle_schedule(recently_queued_jobs,date);
-    //if (_output_svg == "all")
+    if (_output_svg == "all")
     _schedule.output_to_svg("after handle",true);
 
 LOG_F(INFO,"here");

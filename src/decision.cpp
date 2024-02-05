@@ -210,7 +210,8 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
             
             
             progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
-            progress_time += job_to_queue->checkpoint_job_data->runtime;
+            if (w0->start_from_checkpoint->started_from_checkpoint)
+                progress_time += job_to_queue->checkpoint_job_data->runtime;
 
             LOG_F(INFO,"job %s progress is > 0  progress: %f  progress_time: %f",job_to_queue->id.c_str(),progress,progress_time);
             //LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
@@ -358,7 +359,8 @@ void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched
             
             
             progress_time =progress * profile_doc["delay"].GetDouble();
-            progress_time += job_to_queue->checkpoint_job_data->runtime;
+            if (w0->start_from_checkpoint->started_from_checkpoint)
+                progress_time += job_to_queue->checkpoint_job_data->runtime;
             //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
             
             bool has_checkpointed = false;
