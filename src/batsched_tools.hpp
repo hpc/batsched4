@@ -10,6 +10,7 @@
 #include <memory>
 #include "json_workload.hpp"
 #include "schedule.hpp"
+#include <set>
 struct JobAlloc;
 struct Job;
 
@@ -122,6 +123,9 @@ namespace batsched_tools{
       bool started_from_checkpoint=false; //whether or not we started from a checkpoint
       std::string checkpoint_folder="null"; //the actual folder to read in from
       bool received_submitted_jobs = false;
+      std::set<std::string> jobs_that_should_have_been_submitted_already = {};
+      std::set<std::string> jobs_that_have_been_submitted_already = {};
+      double first_submitted_time=0;
     };
     struct CALL_ME_LATERS{
         double time;

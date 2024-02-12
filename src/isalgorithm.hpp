@@ -166,6 +166,7 @@ public:
     virtual void on_checkpoint_batsched(double date);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
     virtual void on_first_jobs_submitted(double date) {}
+    virtual bool all_jobs_submitted_check_passed() {};
     void on_signal_checkpoint();
     void set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map);
     

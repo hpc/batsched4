@@ -200,6 +200,26 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
+    
+    //get jobs that should have been submitted when we ingest
+
+    std::string schedule_filename = _output_folder + "/start_from_checkpoint/batsched_schedule.chkpt";
+    ifstream ifile(schedule_filename);
+    PPK_ASSERT_ERROR(ifile.is_open(), "Cannot read schedule file '%s'", schedule_filename.c_str());
+    std::string content;
+
+    ifile.seekg(0, ios::end);
+    content.reserve(static_cast<unsigned long>(ifile.tellg()));
+    ifile.seekg(0, ios::beg);
+
+    content.assign((std::istreambuf_iterator<char>(ifile)),
+                std::istreambuf_iterator<char>());
+    ifile.close();
+    rapidjson::Document scheduleDoc;
+    scheduleDoc.Parse(content.c_str());
+    LOG_F(INFO,"here");
+    _start_from_checkpoint.jobs_that_should_have_been_submitted_already = _schedule.get_jobs_that_should_have_been_submitted_already(scheduleDoc);
+
     //we need to set our generators even though they will be overwritten, so that distributions aren't null
     ISchedulingAlgorithm::set_generators(date);
 
@@ -214,11 +234,22 @@ void ConservativeBackfilling::on_start_from_checkpoint(double date,const rapidjs
     _recover_from_checkpoint = true;
     _myBLOG = new b_log();
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
-    //_myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
+    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
     
    //we are going to wait on setting any generators
    
 
+}
+bool ConservativeBackfilling::all_submitted_jobs_check_passed()
+{
+    for (auto job_id :_jobs_released_recently)
+        _start_from_checkpoint.jobs_that_have_been_submitted_already.insert(job_id);
+    for (auto job_id :_start_from_checkpoint.jobs_that_should_have_been_submitted_already)
+    {
+        if (!(_start_from_checkpoint.jobs_that_have_been_submitted_already.count(job_id)==1))
+            return false;
+    }
+    return true;
 }
 void ConservativeBackfilling::on_first_jobs_submitted(double date)
 {
@@ -243,6 +274,7 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
     rapidjson::Document scheduleDoc;
     scheduleDoc.Parse(content.c_str());
     LOG_F(INFO,"here");
+    
     _schedule.ingest_schedule(scheduleDoc);
     ingest_variables(date);
     LOG_F(INFO,"here");
@@ -459,6 +491,7 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
                 
                 std::vector<batsched_tools::Job_Message *> msgs;
                 for (auto job_id : jobs_to_kill){
+                    BLOG_F(blog_types::FAILURES,"On_Machine_Down_For_Repair_Kill: %s",job_id.c_str());
                     auto msg = new batsched_tools::Job_Message;
                     msg->id = job_id;
                     msg->forWhat = forWhat;
@@ -585,6 +618,7 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
             _killed_jobs = true;
             std::vector<batsched_tools::Job_Message *> msgs;
             for (auto job_id : jobs_to_kill){
+                BLOG_F(blog_types::FAILURES,"Instant_Down_Up_Kill: %s",job_id.c_str());
                 auto msg = new batsched_tools::Job_Message;
                 msg->id = job_id;
                 msg->forWhat = forWhat;
@@ -767,6 +801,8 @@ void ConservativeBackfilling::make_decisions(double date,
     std::vector<std::string> recently_released_reservations;
     for (const std::string & new_job_id : _jobs_released_recently)
     {
+        if (!_start_from_checkpoint.received_submitted_jobs)
+            _start_from_checkpoint.first_submitted_time = date;
         _start_from_checkpoint.received_submitted_jobs = true;
         LOG_F(INFO,"jobs released");
         const Job * new_job = (*_workload)[new_job_id];
@@ -798,10 +834,15 @@ void ConservativeBackfilling::make_decisions(double date,
     }
     if( _recover_from_checkpoint && _start_from_checkpoint.received_submitted_jobs)
     {
-        on_first_jobs_submitted(date);
-        _recover_from_checkpoint = false;
+        double epsilon = 1e-6;
+        PPK_ASSERT(date - _start_from_checkpoint.first_submitted_time <= epsilon,"Error, waiting on all submitted jobs to come back resulted in simulated time moving too far ahead.");
+        if (all_submitted_jobs_check_passed())
+        {
+            on_first_jobs_submitted(date);
+            _recover_from_checkpoint = false;
+        }
+        
         return;
-
     }
     /********* The following are just thoughts I don't want to get rid of
      * they don't explain the update_first_slice() call

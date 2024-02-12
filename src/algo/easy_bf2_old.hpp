@@ -10,8 +10,8 @@
 #include "../machine.hpp"
 #include "../batsched_tools.hpp"
 #include <random>
-// @note Leslie added 
-#define B_LOG_INSTANCE _myBLOG
+
+
 class EasyBackfilling2 : public ISchedulingAlgorithm
 {
 public:
@@ -20,8 +20,8 @@ public:
     virtual ~EasyBackfilling2();
 
     virtual void on_simulation_start(double date, const rapidjson::Value & batsim_event);
-    virtual void on_simulation_end(double date);
 
+    virtual void on_simulation_end(double date);
     virtual void make_decisions(double date,
                                 SortableJobOrder::UpdateInformation * update_info,
                                 SortableJobOrder::CompareInformation * compare_info);
@@ -30,12 +30,10 @@ public:
                                                 const Job *& priority_job_after,
                                                 SortableJobOrder::UpdateInformation * update_info,
                                                 SortableJobOrder::CompareInformation * compare_info);
-
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
     virtual void on_checkpoint_batsched(double date);
     virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_first_jobs_submitted(double date);
-    virtual bool all_submitted_jobs_check_passed();
 
     //added
     void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date);
@@ -49,9 +47,8 @@ protected:
     bool _debug = false;
 
     //added
-    // @note Leslie commented out 
-    //Queue * _reservation_queue=nullptr;
-    //std::string _output_folder;
+    Queue * _reservation_queue=nullptr;
+    std::string _output_folder;
     std::string _output_svg;
     long _svg_frame_start;
     long _svg_frame_end;
@@ -61,18 +58,14 @@ protected:
     Schedule::RESCHEDULE_POLICY _reschedule_policy;
     Schedule::IMPACT_POLICY _impact_policy;
     double _previous_date;
-    // @note Leslie commented out 
-    //std::vector<Schedule::ReservedTimeSlice> _saved_reservations;
+    std::vector<Schedule::ReservedTimeSlice> _saved_reservations;
     bool _killed_jobs = false;
     bool _need_to_send_finished_submitting_jobs = true;
     std::vector<std::string> _saved_recently_queued_jobs;
     std::vector<std::string> _saved_recently_ended_jobs;
     IntervalSet _recently_under_repair_machines;
     bool _checkpointing_on;
-    // @note Leslie commented out
-    //bool _start_a_reservation=false; 
-    bool _need_to_compress = false;
-    
+    bool _start_a_reservation=false;
     b_log *_myBLOG;
     std::map<std::string,batsched_tools::KILL_TYPES>_resubmitted_jobs;
     std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>>_resubmitted_jobs_released;

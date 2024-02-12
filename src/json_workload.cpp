@@ -63,7 +63,9 @@ void Workload::add_job_from_redis(RedisStorage & storage, const string &job_id, 
 
 void Workload::add_job_from_json_object(const Value &object, const string & job_id, double submission_time)
 {
+    LOG_F(INFO,"here");
     Job * job = job_from_json_object(object["job"],object["profile"]);
+    LOG_F(INFO,"here");
     job->id = job_id;
     job->submission_time = submission_time;
 
@@ -139,7 +141,7 @@ Job *Workload::job_from_json_object(const Value &object)
     PPK_ASSERT_ERROR(object["id"].IsString(), "Invalid json object: 'id' member is not a string");
     PPK_ASSERT_ERROR(object.HasMember("res"), "Invalid json object: no 'res' member");
     PPK_ASSERT_ERROR(object["res"].IsInt(), "Invalid json object: 'res' member is not an integer");
-
+LOG_F(INFO,"here");
     Job * j = new Job;
     j->id = object["id"].GetString();
     j->walltime = -1;
@@ -172,7 +174,7 @@ Job *Workload::job_from_json_object(const Value &object)
 
         
     }
-
+LOG_F(INFO,"here");
     if (object.HasMember("walltime"))
     {
         PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");
@@ -249,7 +251,7 @@ Job *Workload::job_from_json_object(const Value &object)
 Job *Workload::job_from_json_object(const Value &job_object,const Value &profile_object)
 {
     Job * j = job_from_json_object(job_object);
-    
+    LOG_F(INFO,"here");
     j->profile = myBatsched::Profile::from_json(j->id,profile_object);
     return j;
 }

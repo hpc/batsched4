@@ -38,6 +38,7 @@ public:
     virtual void on_checkpoint_batsched(double date);
     virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_first_jobs_submitted(double date);
+    virtual bool all_submitted_jobs_check_passed();
 
 private:
     void handle_killed_jobs(std::vector<std::string> & recently_queued_jobs,double date);

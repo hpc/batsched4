@@ -94,6 +94,31 @@ void Schedule::incorrect_call_me_later(double difference)
     slice->length-=difference;
 
 }
+std::set<std::string> Schedule::get_jobs_that_should_have_been_submitted_already(rapidjson::Document & doc)
+{
+    using namespace rapidjson;
+    
+    PPK_ASSERT_ERROR(doc.HasMember("Schedule"),"Trying to ingest schedule from checkpoint, but there is no 'Schedule' key");
+    const Value & schedule = doc["Schedule"];
+    
+    const Value & timeSlices = schedule["TimeSlices"].GetArray();
+    PPK_ASSERT_ERROR(timeSlices.IsArray(), "Trying to ingest schedule from checkpoint, but Schedule is not an array");
+   
+   //check if all jobs in schedule have been submitted
+   std::set<std::string> jobs_that_should_have_been_submitted_already;
+    for(SizeType i=0;i<timeSlices.Size();i++)
+    {
+        const Value & allocated_jobs = timeSlices[i]["Time slice"]["allocated_jobs"].GetArray();
+        for(SizeType j = 0;j<allocated_jobs.Size();j++)
+        {
+            const Value & Vid = allocated_jobs[j]["job_id"];
+            batsched_tools::job_parts parts = batsched_tools::get_job_parts(Vid.GetString()); 
+            std::string next_checkpoint = parts.next_checkpoint;
+            jobs_that_should_have_been_submitted_already.insert(next_checkpoint);
+        }
+    }
+    return jobs_that_should_have_been_submitted_already;
+}
 void Schedule::ingest_schedule(rapidjson::Document & doc)
 {
        
@@ -106,7 +131,7 @@ void Schedule::ingest_schedule(rapidjson::Document & doc)
     
     const Value & timeSlices = schedule["TimeSlices"].GetArray();
     PPK_ASSERT_ERROR(timeSlices.IsArray(), "Trying to ingest schedule from checkpoint, but Schedule is not an array");
-    
+
     for (SizeType i = 0;i<timeSlices.Size();i++)
     {
         _profile.push_back(TimeSlice_from_json(timeSlices[i]));

@@ -503,12 +503,12 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
 
         for (unsigned int event_i = 0; event_i < events_array.Size(); ++event_i)
         {
-            LOG_F(INFO,"line 400 main.cpp");
+            
             const r::Value & event_object = events_array[event_i];
             const std::string event_type = event_object["type"].GetString();
             current_date = event_object["timestamp"].GetDouble();
             const r::Value & event_data = event_object["data"];
-            LOG_F(INFO,"DEBUG");
+            
             //LOG_F(INFO,"line 405 main.cpp");
             if (event_type == "SIMULATION_BEGINS")
             {
@@ -626,18 +626,17 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._MTTR = event_data["config"]["MTTR"].GetDouble();
                 const rapidjson::Value & Vstart_from_checkpoint = event_data["config"]["start-from-checkpoint"];
                 workload.start_from_checkpoint = new batsched_tools::start_from_chkpt();
-                LOG_F(INFO, "here");
+               
                 workload.start_from_checkpoint->started_from_checkpoint = Vstart_from_checkpoint["started_from_checkpoint"].GetBool();
-                LOG_F(INFO, "here");
+             
                 workload.start_from_checkpoint->nb_folder = Vstart_from_checkpoint["nb_folder"].GetInt();
-                LOG_F(INFO, "here");
+               
                 workload.start_from_checkpoint->nb_checkpoint = Vstart_from_checkpoint["nb_checkpoint"].GetInt();
-                LOG_F(INFO, "here");
+               
                 workload.start_from_checkpoint->nb_previously_completed = Vstart_from_checkpoint["nb_previously_completed"].GetInt();
-                LOG_F(INFO, "here");
+               
                 workload.start_from_checkpoint->nb_original_jobs = Vstart_from_checkpoint["nb_original_jobs"].GetInt();
-                LOG_F(INFO, "here");
-                
+                             
                 LOG_F(INFO, "before set workloads");
                 /*
                 JUST DOING SINGLE WORKLOADS
@@ -660,16 +659,16 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             }
             else if (event_type == "JOB_SUBMITTED")
             {
-                LOG_F(INFO,"DEBUG");
+             
                 string job_id = event_data["job_id"].GetString();
-                 LOG_F(INFO,"DEBUG");
+               
                 if (redis_enabled)
                     workload.add_job_from_redis(redis, job_id, current_date);
                 else
                     workload.add_job_from_json_object(event_data,job_id,current_date);
-                 LOG_F(INFO,"DEBUG");
+                
                 algo->on_job_release(current_date, {job_id});
-                 LOG_F(INFO,"DEBUG");
+                
             }
             else if (event_type == "JOB_COMPLETED")
             {
