@@ -733,7 +733,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             {
                 LOG_F(INFO,"DEBUG");
                 requested_callback_received = true;
-                algo->on_requested_call(current_date,event_data["id"].GetInt(),(batsched_tools::call_me_later_types)event_data["forWhat"].GetInt());
+                batsched_tools::CALL_ME_LATERS cml;
+                cml.id = event_data["id"].GetInt();
+                cml.forWhat = static_cast<batsched_tools::call_me_later_types>(event_data["forWhat"].GetInt());
+                cml.extra_data = event_data["extra_data"].GetString();
+                algo->on_requested_call(current_date,cml);
             }
             else if (event_type == "ANSWER")
             {
@@ -838,7 +842,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
         if (!(!call_make_decisions_on_single_nop && requested_callback_only))
         {
             SortableJobOrder::UpdateInformation update_info(current_date);
-            LOG_F(1, "before make decisions");
+            LOG_F(INFO, "before make decisions");
             algo->make_decisions(message_date, &update_info, nullptr);
             algo->clear_recent_data_structures();
         }

@@ -131,7 +131,7 @@ namespace batsched_tools{
         double time;
         int id;
         batsched_tools::call_me_later_types forWhat;
-        std::string job_id="null";
+        std::string extra_data="{}";
     };
 
     struct batsched_tools::job_parts get_job_parts(std::string job_id);

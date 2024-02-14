@@ -354,13 +354,12 @@ void JsonProtocolWriter::append_set_job_metadata(const string & job_id,
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_call_me_later(batsched_tools::call_me_later_types forWhat,int id,double future_date,
-                                              double date)
+void JsonProtocolWriter::append_call_me_later(double date,double future_date,batsched_tools::CALL_ME_LATERS cml )
 {
     /* {
       "timestamp": 10.0,
       "type": "CALL_ME_LATER",
-      "data": {"timestamp": 25.5,"id":2,"forWhat":3}
+      "data": {"timestamp": 25.5,"id":2,"forWhat":3,"extra_data":"null"}
     } */
 
     PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
@@ -369,8 +368,9 @@ void JsonProtocolWriter::append_call_me_later(batsched_tools::call_me_later_type
 
     Value data(rapidjson::kObjectType);
     data.AddMember("timestamp", Value().SetDouble(future_date), _alloc);
-    data.AddMember("id", Value().SetInt(id), _alloc);
-    data.AddMember("forWhat", Value().SetInt((int)forWhat), _alloc);
+    data.AddMember("id", Value().SetInt(cml.id), _alloc);
+    data.AddMember("forWhat", Value().SetInt((int)cml.forWhat), _alloc);
+    data.AddMember("extra_data",Value().SetString(cml.extra_data.c_str(),_alloc),_alloc);
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);

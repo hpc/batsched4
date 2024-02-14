@@ -124,7 +124,7 @@ void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & do
         LOG_F(INFO,"here");
         cml.forWhat = static_cast<batsched_tools::call_me_later_types>(Vcml[i]["value"]["forWhat"].GetInt());
         LOG_F(INFO,"here");
-        cml.job_id = Vcml[i]["value"]["job_id"].GetString();
+        cml.extra_data = Vcml[i]["value"]["extra_data"].GetString();
         LOG_F(INFO,"here");
         cml.id = Vcml[i]["value"]["id"].GetInt();
         LOG_F(INFO,"here");
@@ -471,7 +471,12 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
         //it will be going down for repairs now
         //if there is a global repair time set that as the repair time
         //call me back when the repair is done
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
+        std::string extra_data = batsched_tools::string_format("{\"machine\":%d}",number);
+        batsched_tools::CALL_ME_LATERS cml;
+        cml.forWhat = batsched_tools::call_me_later_types::REPAIR_DONE;
+        cml.id = _nb_call_me_laters;
+        cml.extra_data = extra_data;
+        _decision->add_call_me_later(date,date+repair_time,cml);
        
         if (_schedule.get_number_of_running_jobs() > 0 )
         {
@@ -645,12 +650,12 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
             _schedule.output_to_svg("END On Machine Instant Down Up  Machine #: "+std::to_string(number));
     
 }
-void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
+void ConservativeBackfilling::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml_in)
 {
         LOG_F(ERROR,"here");
         if (_output_svg != "none")
             _schedule.set_now((Rational)date);
-        switch (forWhat){
+        switch (cml_in.forWhat){
             
             case batsched_tools::call_me_later_types::SMTBF:
                         {
@@ -673,8 +678,13 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                                         else
                                             _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::SMTBF);
                                         if (_file_failures.empty())
-                                            _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
-                                            LOG_F(ERROR,"here");
+                                        {
+                                            batsched_tools::CALL_ME_LATERS cml;
+                                            cml.forWhat = batsched_tools::call_me_later_types::SMTBF;
+                                            cml.id = _nb_call_me_laters;
+                                            _decision->add_call_me_later(date,number+date,cml);
+                                        }
+                                            
                                  
                                 }
                         }
@@ -708,7 +718,12 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                                     else
                                         _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);
                                     if (_file_failures.empty())
-                                        _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
+                                    {
+                                        batsched_tools::CALL_ME_LATERS cml;
+                                        cml.forWhat = batsched_tools::call_me_later_types::FIXED_FAILURE;
+                                        cml.id = _nb_call_me_laters;
+                                        _decision->add_call_me_later(date,number+date,cml);
+                                    }
                                 }
                         }
                         break;
@@ -716,15 +731,19 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                         {
                             BLOG_F(blog_types::FAILURES,"REPAIR_DONE");
+                            rapidjson::Document doc;
+                            doc.Parse(cml_in.extra_data.c_str());
+                            PPK_ASSERT(doc.HasMember("machine"),"Error, repair done but no 'machine' field in extra_data");
+                            int machine_number = doc["machine"].GetInt();
                             //a repair is done, all that needs to happen is add the machines to available
                             //and remove them from repair machines and add one to the number of available
                             if (_output_svg == "all")
-                                _schedule.output_to_svg("top Repair Done  Machine #: "+std::to_string(id));
-                            IntervalSet machine = id;
+                                _schedule.output_to_svg("top Repair Done  Machine #: "+std::to_string(machine_number));
+                            IntervalSet machine = machine_number;
                             _schedule.remove_repair_machines(machine);
                             _schedule.remove_svg_highlight_machines(machine);
                              if (_output_svg == "all")
-                                _schedule.output_to_svg("bottom Repair Done  Machine #: "+std::to_string(id));
+                                _schedule.output_to_svg("bottom Repair Done  Machine #: "+std::to_string(machine_number));
                             _need_to_compress = true;
                            //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
                         }
@@ -744,8 +763,8 @@ void ConservativeBackfilling::on_requested_call(double date,int id,batsched_tool
                         }
                         break;
         }
-        double difference = _decision->remove_call_me_later(forWhat,id,date,_workload);
-        if (difference != 0 && forWhat == batsched_tools::call_me_later_types::RESERVATION_START)
+        double difference = _decision->remove_call_me_later(cml_in.forWhat,cml_in.id,date,_workload);
+        if (difference != 0 && cml_in.forWhat == batsched_tools::call_me_later_types::RESERVATION_START)
         {
             LOG_F(INFO,"difference: %f",difference);
             BLOG_F(blog_types::SOFT_ERRORS,"There was a requested_call error. The original date was %.15f, but was pushed out %.15f seconds, resulting in time %.15f",date-difference,difference,date);
@@ -1320,10 +1339,13 @@ LOG_F(INFO,"%s",job_id.c_str());
                 for (auto reservation : _saved_reservations)
                 {
                     if (reservation.job->start > date)
-                    _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
-                                                reservation.job->unique_number,
-                                                reservation.job->start,
-                                                date,reservation.job->id);
+                    {
+                        batsched_tools::CALL_ME_LATERS cml;
+                        cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
+                        cml.id = _nb_call_me_laters;
+                        cml.extra_data = batsched_tools::string_format("{\"job_id\":'%s'}",reservation.job->id);
+                        _decision->add_call_me_later(date,reservation.job->start,cml);
+                    }
                     else if (reservation.alloc->started_in_first_slice)
                     {
                         _reservation_queue->remove_job(reservation.job);
@@ -1426,10 +1448,13 @@ LOG_F(INFO,"%s",job_id.c_str());
                 for (auto reservation : _saved_reservations)
                 {
                     if (reservation.job->start > date)
-                    _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
-                                                reservation.job->unique_number,
-                                                reservation.job->start,
-                                                date,reservation.job->id );
+                    {
+                        batsched_tools::CALL_ME_LATERS cml;
+                        cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
+                        cml.id = _nb_call_me_laters;
+                        cml.extra_data = batsched_tools::string_format("{\"job_id\":\"%s\"}",reservation.job->id);
+                        _decision->add_call_me_later(date,reservation.job->start,cml);
+                    }
                     else if (reservation.alloc->started_in_first_slice)
                     {
                         _reservation_queue->remove_job(reservation.job);
@@ -1558,10 +1583,13 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                         _decision->add_execute_job(new_job->id,reservation.alloc->used_machines,date);
                     }
                     else if (new_job->start > date)
-                        _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
-                                                    new_job->unique_number,
-                                                    new_job->start,
-                                                    date,new_job->id);
+                    {
+                        batsched_tools::CALL_ME_LATERS cml;
+                        cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
+                        cml.id = _nb_call_me_laters;
+                        cml.extra_data = batsched_tools::string_format("{'job_id':'%s'}",reservation.job->id);
+                        _decision->add_call_me_later(date,reservation.job->start,cml);
+                    }
                     else
                         _start_a_reservation = true;
                     //we need to compress since things moved around
@@ -1689,10 +1717,13 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                         _decision->add_execute_job(new_job->id,reservation.alloc->used_machines,date);
                     }
                     else if (new_job->start > date)
-                        _decision->add_call_me_later(batsched_tools::call_me_later_types::RESERVATION_START,
-                                                    new_job->unique_number,
-                                                    new_job->start,
-                                                    date,new_job->id);
+                    {
+                        batsched_tools::CALL_ME_LATERS cml;
+                        cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
+                        cml.id = _nb_call_me_laters;
+                        cml.extra_data = batsched_tools::string_format("{'job_id':'%s'}",reservation.job->id);
+                        _decision->add_call_me_later(date,reservation.job->start,cml);
+                    }
                     else
                         _start_a_reservation = true;
 

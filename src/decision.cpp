@@ -512,28 +512,16 @@ void SchedulingDecision::remove_blocked_call_me_later(batsched_tools::call_me_la
     _blocked_cmls.erase(type);
 }
 
-void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date, double date,std::string job_id)
+void SchedulingDecision::add_call_me_later(double date,double future_date, batsched_tools::CALL_ME_LATERS cml)
 {
     //first check if we do anything with the call me later.
     //if it is blocked then just return
-    if (_blocked_cmls.find(forWhat) != _blocked_cmls.end())
+    if (_blocked_cmls.find(cml.forWhat) != _blocked_cmls.end())
         return;
-    
-    batsched_tools::CALL_ME_LATERS call_me_later;
-    call_me_later.forWhat = forWhat;
-    call_me_later.job_id = job_id;
-    call_me_later.time = future_date;
-    if (forWhat == batsched_tools::call_me_later_types::REPAIR_DONE)
-    {
-        call_me_later.id = id;
-        _proto_writer->append_call_me_later(forWhat,id, future_date, date);
-    }
-    else
-    {
-        call_me_later.id = _nb_call_me_laters;
-        _proto_writer->append_call_me_later(forWhat,_nb_call_me_laters, future_date, date);
-    }
-    _call_me_laters[_nb_call_me_laters]=call_me_later;
+    cml.time = future_date;
+    cml.id = _nb_call_me_laters;
+    _proto_writer->append_call_me_later(date,future_date,cml);
+    _call_me_laters[_nb_call_me_laters]=cml;
     _nb_call_me_laters++;
 }
 double SchedulingDecision::remove_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double date, Workload * w0)
@@ -543,7 +531,12 @@ double SchedulingDecision::remove_call_me_later(batsched_tools::call_me_later_ty
     if (date > call_me_later.time)
     {
         if (call_me_later.forWhat == batsched_tools::call_me_later_types::RESERVATION_START)
-            ((*w0)[call_me_later.job_id])->walltime -=( date - call_me_later.time);
+        {
+            rapidjson::Document doc;
+            doc.Parse(call_me_later.extra_data.c_str());
+            PPK_ASSERT(doc.HasMember("job_id"),"Error, there is no job_id in RESERVATION_START call_me_later");
+            ((*w0)[doc["job_id"].GetString()])->walltime -=( date - call_me_later.time);
+        }
         return date - call_me_later.time;
     }
     else
@@ -559,7 +552,7 @@ void SchedulingDecision::set_call_me_laters(std::map<int,batsched_tools::CALL_ME
     if (dispatch)
     {
         for (auto c : cml)
-            add_call_me_later(c.second.forWhat,c.second.id,c.second.time,date,c.second.job_id);
+            add_call_me_later(date,c.second.time,c.second);
     }
     else
         _call_me_laters = cml;

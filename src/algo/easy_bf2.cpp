@@ -279,7 +279,7 @@ void EasyBackfilling2::on_ingest_variables(const rapidjson::Document & doc,doubl
         LOG_F(INFO,"here");
         cml.forWhat = static_cast<batsched_tools::call_me_later_types>(Vcml[i]["value"]["forWhat"].GetInt());
         LOG_F(INFO,"here");
-        cml.job_id = Vcml[i]["value"]["job_id"].GetString();
+        cml.extra_data = Vcml[i]["value"]["extra_data"].GetString();
         LOG_F(INFO,"here");
         cml.id = Vcml[i]["value"]["id"].GetInt();
         LOG_F(INFO,"here");
@@ -471,7 +471,12 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
         //it will be going down for repairs now
         
         //call me back when the repair is done
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
+        std::string extra_data = batsched_tools::string_format("{\"machine\":%d}",number);
+        batsched_tools::CALL_ME_LATERS cml;
+        cml.forWhat = batsched_tools::call_me_later_types::REPAIR_DONE;
+        cml.id = _nb_call_me_laters;
+        cml.extra_data = extra_data;
+        _decision->add_call_me_later(date,date+repair_time,cml);
 
         if (_schedule.get_number_of_running_jobs() > 0 )
         {
@@ -586,11 +591,11 @@ void EasyBackfilling2::on_machine_instant_down_up(batsched_tools::KILL_TYPES for
 }
 
 // @note Leslie modified on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
-void EasyBackfilling2::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
+void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml_in)
 {
         if (_output_svg != "none")
             _schedule.set_now((Rational)date);
-        switch (forWhat){
+        switch (cml_in.forWhat){
 
             case batsched_tools::call_me_later_types::SMTBF:
                 {
@@ -605,7 +610,10 @@ void EasyBackfilling2::on_requested_call(double date,int id,batsched_tools::call
                                 _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
                             else
                                 _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::SMTBF);
-                            _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
+                            batsched_tools::CALL_ME_LATERS cml;
+                            cml.forWhat = batsched_tools::call_me_later_types::SMTBF;
+                            cml.id = _nb_call_me_laters;
+                            _decision->add_call_me_later(date,number+date,cml);
                         }
                 }
                 break;
@@ -636,7 +644,10 @@ void EasyBackfilling2::on_requested_call(double date,int id,batsched_tools::call
                                 _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);//defer to after make_decisions
                             else
                                 _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);
-                            _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
+                            batsched_tools::CALL_ME_LATERS cml;
+                            cml.forWhat = batsched_tools::call_me_later_types::FIXED_FAILURE;
+                            cml.id = _nb_call_me_laters;
+                            _decision->add_call_me_later(date,number+date,cml);
                         }
                 }
                 break;
@@ -644,15 +655,19 @@ void EasyBackfilling2::on_requested_call(double date,int id,batsched_tools::call
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                 {
                     //BLOG_F(b_log::FAILURES,"REPAIR_DONE");
+                    rapidjson::Document doc;
+                    doc.Parse(cml_in.extra_data.c_str());
+                    PPK_ASSERT(doc.HasMember("machine"),"Error, repair done but no 'machine' field in extra_data");
+                    int machine_number = doc["machine"].GetInt();
                     //a repair is done, all that needs to happen is add the machines to available
                     //and remove them from repair machines and add one to the number of available
                     if (_output_svg == "all")
-                        _schedule.output_to_svg("top Repair Done  Machine #: "+std::to_string(id));
-                    IntervalSet machine = id;
+                        _schedule.output_to_svg("top Repair Done  Machine #: "+std::to_string(machine_number));
+                    IntervalSet machine = machine_number;
                     _schedule.remove_repair_machines(machine);
                     _schedule.remove_svg_highlight_machines(machine);
                     if (_output_svg == "all")
-                        _schedule.output_to_svg("bottom Repair Done  Machine #: "+std::to_string(id));
+                        _schedule.output_to_svg("bottom Repair Done  Machine #: "+std::to_string(machine_number));
                     _need_to_compress=true; // @note Leslie added 
                     //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
                 }

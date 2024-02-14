@@ -40,7 +40,7 @@ public:
     // @note LH: simulated checkpointing addtions                             
     void on_machine_down_for_repair(double date);
     void on_machine_instant_down_up(double date);
-    void on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat);
+    void on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml);
     void on_myKillJob_notify_event(double date);
     void on_no_more_static_job_to_submit_received(double date);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);

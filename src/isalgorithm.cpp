@@ -19,7 +19,10 @@ void ISchedulingAlgorithm::set_failure_map(std::map<double,batsched_tools::failu
  _file_failures = failure_map;
  for (auto myPair: failure_map)
  {
-    _decision->add_call_me_later(myPair.second.type,1,myPair.first,0,"null");
+    batsched_tools::CALL_ME_LATERS cml;
+    cml.id = _nb_call_me_laters;
+    cml.forWhat = myPair.second.type;
+    _decision->add_call_me_later(0,myPair.first,cml);
  }   
 }
 void ISchedulingAlgorithm::set_nb_machines(int nb_machines)
@@ -103,9 +106,9 @@ void ISchedulingAlgorithm::on_machine_state_changed(double date, IntervalSet mac
         _machines_whose_pstate_changed_recently[new_state] += machines;
 }
 
-void ISchedulingAlgorithm::on_requested_call(double date,int id, batsched_tools::call_me_later_types forWhat)
+void ISchedulingAlgorithm::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml)
 {
-    if (forWhat == batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED)
+    if (cml.forWhat == batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED)
         _need_to_checkpoint = true;
     (void) date;
     _nopped_recently = true;
@@ -184,7 +187,10 @@ void ISchedulingAlgorithm::set_generators(double date){
         if (machine_unif_distribution == nullptr)
             machine_unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
         double number = _workload->_fixed_failures;
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);  
+        batsched_tools::CALL_ME_LATERS cml;
+        cml.forWhat = batsched_tools::call_me_later_types::FIXED_FAILURE;
+        cml.id = _nb_call_me_laters;
+        _decision->add_call_me_later(date,number+date,cml); 
      }
     if (_workload->_MTTR != -1.0)
     {
@@ -201,7 +207,10 @@ void ISchedulingAlgorithm::set_generators(double date){
         double number;         
         number = failure_exponential_distribution->operator()(generator_failure);
         nb_failure_exponential_distribution++;
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
+        batsched_tools::CALL_ME_LATERS cml;
+        cml.forWhat = batsched_tools::call_me_later_types::SMTBF;
+        cml.id = _nb_call_me_laters;
+        _decision->add_call_me_later(date,number+date,cml);
     }
     else if (_workload->_MTBF!=-1.0)
     {
@@ -211,7 +220,10 @@ void ISchedulingAlgorithm::set_generators(double date){
         double number;         
         number = failure_exponential_distribution->operator()(generator_failure);
         nb_failure_exponential_distribution++;
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
+        batsched_tools::CALL_ME_LATERS cml;
+        cml.forWhat = batsched_tools::call_me_later_types::MTBF;
+        cml.id = _nb_call_me_laters;
+        _decision->add_call_me_later(date,number+date,cml);
     }
 }
 void ISchedulingAlgorithm::set_real_time(std::chrono::_V2::system_clock::time_point time)

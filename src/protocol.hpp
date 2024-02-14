@@ -122,8 +122,7 @@ public:
      *            Must be greater than date.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_call_me_later(batsched_tools::call_me_later_types forWhat,int id, double future_date,
-                                      double date) = 0;
+    virtual void append_call_me_later(double date,double future_date,batsched_tools::CALL_ME_LATERS cml) = 0;
 
     /**
      * @brief Appends a SCHEDULER_FINISHED_SUBMITTING_JOBS event.
@@ -278,8 +277,7 @@ public:
      *            Must be greater than date.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_call_me_later(batsched_tools::call_me_later_types forWhat, int id,double future_date,
-                              double date);
+    void append_call_me_later(double date, double future_date,batsched_tools::CALL_ME_LATERS cml);
 
     /**
      * @brief Appends a SCHEDULER_FINISHED_SUBMITTING_JOBS event.

@@ -51,7 +51,7 @@ public:
                               const std::string & metadata,
                               double date);
 
-    void add_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double future_date, double date,std::string job_id="null");
+    void add_call_me_later(double date, double future_date,batsched_tools::CALL_ME_LATERS cml);
     void add_scheduler_finished_submitting_jobs(double date);
     void add_scheduler_continue_submitting_jobs(double date);
     void add_generic_notification(const std::string &type,const std::string &notify_data,double date);

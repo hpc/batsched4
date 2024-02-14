@@ -166,7 +166,12 @@ void FCFSFast2::on_machine_down_for_repair(double date){
         //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
         //LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
         //call me back when the repair is done
-        _decision->add_call_me_later(batsched_tools::call_me_later_types::REPAIR_DONE,number,date+repair_time,date);
+        std::string extra_data = batsched_tools::string_format("{\"machine\":%d}",number);
+        batsched_tools::CALL_ME_LATERS cml;
+        cml.forWhat = batsched_tools::call_me_later_types::REPAIR_DONE;
+        cml.id = _nb_call_me_laters;
+        cml.extra_data = extra_data;
+        _decision->add_call_me_later(date,date+repair_time,cml);
         //now kill the jobs that are running on machines that need to be repaired.        
         //if there are no running jobs, then there are none to kill
         if (!_running_jobs.empty()){
@@ -223,10 +228,10 @@ void FCFSFast2::on_machine_instant_down_up(double date){
 }
 */
 
-void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_later_types forWhat)
+void FCFSFast2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml_in)
 {
     
-        switch (forWhat){
+        switch (cml_in.forWhat){
             case batsched_tools::call_me_later_types::SMTBF:
                         {
                             //Log the failure
@@ -238,7 +243,10 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
                                         on_machine_instant_down_up(date);
                                     else
                                         on_machine_down_for_repair(date);
-                                    _decision->add_call_me_later(batsched_tools::call_me_later_types::SMTBF,1,number+date,date);
+                                batsched_tools::CALL_ME_LATERS cml;
+                                cml.forWhat = batsched_tools::call_me_later_types::SMTBF;
+                                cml.id = _nb_call_me_laters;
+                                _decision->add_call_me_later(date,number+date,cml);
                                 }
                         }
                         break;
@@ -248,7 +256,10 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
                             {
                                 double number = failure_exponential_distribution->operator()(generator_failure);
                                 on_myKillJob_notify_event(date);
-                                _decision->add_call_me_later(batsched_tools::call_me_later_types::MTBF,1,number+date,date);
+                                batsched_tools::CALL_ME_LATERS cml;
+                                cml.forWhat = batsched_tools::call_me_later_types::MTBF;
+                                cml.id = _nb_call_me_laters;
+                                _decision->add_call_me_later(date,number+date,cml);
 
                             }
                         
@@ -265,16 +276,23 @@ void FCFSFast2::on_requested_call(double date,int id,batsched_tools::call_me_lat
                                         on_machine_instant_down_up(date);
                                     else
                                         on_machine_down_for_repair(date);
-                                    _decision->add_call_me_later(batsched_tools::call_me_later_types::FIXED_FAILURE,1,number+date,date);
+                                batsched_tools::CALL_ME_LATERS cml;
+                                cml.forWhat = batsched_tools::call_me_later_types::FIXED_FAILURE;
+                                cml.id = _nb_call_me_laters;
+                                _decision->add_call_me_later(date,number+date,cml);
                                 }
                         }
                         break;
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                         {
                             BLOG_F(blog_types::FAILURES,"REPAIR_DONE");
+                            rapidjson::Document doc;
+                            doc.Parse(cml_in.extra_data.c_str());
+                            PPK_ASSERT(doc.HasMember("machine"),"Error, repair done but no 'machine' field in extra_data");
+                            int machine_number = doc["machine"].GetInt();
                             //a repair is done, all that needs to happen is add the machines to available
                             //and remove them from repair machines and add one to the number of available
-                            IntervalSet machine = id;
+                            IntervalSet machine = machine_number;
                             _available_machines += machine;
                             _unavailable_machines -= machine;
                             _repair_machines -= machine;

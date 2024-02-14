@@ -81,7 +81,7 @@ public:
      * @brief This function is called when a REQUESTED_CALL message is received
      * @param[in] date The date at which the REQUESTED_CALL message have been received
      */
-    virtual void on_requested_call(double date, int id, batsched_tools::call_me_later_types forWhat);
+    virtual void on_requested_call(double date, batsched_tools::CALL_ME_LATERS cml);
 
     /**
      * @brief This function is called when the no_more_static_job_to_submit

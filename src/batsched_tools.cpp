@@ -320,7 +320,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
             s += "\"time\":"        +   batsched_tools::to_json_string(cml.time)                                        + ",";
             s += "\"id\":"          +   batsched_tools::to_json_string(cml.id)                                          + ",";
             s += "\"forWhat\":"     +   batsched_tools::to_json_string(static_cast<int>(cml.forWhat))                   + ",";
-            s += "\"job_id\":"      +   batsched_tools::to_json_string(cml.job_id)                                           ;
+            s += "\"extra_data\":"      +   batsched_tools::to_json_string(cml.extra_data)                                           ;
             s += "}";
         return s;
     }

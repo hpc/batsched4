@@ -33,7 +33,7 @@ public:
     virtual void on_machine_available_notify_event(double date, IntervalSet machines);
     //virtual void on_job_fault_notify_event(double date, std::string job);
     virtual void on_myKillJob_notify_event(double date);
-    virtual void on_requested_call(double date,int id,  batsched_tools::call_me_later_types forWhat);
+    virtual void on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml);
     //virtual void set_workloads(myBatsched::Workloads * w);
     virtual void make_decisions(double date,
         SortableJobOrder::UpdateInformation * update_info,

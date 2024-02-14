@@ -42,7 +42,7 @@ public:
     void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date);
     //virtual void set_workloads(myBatsched::Workloads * w);
     virtual void set_machines(Machines *m);
-    virtual void on_requested_call(double date,int id,  batsched_tools::call_me_later_types forWhat);
+    virtual void on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml);
     
 protected:
     Schedule _schedule;
