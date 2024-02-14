@@ -518,12 +518,21 @@ void SchedulingDecision::add_call_me_later(batsched_tools::call_me_later_types f
     //if it is blocked then just return
     if (_blocked_cmls.find(forWhat) != _blocked_cmls.end())
         return;
-    _proto_writer->append_call_me_later(forWhat,_nb_call_me_laters, future_date, date);
+    
     batsched_tools::CALL_ME_LATERS call_me_later;
     call_me_later.forWhat = forWhat;
     call_me_later.job_id = job_id;
     call_me_later.time = future_date;
-    call_me_later.id = _nb_call_me_laters;
+    if (forWhat == batsched_tools::call_me_later_types::REPAIR_DONE)
+    {
+        call_me_later.id = id;
+        _proto_writer->append_call_me_later(forWhat,id, future_date, date);
+    }
+    else
+    {
+        call_me_later.id = _nb_call_me_laters;
+        _proto_writer->append_call_me_later(forWhat,_nb_call_me_laters, future_date, date);
+    }
     _call_me_laters[_nb_call_me_laters]=call_me_later;
     _nb_call_me_laters++;
 }

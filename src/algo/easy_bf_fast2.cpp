@@ -231,7 +231,7 @@ void easy_bf_fast2::on_requested_call(double date,int id,batsched_tools::call_me
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     double number = failure_exponential_distribution->operator()(generator_failure);
-                                    if (_workload->_repair_time == 0.0)
+                                    if (_workload->_repair_time == 0.0  && _workload->_MTTR == -1.0)
                                         on_machine_instant_down_up(date);
                                     else
                                         on_machine_down_for_repair(date);

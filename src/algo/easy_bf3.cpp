@@ -85,6 +85,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
     BLOG_F(blog_types::FAILURES,"Machine Repair: %d",number);
     if ((machine & _repair_machines).is_empty())
     {
+        LOG_F(INFO,"here, machine going down for repair %d",number);
         //ok the machine is not down for repairs
         //it will be going down for repairs now
         _available_machines-=machine;
@@ -148,7 +149,7 @@ void EasyBackfilling3::on_requested_call(double date,int id,batsched_tools::call
             if ( !_scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received)
                 {
                     double number = failure_exponential_distribution->operator()(generator_failure);
-                    if (_workload->_repair_time == 0.0)
+                    if (_workload->_repair_time == 0.0  && _workload->_MTTR == -1.0)
                         on_machine_instant_down_up(date);
                     else
                         on_machine_down_for_repair(date);
@@ -459,8 +460,8 @@ void EasyBackfilling3::handle_finished_job(string job_id, double date){
         _tmp_job = _scheduled_jobs.at(fj_idx);
         
         // @note LH: return allocated machines to intervalset and add to machine count
-        _available_machines.insert(_tmp_job->allocated_machines);
-        _nb_available_machines += _tmp_job->requested_resources;
+        _available_machines.insert(_tmp_job->allocated_machines - _repair_machines);
+        _nb_available_machines = _available_machines.size();
 
         // @note deallocate finished job struct
         delete _tmp_job;
