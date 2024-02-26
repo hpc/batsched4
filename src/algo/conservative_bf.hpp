@@ -70,7 +70,7 @@ private:
     //myBatsched::Workloads * _myWorkloads;
     bool _checkpointing_on;
     bool _start_a_reservation=false;
-    b_log *_myBLOG;
+    
     std::map<std::string,batsched_tools::KILL_TYPES>_resubmitted_jobs;
     std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>>_resubmitted_jobs_released;
     

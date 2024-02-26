@@ -33,9 +33,9 @@ void SchedulingDecision::add_execute_job(const std::string & job_id, const Inter
         _proto_writer->append_execute_job(job_id, machine_ids, date, executor_to_allocated_resource_mapping);
 }
 
-void SchedulingDecision::add_reject_job(const std::string & job_id, double date)
+void SchedulingDecision::add_reject_job(double date,const std::string & job_id, batsched_tools::REJECT_TYPES forWhat)
 {
-    _proto_writer->append_reject_job(job_id, date);
+    _proto_writer->append_reject_job(date,job_id,forWhat);
 }
 
 void SchedulingDecision::add_kill_job(const vector<batsched_tools::Job_Message *> &job_msgs, double date)
@@ -490,7 +490,7 @@ void SchedulingDecision::add_set_job_metadata(const string &job_id,
 {
     _proto_writer->append_set_job_metadata(job_id, metadata, date);
 }
-void set_blocked_call_me_laters(std::set<batsched_tools::call_me_later_types> &blocked_cmls);
+//void set_blocked_call_me_laters(std::set<batsched_tools::call_me_later_types> &blocked_cmls);
     
     
     

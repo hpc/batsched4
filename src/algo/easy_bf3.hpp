@@ -112,5 +112,6 @@ protected:
     bool _checkpointing_on=false;
     std::vector<double> _call_me_laters;
     std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
+    bool _need_to_backfill = false;
     
 };

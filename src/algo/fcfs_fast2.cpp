@@ -40,11 +40,10 @@ void FCFSFast2::on_start_from_checkpoint(double date,const rapidjson::Value & ba
 void FCFSFast2::on_simulation_start(double date,
     const rapidjson::Value &batsim_event_data)
 {
-    
     LOG_F(INFO,"On simulation start");
     pid_t pid = batsched_tools::get_batsched_pid();
     _decision->add_generic_notification("PID",std::to_string(pid),date);
-    bool seedFailures = false;
+    
     bool logBLog = false;
     const rapidjson::Value & batsim_config = batsim_event_data["config"];
     if (batsim_config.HasMember("share-packing"))
@@ -57,9 +56,6 @@ void FCFSFast2::on_simulation_start(double date,
         _output_folder = batsim_config["output-folder"].GetString();
         _output_folder=_output_folder.substr(0,_output_folder.find_last_of("/"));
     }
-    
-    if (batsim_config.HasMember("seed-failures"))
-        seedFailures = batsim_config["seed-failures"].GetBool();
     if (batsim_config.HasMember("log_b_log"))
         logBLog = batsim_config["log_b_log"].GetBool();
     //log BLogs, add log files that you want logged to.
@@ -611,7 +607,7 @@ void FCFSFast2::make_decisions(double date,
         {
             // Invalid!
             //LOG_F(INFO,"Job being rejected HERE %s",new_job_id.c_str());
-            _decision->add_reject_job(new_job_id, date);
+            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
             continue;
         }
 

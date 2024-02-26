@@ -2,6 +2,7 @@
 #include <loguru.hpp>
 #include "../pempek_assert.hpp"
 #include "../batsched_tools.hpp"
+#define B_LOG_INSTANCE _myBLOG
 using namespace std;
 
 EasyBackfilling3::EasyBackfilling3(Workload * workload,
@@ -64,7 +65,9 @@ void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value &
     _queue_policy=batsim_config["queue-policy"].GetString();
     PPK_ASSERT_ERROR(_queue_policy == "FCFS" || _queue_policy == "ORIGINAL-FCFS");
     LOG_F(INFO, "queue-policy = %s", _queue_policy.c_str());
-
+    _myBLOG = new b_log();
+    _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
+    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
     (void) batsim_config;
 }
 
@@ -204,6 +207,9 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
             _repair_machines -= machine;
             _nb_available_machines=_available_machines.size();
             _machines_that_became_available_recently += machine;
+            _need_to_backfill = true;
+            if (_reject_possible)
+                _repairs_done++;
         }
         break;
     }
@@ -245,7 +251,7 @@ void EasyBackfilling3::make_decisions(double date,
     for (const string & ended_job_id : _jobs_ended_recently){
         handle_finished_job(ended_job_id, date);
     }
-    
+
     //  Handle any killed jobs
     if(!_my_kill_jobs.empty()){
         std::vector<batsched_tools::Job_Message *> kills;
@@ -257,6 +263,7 @@ void EasyBackfilling3::make_decisions(double date,
         _decision->add_kill_job(kills,date);
         _my_kill_jobs.clear();
     }
+
     // Handle resubmitting killed jobs to queue back up
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
 
@@ -268,13 +275,13 @@ void EasyBackfilling3::make_decisions(double date,
 
         if (new_job->nb_requested_resources > _nb_machines)
         {
-            _decision->add_reject_job(new_job_id, date);
+            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
         }
         else if (!new_job->has_walltime)
         {
             LOG_SCOPE_FUNCTION(INFO);
             LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
-            _decision->add_reject_job(new_job_id, date);
+            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NO_WALLTIME);
         }
         else
         {
@@ -287,23 +294,29 @@ void EasyBackfilling3::make_decisions(double date,
     Job * priority_job_after = nullptr;
     sort_queue_while_handling_priority_job(priority_job_before, priority_job_after, update_info);
 
+    if (get_first_waiting_job() != nullptr)
+        LOG_F(INFO,"first waiting job: %s  resources: %d",get_first_waiting_job()->id.c_str(),get_first_waiting_job()->nb_requested_resources);
+
     // If no resources have been released, we can just try to backfill the newly-released jobs
-    if (_jobs_ended_recently.empty())
+    if (_jobs_ended_recently.empty() && !_need_to_backfill)
     {
         for (unsigned int i = 0; i < recently_queued_jobs.size() && _nb_available_machines > 0; ++i)
         {
             const string & new_job_id = recently_queued_jobs[i];
             const Job * new_job = (*_workload)[new_job_id];
-            
+
             // The job could have already been executed by sort_queue_while_handling_priority_job,
             // that's why we check whether the queue contains the job.
             auto wj_it = find_waiting_job(new_job_id);
             if (wj_it != _waiting_jobs.end() && new_job != priority_job_after)
             {
                 check_next_job(new_job, date);
+
                 if(_can_run){
                     _decision->add_execute_job(new_job_id, _tmp_job->allocated_machines, date);
                     _waiting_jobs.erase(wj_it);
+                    _reject_possible = false;
+                    _repairs_done = 0;
                 }
             }
         }
@@ -321,15 +334,34 @@ void EasyBackfilling3::make_decisions(double date,
             else check_next_job(job, date);
             
             if(_can_run){
+
                 _decision->add_execute_job(job->id, _tmp_job->allocated_machines, date);
+                _reject_possible = false;
+                _repairs_done = 0;
                 job_it = delete_waiting_job(job_it);
                 if(job == priority_job_after) priority_job_after = get_first_waiting_job();
             }else ++job_it;  
         }
     }
+    _need_to_backfill = false;
 
+    //we need to start rejecting jobs if the _waiting_jobs don't fit
+    if (_jobs_killed_recently.empty() && (priority_job_after == nullptr)  && _scheduled_jobs.empty() &&
+            _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
+    {
+        _reject_possible = true;
+        if (_repairs_done > _REPAIRS_FOR_REJECT)
+        {
+            for (auto iter = _waiting_jobs.begin();iter != _waiting_jobs.end();)
+            {
+
+                _decision->add_reject_job(date,(*iter)->id,batsched_tools::REJECT_TYPES::NOT_ENOUGH_AVAILABLE_RESOURCES);
+                iter = _waiting_jobs.erase(iter);
+            }
+        }
+    }
     // @note LH: conditions for ending the simulation with dynamic jobs
-    if (_jobs_killed_recently.empty() && _waiting_jobs.empty() && _scheduled_jobs.empty() &&
+    if (_jobs_killed_recently.empty() && _waiting_jobs.empty()  && _scheduled_jobs.empty() &&
             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
     {
         _decision->add_scheduler_finished_submitting_jobs(date);
@@ -602,7 +634,19 @@ void EasyBackfilling3::heap_sort_queue(int size, const CompareQueue &comp){
 
 //@note LH: added helper function to return the first waiting job 
 Job * EasyBackfilling3::get_first_waiting_job(){
-    return _waiting_jobs.empty() ? nullptr : *_waiting_jobs.begin();
+    if (_waiting_jobs.empty())
+        return nullptr;
+    else
+    {
+        for(auto iter=_waiting_jobs.begin();iter != _waiting_jobs.end();iter++)
+        {
+            if ((*iter)->nb_requested_resources <= (_nb_machines - _repair_machines.size()))
+                return (*iter);
+            else
+                continue;
+        }
+        return nullptr;
+    }
 }
 
 //@note LH: added helper function to find and return waiting job iterator 

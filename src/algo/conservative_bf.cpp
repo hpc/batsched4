@@ -574,6 +574,7 @@ void ConservativeBackfilling::on_machine_down_for_repair(batsched_tools::KILL_TY
 
                 }
         }
+        _need_to_compress = true;
     }
     else{
         //if (!added.is_empty())
@@ -831,13 +832,13 @@ void ConservativeBackfilling::make_decisions(double date,
         {
             if (new_job->nb_requested_resources > _nb_machines)
             {
-                _decision->add_reject_job(new_job_id, date);
+                _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
             }
             else if (!new_job->has_walltime)
             {
                 LOG_SCOPE_FUNCTION(INFO);
                 LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
-                _decision->add_reject_job(new_job_id, date);
+                _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NO_WALLTIME);
             }
             else
             {
@@ -1050,11 +1051,11 @@ LOG_F(INFO,"here");
         {
             // LOG_F(INFO,"here");
             //ok we are not able to run things, start rejecting the jobs
-            for ( auto itr = _queue->begin();itr!=_queue->end();++itr)
+            for ( auto itr = _queue->begin();itr!=_queue->end();)
             {
               //   LOG_F(INFO,"here");
               //  LOG_F(INFO,"Rejecting job %s",(*itr)->job->id.c_str());
-                _decision->add_reject_job((*itr)->job->id,date);
+                _decision->add_reject_job(date,(*itr)->job->id,batsched_tools::REJECT_TYPES::NOT_ENOUGH_AVAILABLE_RESOURCES);
                 itr=_queue->remove_job(itr);
                 // LOG_F(INFO,"here");
             }
@@ -1517,7 +1518,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
             Schedule::ReservedTimeSlice reservation = _schedule.reserve_time_slice(new_job);
             if (reservation.success == false)
             {
-                _decision->add_reject_job(new_job_id,date);
+                _decision->add_reject_job(date,new_job_id,batsched_tools::REJECT_TYPES::NO_RESERVATION_ALLOCATION);
                 continue;
             }
             if (new_job->future_allocations.is_empty() && reservation.success)
@@ -1647,7 +1648,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
             Schedule::ReservedTimeSlice reservation = _schedule.reserve_time_slice(new_job);
             if (reservation.success == false)
             {
-                _decision->add_reject_job(new_job_id,date);
+                _decision->add_reject_job(date,new_job_id,batsched_tools::REJECT_TYPES::NO_RESERVATION_ALLOCATION);
                 continue;
             }
             if (new_job->future_allocations.is_empty() && reservation.success)

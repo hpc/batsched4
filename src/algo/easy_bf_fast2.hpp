@@ -59,6 +59,7 @@ private:
     void handle_machines_coming_available(double date);
     void handle_ended_job_execution(bool job_ended,double date);
     void handle_newly_released_jobs(double date);
+    void handle_null_priority_job(double date);
 
     //backfilling
     struct FinishedHorizonPoint

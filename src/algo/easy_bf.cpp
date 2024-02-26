@@ -56,13 +56,13 @@ void EasyBackfilling::make_decisions(double date,
 
         if (new_job->nb_requested_resources > _nb_machines)
         {
-            _decision->add_reject_job(new_job_id, date);
+            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
         }
         else if (!new_job->has_walltime)
         {
             LOG_SCOPE_FUNCTION(INFO);
             LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
-            _decision->add_reject_job(new_job_id, date);
+            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NO_WALLTIME);
         }
         else
         {

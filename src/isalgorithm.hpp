@@ -203,6 +203,10 @@ protected:
     unsigned int generator_repair_time_seed;
     std::exponential_distribution<double> * repair_time_exponential_distribution;
     int nb_repair_time_exponential_distribution =0;
+    b_log *_myBLOG;
+    int _repairs_done=0;
+    bool _reject_possible = false;
+    const int _REPAIRS_FOR_REJECT = 3;
    
     
     

@@ -357,22 +357,31 @@ void easy_bf_fast2::make_decisions(double date,
     //*****************************************************************
     // Handle newly finished jobs
     //*****************************************************************
-    LOG_F(INFO,"line 353");
+    LOG_F(INFO,"line 360");
+    //do we need to switch out priority_job?
+    if (_priority_job != nullptr && _priority_job->nb_requested_resources < (_nb_machines - _repair_machines.size()))
+    {
+        //ok we need to switch out _priority_job
+        _pending_jobs.push_front(_priority_job);
+        _priority_job = nullptr;
+        handle_null_priority_job(date);
+    }
+    handle_machines_coming_available(date);
+    LOG_F(INFO,"line 362");
     bool job_ended = handle_newly_finished_jobs();
-    LOG_F(INFO,"line 355");    
+    LOG_F(INFO,"line 364");    
     handle_new_jobs_to_kill(date);
     //************************************************************resubmission if killed
     //Handle jobs to queue back up (if killed)
-    LOG_F(INFO,"line 359");
+    LOG_F(INFO,"line 368");
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);    
     //***********************************************************
-    LOG_F(INFO,"line 362");
-    handle_machines_coming_available(date);
-    LOG_F(INFO,"line 364");
+
+    LOG_F(INFO,"line 372");
     handle_ended_job_execution(job_ended,date);
-    LOG_F(INFO,"line 366");
+    LOG_F(INFO,"line 374");
     handle_newly_released_jobs(date);
-    LOG_F(INFO,"line 368");
+    LOG_F(INFO,"line 376");
     
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
     {
@@ -388,9 +397,12 @@ void easy_bf_fast2::make_decisions(double date,
         _decision->add_scheduler_finished_submitting_jobs(date);
         _need_to_send_finished_submitting_jobs = false;
     }
-      
+     
 }
-
+void easy_bf_fast2::handle_null_priority_job(double date)
+{
+    
+}
 
 
 
@@ -485,7 +497,9 @@ void easy_bf_fast2::handle_new_jobs_to_kill(double date)
 
 void easy_bf_fast2::handle_machines_coming_available(double date)
 {
+    //if (!_machines_that_became_available_recently.is_empty())
     
+
     
 }
 
@@ -502,7 +516,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
     std::vector<int> mapping = {0};
     // If jobs have finished, execute jobs as long as they fit
     std::list<Job *>::iterator job_it =_pending_jobs.begin();
-    if (job_ended)
+    if (job_ended || (!_machines_that_became_available_recently.is_empty()))
     {
         if (_priority_job == nullptr)
             LOG_F(INFO,"line 499 nullptr");
@@ -720,7 +734,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         _running_jobs.insert(pending_job->id);
                     
                     }
-                    if (executed2==false)
+                    if (executed2==false && pending_job->nb_requested_resources <= (_nb_machines - _repair_machines.size()))
                     {
                         //ok we have a priority job, now stop traversing pending jobs
                         _priority_job = pending_job;
@@ -893,7 +907,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
         {
             // Invalid!
             //LOG_F(INFO,"Job being rejected HERE %s",new_job_id.c_str());
-            _decision->add_reject_job(new_job_id, date);
+            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
             continue;
         }
         Allocation alloc;
@@ -1005,7 +1019,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
         }
         if (executed==false)
         {
-            if (_priority_job == nullptr)
+            if ((_priority_job == nullptr) && (new_job->nb_requested_resources <= (_nb_machines - _repair_machines.size())))
             {
                 _priority_job = new_job;
                 _priority_job->completion_time = compute_priority_job_expected_earliest_starting_time();

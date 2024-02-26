@@ -619,10 +619,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 
                 workload._repair_time = event_data["config"]["repair_time"].GetDouble();
                 workload._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
-                workload._seed_failures = event_data["config"]["seed-failures"].GetBool();
+                workload._seed_failures = event_data["config"]["seed-failures"].GetInt();
+                workload._seed_failure_machine = event_data["config"]["seed-failure-machine"].GetInt();
                 workload._queue_depth = event_data["config"]["scheduler-queue-depth"].GetInt();
                 workload._subtract_progress_from_walltime = event_data["config"]["subtract-progress-from-walltime"].GetBool();
-                workload._seed_repair_time = event_data["config"]["seed-repair-time"].GetBool();
+                workload._seed_repair_time = event_data["config"]["seed-repair-time"].GetInt();
                 workload._MTTR = event_data["config"]["MTTR"].GetDouble();
                 const rapidjson::Value & Vstart_from_checkpoint = event_data["config"]["start-from-checkpoint"];
                 workload.start_from_checkpoint = new batsched_tools::start_from_chkpt();

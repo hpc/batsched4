@@ -84,8 +84,8 @@ public:
      * @param[in] job_id The job identifier. Must be known by Batsim. Must be in the SUBMITTED state.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    virtual void append_reject_job(const std::string & job_id,
-                                   double date) = 0;
+    virtual void append_reject_job(double date,const std::string & job_id,
+                                   batsched_tools::REJECT_TYPES forWhat) = 0;
 
     /**
      * @brief Appends a KILL_JOB event.
@@ -239,8 +239,8 @@ public:
      * @param[in] job_id The job identifier. Must be known by Batsim. Must be in the SUBMITTED state.
      * @param[in] date The event date. Must be greater than or equal to the previous event.
      */
-    void append_reject_job(const std::string & job_id,
-                           double date);
+    void append_reject_job(double date,const std::string & job_id,
+                           batsched_tools::REJECT_TYPES forWhat);
 
     /**
      * @brief Appends a KILL_JOB event.

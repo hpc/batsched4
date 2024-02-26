@@ -1017,7 +1017,7 @@ void easy_bf_fast2_holdback::handle_newly_released_jobs(double date)
         {
             // Invalid!
             //LOG_F(INFO,"Job being rejected HERE %s",new_job_id.c_str());
-            _decision->add_reject_job(new_job_id, date);
+            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
             continue;
         }
         Allocation alloc;

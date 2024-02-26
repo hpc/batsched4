@@ -239,13 +239,13 @@ void JsonProtocolWriter::append_execute_job(const string &job_id,
     _events.PushBack(event, _alloc);
 }
 
-void JsonProtocolWriter::append_reject_job(const string &job_id,
-                                           double date)
+void JsonProtocolWriter::append_reject_job(double date,const string &job_id,
+                                           batsched_tools::REJECT_TYPES forWhat)
 {
     /* {
       "timestamp": 10.0,
       "type": "REJECT_JOB",
-      "data": { "job_id": "w12!45" }
+      "data": { "job_id": "w12!45" , "forWhat": 0}
     } */
 
     PPK_ASSERT_ERROR(date >= _last_date, "Date inconsistency");
@@ -254,6 +254,7 @@ void JsonProtocolWriter::append_reject_job(const string &job_id,
 
     Value data(rapidjson::kObjectType);
     data.AddMember("job_id", Value().SetString(job_id.c_str(), _alloc), _alloc);
+    data.AddMember("forWhat", Value().SetInt(static_cast<int>(forWhat)), _alloc);
 
     Value event(rapidjson::kObjectType);
     event.AddMember("timestamp", Value().SetDouble(date), _alloc);

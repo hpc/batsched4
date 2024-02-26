@@ -20,7 +20,7 @@ public:
     void add_execute_job(const std::string &job_id, const IntervalSet & machine_ids, double date,
                          std::vector<int> executor_to_allocated_resource_mapping = {});
     void handle_resubmission(std::unordered_map<std::string,batsched_tools::Job_Message *> recently_killed_jobs,Workload * workload,double date);
-    void add_reject_job(const std::string &job_id, double date);
+    void add_reject_job(double date, const std::string &job_id, batsched_tools::REJECT_TYPES forWhat );
     void add_kill_job(const std::vector<batsched_tools::Job_Message *> & job_msgs, double date);
 
     /**

@@ -87,10 +87,11 @@ public:
     double _host_speed;
     double _fixed_failures = -1.0;
     double _checkpointing_interval = -1.0;
-    bool _seed_failures = false;
+    int _seed_failures = -1;
+    int _seed_failure_machine = -1;
     int _queue_depth = -1;
     bool _subtract_progress_from_walltime = false;
-    bool _seed_repair_time = false;
+    int _seed_repair_time = -1;
     double _MTTR = -1.0;
     batsched_tools::start_from_chkpt* start_from_checkpoint = nullptr;
 private:

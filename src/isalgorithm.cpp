@@ -170,18 +170,20 @@ void ISchedulingAlgorithm::on_signal_checkpoint()
     _need_to_send_checkpoint = true;
 }
 void ISchedulingAlgorithm::set_generators(double date){
-    unsigned seed = 0;
-    if (_workload->_seed_failures)
-        seed = std::chrono::system_clock::now().time_since_epoch().count();
-    generator_failure_seed = seed;
-    generator_machine_seed = seed;
-    generator_failure.seed(seed);
-    generator_machine.seed(seed);
-    unsigned seed_repair_time = 10;
-    if (_workload->_seed_repair_time)
-        seed_repair_time = std::chrono::system_clock::now().time_since_epoch().count();
-    generator_repair_time_seed = seed_repair_time;
-    generator_repair_time.seed(seed_repair_time);
+    unsigned time_seed = std::chrono::system_clock::now().time_since_epoch().count();
+    generator_failure_seed = _workload->_seed_failures;
+    generator_machine_seed = _workload->_seed_failure_machine;
+    generator_repair_time_seed = _workload->_seed_repair_time;
+    if (_workload->_seed_failures != -1)
+        generator_failure_seed = time_seed;
+    if (_workload->_seed_failure_machine != -1)
+        generator_machine_seed = time_seed;
+    if (_workload->_seed_repair_time != -1)
+        generator_repair_time_seed = time_seed;
+        
+    generator_failure.seed(generator_failure_seed);
+    generator_machine.seed(generator_machine_seed);
+    generator_repair_time.seed(generator_repair_time_seed);
     if (_workload->_fixed_failures != -1.0)
      {
         if (machine_unif_distribution == nullptr)

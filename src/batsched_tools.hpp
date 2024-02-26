@@ -59,6 +59,13 @@ namespace batsched_tools{
         ,MTBF
         ,RESERVATION
     };
+    enum class REJECT_TYPES
+    {
+        NOT_ENOUGH_RESOURCES
+        ,NOT_ENOUGH_AVAILABLE_RESOURCES
+        ,NO_WALLTIME
+        ,NO_RESERVATION_ALLOCATION
+    };
     enum class JobState
 {
      JOB_STATE_NOT_SUBMITTED                //!< The job exists but cannot be scheduled yet.
