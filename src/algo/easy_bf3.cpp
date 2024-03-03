@@ -67,7 +67,8 @@ void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value &
     LOG_F(INFO, "queue-policy = %s", _queue_policy.c_str());
     _myBLOG = new b_log();
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
-    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
+    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES);
+    _myBLOG->add_header(blog_types::FAILURES,"simulated_time,event,data");
     (void) batsim_config;
 }
 
@@ -85,7 +86,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     //if the machine is already down for repairs ignore it.
-    BLOG_F(blog_types::FAILURES,"Machine Repair: %d",number);
+    BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_REPAIR.c_str(),number);
     if ((machine & _repair_machines).is_empty())
     {
         LOG_F(INFO,"here, machine going down for repair %d",number);
@@ -98,6 +99,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
 
         if (_workload->_MTTR != -1.0)
         repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
+        BLOG_F(blog_types::FAILURES,"%s,%f",blog_failure_event::REPAIR_TIME.c_str(),repair_time);
         //call me back when the repair is done
         std::string extra_data = batsched_tools::string_format("{\"machine\":%d}",number);
         batsched_tools::CALL_ME_LATERS cml;
@@ -109,6 +111,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
         //if there are no running jobs, then there are none to kill
         if (!_scheduled_jobs.empty()) {
             //ok there are jobs to kill
+            std::string killed_jobs;
             for(auto sj : _scheduled_jobs) {
                 if (!((sj->allocated_machines & machine).is_empty())) {
                     Job * job_ref = (*_workload)[sj->id];
@@ -117,12 +120,16 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
                     msg->forWhat = batsched_tools::KILL_TYPES::NONE;
                     _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                     LOG_F(INFO,"Killing Job: %s",sj->id.c_str());
-                    BLOG_F(blog_types::FAILURES,"Killing Job: %s",sj->id.c_str());
+                    if (killed_jobs.empty())
+                        killed_jobs = sj->id;
+                    else
+                        killed_jobs=batsched_tools::string_format("%s %s",killed_jobs.c_str(),sj->id.c_str());
                 }
             }
+            BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(),killed_jobs.c_str());
         }
     }
-    else BLOG_F(blog_types::FAILURES,"Machine Already Being Repaired: %d",number);
+    else BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_ALREADY_DOWN.c_str(),number);
 }
 
 void EasyBackfilling3::on_machine_instant_down_up(double date){
@@ -130,8 +137,9 @@ void EasyBackfilling3::on_machine_instant_down_up(double date){
     int number = machine_unif_distribution->operator()(generator_machine);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
-    BLOG_F(blog_types::FAILURES,"Machine Instant Down Up: %d",number);
+    BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_INSTANT_DOWN_UP.c_str(), number);
     //if there are no running jobs, then there are none to kill
+    std::string killed_jobs;
     if (!_scheduled_jobs.empty()){
         //ok there are jobs to kill
         for(auto sj : _scheduled_jobs)
@@ -142,9 +150,13 @@ void EasyBackfilling3::on_machine_instant_down_up(double date){
                 msg->id = sj->id;
                 msg->forWhat = batsched_tools::KILL_TYPES::NONE;
                 _my_kill_jobs.insert(std::make_pair(job_ref,msg));
-                BLOG_F(blog_types::FAILURES,"Killing Job: %s",sj->id.c_str());
+                if (killed_jobs.empty())
+                    killed_jobs = sj->id;
+                else
+                    killed_jobs=batsched_tools::string_format("%s %s",killed_jobs.c_str(),sj->id.c_str());
             }
         }
+        BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(), killed_jobs);
     }
 }
 
@@ -153,7 +165,7 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
     switch (cml_in.forWhat){
         case batsched_tools::call_me_later_types::SMTBF: {
             //Log the failure
-            BLOG_F(blog_types::FAILURES,"FAILURE SMTBF");
+            BLOG_F(blog_types::FAILURES,"%s,%s",blog_failure_event::FAILURE.c_str(),"SMTBF");
             if ( !_scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received)
                 {
                     double number = failure_exponential_distribution->operator()(generator_failure);
@@ -169,6 +181,7 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
         }
         break;
         case batsched_tools::call_me_later_types::MTBF: {
+            BLOG_F(blog_types::FAILURES, "%s,%s",blog_failure_event::FAILURE.c_str(),"MTBF");
             if (! _scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received) {
                 double number = failure_exponential_distribution->operator()(generator_failure);
                 on_myKillJob_notify_event(date);
@@ -180,7 +193,7 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
         }
         break;
         case batsched_tools::call_me_later_types::FIXED_FAILURE: {
-                BLOG_F(blog_types::FAILURES,"FAILURE FIXED_FAILURE");
+                BLOG_F(blog_types::FAILURES,"%s,%s", blog_failure_event::FAILURE.c_str(),"FIXED_FAILURE");
                 if (! _scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received){
                     double number = _workload->_fixed_failures;
                     if (_workload->_repair_time == 0.0)
@@ -195,11 +208,12 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
         }
         break;
         case batsched_tools::call_me_later_types::REPAIR_DONE: {
-            BLOG_F(blog_types::FAILURES,"REPAIR_DONE");
+            
             rapidjson::Document doc;
             doc.Parse(cml_in.extra_data.c_str());
             PPK_ASSERT(doc.HasMember("machine"),"Error, repair done but no 'machine' field in extra_data");
             int machine_number = doc["machine"].GetInt();
+            BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::REPAIR_DONE.c_str() ,machine_number);
             //a repair is done, all that needs to happen is add the machines to available
             //and remove them from repair machines and add one to the number of available
             IntervalSet machine = machine_number;
@@ -346,11 +360,11 @@ void EasyBackfilling3::make_decisions(double date,
     _need_to_backfill = false;
 
     //we need to start rejecting jobs if the _waiting_jobs don't fit
-    if (_jobs_killed_recently.empty() && (priority_job_after == nullptr)  && _scheduled_jobs.empty() &&
+    if ((_workload->_reject_jobs_after_nb_repairs!= -1) && _jobs_killed_recently.empty() && (priority_job_after == nullptr)  && _scheduled_jobs.empty() &&
             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
     {
         _reject_possible = true;
-        if (_repairs_done > _REPAIRS_FOR_REJECT)
+        if (_repairs_done > _workload->_reject_jobs_after_nb_repairs)
         {
             for (auto iter = _waiting_jobs.begin();iter != _waiting_jobs.end();)
             {
@@ -360,6 +374,7 @@ void EasyBackfilling3::make_decisions(double date,
             }
         }
     }
+    
     // @note LH: conditions for ending the simulation with dynamic jobs
     if (_jobs_killed_recently.empty() && _waiting_jobs.empty()  && _scheduled_jobs.empty() &&
             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )

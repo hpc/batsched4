@@ -206,7 +206,6 @@ protected:
     b_log *_myBLOG;
     int _repairs_done=0;
     bool _reject_possible = false;
-    const int _REPAIRS_FOR_REJECT = 3;
    
     
     

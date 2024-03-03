@@ -19,13 +19,25 @@ void b_log::add_log_file(std::string file,std::string type){
     FILE* myFile=fopen(file.c_str(),"w");
     _files[type]=myFile;
 }
+void b_log::add_header(std::string type,std::string header){
+    FILE* file = _files[type];
+    std::fprintf(file,"%s",header);
+    fflush(file);
+
+}
 void b_log::blog(std::string type, std::string fmt, double date, ...){
     
+    bool csv = false;
+    if (type == blog_types::FAILURES)
+        csv = true;
     if (_files.size() > 0 && _files.find(type) != _files.end()){
         va_list args;
         va_start(args,date);
-        FILE* file = _files[type];                                                                                                                                                           
-        std::fprintf(file,"%-60f ||",date);
+        FILE* file = _files[type];
+        if(!csv)
+            std::fprintf(file,"%-60f ||",date);
+        else
+            std::fprintf(file,"%f,",date);
         fmt=fmt + "\n";
         std::vfprintf(file,fmt.c_str(),args);
         va_end(args);

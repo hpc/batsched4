@@ -625,6 +625,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._subtract_progress_from_walltime = event_data["config"]["subtract-progress-from-walltime"].GetBool();
                 workload._seed_repair_time = event_data["config"]["seed-repair-time"].GetInt();
                 workload._MTTR = event_data["config"]["MTTR"].GetDouble();
+                workload._reject_jobs_after_nb_repairs = event_data["config"]["reject-jobs-after-nb-repairs"].GetInt();
                 const rapidjson::Value & Vstart_from_checkpoint = event_data["config"]["start-from-checkpoint"];
                 workload.start_from_checkpoint = new batsched_tools::start_from_chkpt();
                

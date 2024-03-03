@@ -28,6 +28,7 @@ b_log();
 ~b_log();
 void blog(std::string type,std::string fmt, double date,...);
 void add_log_file(std::string file, std::string type);
+void add_header(std::string type,std::string header);
 
 std::unordered_map<std::string,FILE*> _files;
 };
@@ -35,6 +36,17 @@ namespace blog_types
     {
         const std::string SOFT_ERRORS="SOFT_ERRORS";
         const std::string FAILURES="FAILURES";
+    };
+namespace blog_failure_event
+    {
+        const std::string MACHINE_REPAIR = "MACHINE_REPAIR";
+        const std::string MACHINE_INSTANT_DOWN_UP = "MACHINE_INSTANT_DOWN_UP";
+        const std::string REPAIR_TIME = "REPAIR_TIME";
+        const std::string KILLING_JOBS = "KILLING_JOBS";
+        const std::string FAILURE = "FAILURE";
+        const std::string REPAIR_DONE = "REPAIR_DONE";
+        const std::string MACHINE_ALREADY_DOWN = "MACHINE_ALREADY_DOWN";
+
     };
 
 

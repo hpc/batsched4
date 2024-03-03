@@ -93,6 +93,7 @@ public:
     bool _subtract_progress_from_walltime = false;
     int _seed_repair_time = -1;
     double _MTTR = -1.0;
+    int _reject_jobs_after_nb_repairs = -1;
     batsched_tools::start_from_chkpt* start_from_checkpoint = nullptr;
 private:
     char * _fileContents = nullptr;

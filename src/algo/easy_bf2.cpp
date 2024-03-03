@@ -72,7 +72,8 @@ void EasyBackfilling2::on_simulation_start(double date, const rapidjson::Value &
     }
     _myBLOG = new b_log();
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
-    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
+    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES);
+    _myBLOG->add_header(blog_types::FAILURES,"simulated_time,event,data");
     (void) batsim_config;
   
 
@@ -441,7 +442,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
 
     //get a random number of a machine to kill
     int number = machine_unif_distribution->operator()(generator_machine);
-    BLOG_F(blog_types::FAILURES,"On_Machine_Down_For_Repair: %d",number);
+    BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_REPAIR.c_str(),number);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = (*_machines)[number]->id;
     
@@ -456,7 +457,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
     IntervalSet added = IntervalSet::empty_interval_set() ;
     if (_schedule.get_reservations_running_on_machines(machine).empty())
         added = _schedule.add_repair_machine(machine,repair_time);
-
+    BLOG_F(blog_types::FAILURES,"%s,%f",blog_failure_event::REPAIR_TIME.c_str(),repair_time);
     LOG_F(INFO,"here");
     //if the machine is already down for repairs ignore it.
     //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
@@ -492,21 +493,26 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
             LOG_F(INFO,"jobs to kill %s",jobs_to_kill_str.c_str());
 
             if (!jobs_to_kill.empty()){
-                
+                std::string killed_jobs;
                 std::vector<batsched_tools::Job_Message *> msgs;
                 for (auto job_id : jobs_to_kill){
-                    BLOG_F(blog_types::FAILURES,"On_Machine_Down_For_Repair_Kill: %s",job_id.c_str());
+                    
                     LOG_F(INFO,"killing job %s",job_id.c_str());
                     auto msg = new batsched_tools::Job_Message;
                     msg->id = job_id;
                     msg->forWhat = forWhat;
                     msgs.push_back(msg);
+                    if (killed_jobs.empty())
+                        killed_jobs = job_id;
+                    else
+                        killed_jobs=batsched_tools::string_format("%s %s",killed_jobs.c_str(),job_id.c_str());
                 }
 
 
                 _decision->add_kill_job(msgs,date);
                 for (auto job_id:jobs_to_kill)
                     _schedule.remove_job_if_exists((*_workload)[job_id]);
+                BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(),killed_jobs.c_str());
             }
             //in conservative_bf we reschedule everything
             //in easy_bf only backfilled jobs,running jobs and priority job is scheduled
@@ -523,6 +529,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
         }
     }
     else{
+        BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_ALREADY_DOWN.c_str(),number);
         //if (!added.is_empty())
         //  _schedule.remove_repair_machines(machine);
         //_schedule.remove_svg_highlight_machines(machine);
@@ -540,7 +547,7 @@ void EasyBackfilling2::on_machine_instant_down_up(batsched_tools::KILL_TYPES for
     (void) date;
     //get a random number of a machine to kill
     int number = machine_unif_distribution->operator()(generator_machine);
-    BLOG_F(blog_types::FAILURES,"Instant_Down_Up: %d",number);
+    BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_INSTANT_DOWN_UP.c_str(), number);
     //make it an intervalset so we can find the intersection of it with current allocations
     IntervalSet machine = number;
     _schedule.add_svg_highlight_machines(machine);
@@ -559,15 +566,19 @@ void EasyBackfilling2::on_machine_instant_down_up(batsched_tools::KILL_TYPES for
        
         if (!jobs_to_kill.empty())
         {
-            
+            std::string killed_jobs;
             std::vector<batsched_tools::Job_Message *> msgs;
             for (auto job_id : jobs_to_kill){
-                BLOG_F(blog_types::FAILURES,"Instant_Down_Up_Kill: %s",job_id.c_str());
                 auto msg = new batsched_tools::Job_Message;
                 msg->id = job_id;
                 msg->forWhat = forWhat;
                 msgs.push_back(msg);
+                if (killed_jobs.empty())
+                    killed_jobs = job_id;
+                else
+                    killed_jobs=batsched_tools::string_format("%s %s",killed_jobs.c_str(),job_id.c_str());
             }
+            BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(),killed_jobs.c_str());
             _decision->add_kill_job(msgs,date);
             std::string jobs_to_kill_string;
             //remove jobs to kill from schedule and add to our log string
@@ -600,7 +611,7 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
             case batsched_tools::call_me_later_types::SMTBF:
                 {
                     //Log the failure
-                    //BLOG_F(b_log::FAILURES,"FAILURE SMTBF");
+                    BLOG_F(blog_types::FAILURES,"%s,%s",blog_failure_event::FAILURE.c_str(),"SMTBF");
 
                     if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                         {
@@ -620,6 +631,7 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
             /* TODO
             case batsched_tools::call_me_later_types::MTBF:
                         {
+                            BLOG_F(blog_types::FAILURES, "%s,%s",blog_failure_event::FAILURE.c_str(),"MTBF");
                             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                             {
                                 double number = distribution->operator()(generator);
@@ -634,7 +646,7 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
             */
             case batsched_tools::call_me_later_types::FIXED_FAILURE:
                 {
-                    //BLOG_F(b_log::FAILURES,"FAILURE FIXED_FAILURE");
+                    BLOG_F(blog_types::FAILURES,"%s,%s", blog_failure_event::FAILURE.c_str(),"FIXED_FAILURE");
                     LOG_F(INFO,"DEBUG");
                     if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                         {
@@ -654,11 +666,12 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
                 
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                 {
-                    //BLOG_F(b_log::FAILURES,"REPAIR_DONE");
+                    
                     rapidjson::Document doc;
                     doc.Parse(cml_in.extra_data.c_str());
                     PPK_ASSERT(doc.HasMember("machine"),"Error, repair done but no 'machine' field in extra_data");
                     int machine_number = doc["machine"].GetInt();
+                    BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::REPAIR_DONE.c_str() ,machine_number);
                     //a repair is done, all that needs to happen is add the machines to available
                     //and remove them from repair machines and add one to the number of available
                     if (_output_svg == "all")
