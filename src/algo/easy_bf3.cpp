@@ -40,7 +40,7 @@ void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value &
     // @note LH: set output folder for logging
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
-    LOG_F(INFO,"output folder %s",_output_folder.c_str());
+    LOG_F(3,"output folder %s",_output_folder.c_str());
 
     // @note LH: config options for logging failures
     if(batsim_config["log_b_log"].GetBool()){
@@ -64,7 +64,7 @@ void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value &
     // @note LH: Get the queue policy, only "FCFS" and "ORIGINAL-FCFS" are valid
     _queue_policy=batsim_config["queue-policy"].GetString();
     PPK_ASSERT_ERROR(_queue_policy == "FCFS" || _queue_policy == "ORIGINAL-FCFS");
-    LOG_F(INFO, "queue-policy = %s", _queue_policy.c_str());
+    LOG_F(3, "queue-policy = %s", _queue_policy.c_str());
     _myBLOG = new b_log();
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
     _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES);
@@ -89,7 +89,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
     BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_REPAIR.c_str(),number);
     if ((machine & _repair_machines).is_empty())
     {
-        LOG_F(INFO,"here, machine going down for repair %d",number);
+        LOG_F(3,"here, machine going down for repair %d",number);
         //ok the machine is not down for repairs
         //it will be going down for repairs now
         _available_machines-=machine;
@@ -119,7 +119,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
                     msg->id = sj->id;
                     msg->forWhat = batsched_tools::KILL_TYPES::NONE;
                     _my_kill_jobs.insert(std::make_pair(job_ref,msg));
-                    LOG_F(INFO,"Killing Job: %s",sj->id.c_str());
+                    LOG_F(3,"Killing Job: %s",sj->id.c_str());
                     if (killed_jobs.empty())
                         killed_jobs = sj->id;
                     else
@@ -156,7 +156,7 @@ void EasyBackfilling3::on_machine_instant_down_up(double date){
                     killed_jobs=batsched_tools::string_format("%s %s",killed_jobs.c_str(),sj->id.c_str());
             }
         }
-        BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(), killed_jobs);
+        BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(), killed_jobs.c_str());
     }
 }
 
@@ -169,7 +169,7 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
             if ( !_scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received)
                 {
                     double number = failure_exponential_distribution->operator()(generator_failure);
-                    if (_workload->_repair_time == 0.0  && _workload->_MTTR == -1.0)
+                    if (_workload->_repair_time == -1.0  && _workload->_MTTR == -1.0)
                         on_machine_instant_down_up(date);
                     else
                         on_machine_down_for_repair(date);
@@ -271,7 +271,7 @@ void EasyBackfilling3::make_decisions(double date,
         std::vector<batsched_tools::Job_Message *> kills;
         for( auto job_msg_pair:_my_kill_jobs)
         {
-            LOG_F(INFO,"adding kill job %s",job_msg_pair.first->id.c_str());
+            LOG_F(3,"adding kill job %s",job_msg_pair.first->id.c_str());
             kills.push_back(job_msg_pair.second);
         }
         _decision->add_kill_job(kills,date);
@@ -309,7 +309,7 @@ void EasyBackfilling3::make_decisions(double date,
     sort_queue_while_handling_priority_job(priority_job_before, priority_job_after, update_info);
 
     if (get_first_waiting_job() != nullptr)
-        LOG_F(INFO,"first waiting job: %s  resources: %d",get_first_waiting_job()->id.c_str(),get_first_waiting_job()->nb_requested_resources);
+        LOG_F(4,"first waiting job: %s  resources: %d",get_first_waiting_job()->id.c_str(),get_first_waiting_job()->nb_requested_resources);
 
     // If no resources have been released, we can just try to backfill the newly-released jobs
     if (_jobs_ended_recently.empty() && !_need_to_backfill)

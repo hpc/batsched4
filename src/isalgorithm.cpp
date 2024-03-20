@@ -174,11 +174,11 @@ void ISchedulingAlgorithm::set_generators(double date){
     generator_failure_seed = _workload->_seed_failures;
     generator_machine_seed = _workload->_seed_failure_machine;
     generator_repair_time_seed = _workload->_seed_repair_time;
-    if (_workload->_seed_failures != -1)
+    if (_workload->_seed_failures == -1)
         generator_failure_seed = time_seed;
-    if (_workload->_seed_failure_machine != -1)
+    if (_workload->_seed_failure_machine == -1)
         generator_machine_seed = time_seed;
-    if (_workload->_seed_repair_time != -1)
+    if (_workload->_seed_repair_time == -1)
         generator_repair_time_seed = time_seed;
         
     generator_failure.seed(generator_failure_seed);

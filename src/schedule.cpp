@@ -1481,6 +1481,7 @@ JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                             alloc->started_in_first_slice = (pit == _profile.begin()) ? true : false;
                             alloc->job = job;
                             job->allocations[alloc->begin] = alloc;
+                            //LOG_F(INFO,"allocWXYZ:job id: %s  alloc: %s",job->id.c_str(),alloc->used_machines.to_string_hyphen().c_str());
 
                             // Let's remove the used machines from the slices before pit2
                             auto pit3 = pit;
@@ -1490,6 +1491,7 @@ JobAlloc Schedule::add_job_first_fit_after_time_slice(const Job *job,
                                 pit3->allocated_machines += alloc->used_machines;
                                 pit3->nb_available_machines -= job->nb_requested_resources;
                                 pit3->allocated_jobs[job] = alloc->used_machines;
+                                //LOG_F(INFO,"allocXYZ:job id: %s  alloc: %s timeslice: %f",job->id.c_str(),alloc->used_machines.to_string_hyphen().c_str(),pit3->begin.convert_to<double>());
                             }
 
                             // Let's split the current time slice if needed
@@ -2562,10 +2564,14 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
     // Let's retrieve the machines used by the job
     PPK_ASSERT_ERROR(removal_point->allocated_jobs.count(job) == 1);
     IntervalSet job_machines = removal_point->allocated_jobs.at(job);
+    //lets make sure we delete the current allocations from the job
+    job->allocations.clear();
     //LOG_F(INFO," current allocated machines %s \n current repair machines inside remove_job_internal %s",
       //      job_machines.to_string_hyphen().c_str(),
         //    _repair_machines.to_string_hyphen().c_str());
     job_machines-=_repair_machines;
+    //LOG_F(INFO,"job machines: %s",job_machines.to_string_hyphen().c_str());
+    //LOG_F(INFO,"repair machines: %s",_repair_machines.to_string_hyphen().c_str());
     //LOG_F(INFO,"removing job %s",job->id.c_str());
     //LOG_F(INFO,"adding back %s",job_machines.to_string_hyphen().c_str());
     
@@ -2620,12 +2626,12 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 for (auto pair : pit->allocated_jobs)
                     jobsV.push_back(pair.first->id);
                 std::string pitString = boost::algorithm::join(jobsV, ",");
-                //LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
 
                 
                 if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
                 {
-                    LOG_F(INFO,"TRUE");
+                    LOG_F(INFO,"TRUE 2644");
                     PPK_ASSERT_ERROR(previous->available_machines == pit->available_machines,
                         "Two consecutive time slices, do NOT use the same resources "
                         "whereas they contain the same jobs. Slices:\n%s%s",
@@ -2668,12 +2674,12 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 for (auto pair : pit->allocated_jobs)
                     jobsV.push_back(pair.first->id);
                 std::string pitString = boost::algorithm::join(jobsV, ",");
-                //LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
 
                 
                 if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
                     {
-                        LOG_F(INFO,"TRUE");
+                        LOG_F(INFO,"TRUE 2692");
                         PPK_ASSERT_ERROR(previous->available_machines == pit->available_machines,
                             "Two consecutive time slices, do NOT use the same resources "
                             "whereas they contain the same jobs. Slices:\n%s%s",
@@ -2708,12 +2714,12 @@ void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator r
                 for (auto pair : pit->allocated_jobs)
                     jobsV.push_back(pair.first->id);
                 std::string pitString = boost::algorithm::join(jobsV, ",");
-                //LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
+                LOG_F(INFO,"previous alloc: %s\npit alloc: %s",previousString.c_str(),pitString.c_str());
 
                 
                 if ((previous->allocated_jobs == pit->allocated_jobs) || (previousString == pitString ))
                     {
-                        LOG_F(INFO,"TRUE");
+                        LOG_F(INFO,"TRUE 2732");
                         PPK_ASSERT_ERROR(previous->available_machines == pit->available_machines,
                             "Two consecutive time slices, do NOT use the same resources "
                             "whereas they contain the same jobs. Slices:\n%s%s",
@@ -2815,10 +2821,17 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
         //    LOG_F(INFO,"%.15f, ",kv_pair.first.convert_to<double>());
         //LOG_F(INFO,"here %.15f",this->begin.convert_to<double>());
         if (job->allocations.find(this->begin)!= job->allocations.end())
+        {
+           
+                
             jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":" +
                               batsched_tools::to_json_string(job->allocations[this->begin]) +"}");
+        }
         else
+        {
+         
             jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":{ \"used_machines\":\""+mit.second.to_string_hyphen()+"\" }}");
+        }
 
         
     }

@@ -176,7 +176,7 @@ public:
     
 
 protected:
-    
+
     Workload * _workload;
     //myBatsched::Workloads * _myWorkloads;
     Machines * _machines;

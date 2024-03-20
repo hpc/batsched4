@@ -21,7 +21,7 @@ void b_log::add_log_file(std::string file,std::string type){
 }
 void b_log::add_header(std::string type,std::string header){
     FILE* file = _files[type];
-    std::fprintf(file,"%s",header);
+    std::fprintf(file,"%s\n",header.c_str());
     fflush(file);
 
 }

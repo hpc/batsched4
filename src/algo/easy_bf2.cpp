@@ -37,6 +37,7 @@ void EasyBackfilling2::on_simulation_start(double date, const rapidjson::Value &
     const rapidjson::Value & batsim_config = batsim_event["config"];
     LOG_F(INFO,"ON simulation start");
     _output_svg=batsim_config["output-svg"].GetString();
+    std::string output_svg_method = batsim_config["output-svg-method"].GetString();
     _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
@@ -54,6 +55,7 @@ void EasyBackfilling2::on_simulation_start(double date, const rapidjson::Value &
     _schedule = Schedule(_nb_machines, date);
     //added
     _schedule.set_output_svg(_output_svg);
+    _schedule.set_output_svg_method(output_svg_method);
     _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
@@ -744,12 +746,13 @@ void EasyBackfilling2::make_decisions(double date,
 
 
     const Job * priority_job_before = _queue->first_job_or_nullptr();
-
+    LOG_F(INFO,"removing finished jobs");
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently)
         _schedule.remove_job_if_exists((*_workload)[ended_job_id]);
 
     // Let's handle recently released jobs
+    LOG_F(INFO,"handling released recently");
     std::vector<std::string> recently_queued_jobs;
     for (const string & new_job_id : _jobs_released_recently)
     {
@@ -783,13 +786,14 @@ void EasyBackfilling2::make_decisions(double date,
         PPK_ASSERT(date - _start_from_checkpoint.first_submitted_time <= epsilon,"Error, waiting on all submitted jobs to come back resulted in simulated time moving too far ahead.");
         if (all_submitted_jobs_check_passed())
         {
+            LOG_F(INFO,"all jobs submitted, running on first jobs submitted");
             on_first_jobs_submitted(date);
             _recover_from_checkpoint = false;
         }
         
         return;
     }
-
+    LOG_F(INFO,"updating first slice");
     // Let's update the schedule's present
     _schedule.update_first_slice(date);
 
@@ -809,15 +813,17 @@ void EasyBackfilling2::make_decisions(double date,
     {
         on_machine_down_for_repair(forWhat,date);
     }
+    LOG_F(INFO,"handled instant down ups and down for repairs. handling resubmission");
     //ok we handled them all, clear the container
     _on_machine_down_for_repairs.clear();
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
-
-
+    LOG_F(INFO,"handled resubmission. bout to sort queue while handling priority job");
+    if (_output_svg == "short")
+        _schedule.output_to_svg("before");
     // Queue sorting
     const Job * priority_job_after = nullptr;
     sort_queue_while_handling_priority_job(priority_job_before, priority_job_after, update_info, compare_info);
-
+    LOG_F(INFO,"bout to backfill");
     // If no resources have been released, we can just try to backfill the newly-released jobs
     if (_jobs_ended_recently.empty())
     {
@@ -856,9 +862,12 @@ void EasyBackfilling2::make_decisions(double date,
         while (job_it != _queue->end() && nb_available_machines > 0)
         {
             const Job * job = (*job_it)->job;
-
+            std::string message = "backfill job: " + job->id;
+            _schedule.output_to_svg(message);
+            LOG_F(INFO,"backfill remove job first %s",job->id.c_str());
             if (_schedule.contains_job(job))
                 _schedule.remove_job_if_exists(job);
+            LOG_F(INFO,"after remove job");
 
             if (job == priority_job_after) // If the current job is priority
             {
@@ -876,7 +885,7 @@ void EasyBackfilling2::make_decisions(double date,
             else // The job is not priority
             {
                 JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
-
+                _schedule.output_to_svg("added job first fit");
                 if (alloc.started_in_first_slice)
                 {
                     _decision->add_execute_job(job->id, alloc.used_machines, date);
@@ -884,13 +893,15 @@ void EasyBackfilling2::make_decisions(double date,
                 }
                 else
                 {
+                    LOG_F(INFO,"backfill remove job second %s",job->id.c_str());
                     _schedule.remove_job_if_exists(job);
                     ++job_it;
                 }
             }
         }
     }
-
+    if (_output_svg == "short")
+        _schedule.output_to_svg("after");
     if (!_killed_jobs && _jobs_killed_recently.empty() && _queue->is_empty()  && _schedule.size() == 0 &&
             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
     {
@@ -960,7 +971,8 @@ void EasyBackfilling2::sort_queue_while_handling_priority_job(const Job * priori
 
     // Let the new priority job be computed
     priority_job_after = _queue->first_job_or_nullptr();
-
+    if (_output_svg == "short")
+        _schedule.output_to_svg("sort queue while handling priority job");
     // If the priority job has changed
     if (priority_job_after != priority_job_before)
     {
