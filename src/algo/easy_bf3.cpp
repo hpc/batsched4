@@ -440,6 +440,10 @@ void EasyBackfilling3::check_priority_job(const Job * priority_job, double date)
     if(_p_job->id != priority_job->id){
         _p_job->id = priority_job->id;
         _p_job->requested_resources = priority_job->nb_requested_resources;
+        // @note reinitailize predicted values
+        _p_job->shadow_time = 0.0;
+        _p_job->est_finish_time = 0.0;
+        _p_job->extra_resources = 0;
     }
 
     /* @note 
@@ -469,27 +473,37 @@ void EasyBackfilling3::check_priority_job(const Job * priority_job, double date)
     }
 }
 
-//@note LH: added function check if next job can be backfilled
-void EasyBackfilling3::check_backfill_job(const Job * next_job, double date){   
+//@note LH: added function check if next backfill job can be backfilled
+void EasyBackfilling3::check_backfill_job(const Job * backfill_job, double date){   
 
     /* @note LH:
         job can be backfilled if the following is true:
-            - job will finish before the priority jobs reserved start (shadow) time 
-                -AND- the requested resources are <= current available resources
-            - otherwise job finishs after priority jobs start time 
+            case A: job will finish after priority jobs start time 
                 -AND- the requested resources are <= MIN[current available nodes, waiting priority job extra nodes]
+            case B: otherwise job will finish before the priority jobs reserved start (shadow) time 
+                -AND- the requested resources are <= current available resources
+                ***Note: This case requires subtracting "extra resources" when priority job starts
     */
-    _can_run = ((date+C2DBL(next_job->walltime)) <= _p_job->shadow_time)
-        ? (next_job->nb_requested_resources <= _nb_available_machines) 
-        : (next_job->nb_requested_resources <= MIN(_nb_available_machines ,_p_job->extra_resources));
+    bool subtract_resources = ((date+C2DBL(backfill_job->walltime)) > _p_job->shadow_time);
+    _can_run = (subtract_resources)
+        ? (backfill_job->nb_requested_resources <= MIN(_nb_available_machines, _p_job->extra_resources))
+        : (backfill_job->nb_requested_resources <= _nb_available_machines);
 
     /* @note LH:
         job can be backfilled, 
             - add it to the schedule
             - sort the schedule
             - increase backfilled jobs count
+            - substract extra resources 
     */ 
-    if(_can_run) handle_scheduled_job(next_job, date);
+    if(_can_run) {
+        handle_scheduled_job(backfill_job, date);
+        /*  @note LH: 
+            this handles case A for when backfill job will end after priority job starts
+            and there is enough resources to run now, but not after priority job starts
+        */
+        if(subtract_resources) _p_job->extra_resources -= backfill_job->nb_requested_resources;
+    }
 }
 
 //@note LH: added function to add jobs to the schedule

@@ -62,7 +62,7 @@ protected:
 
     // @note LH: Additions for handling scheduling decisions
     void check_priority_job(const Job * priority_job, double date);
-    void check_backfill_job(const Job * next_job, double date);
+    void check_backfill_job(const Job * backfill_job, double date);
     void handle_scheduled_job(const Job * job, double date);
     void handle_finished_job(std::string job_id, double date);
 
