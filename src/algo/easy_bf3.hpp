@@ -21,6 +21,9 @@
 // @note LH: converts some numerical type to type double
 #define C2DBL(x) (x.convert_to<double>()) 
 
+// @note LH: returns the schedules current machine utilization 
+#define NOTIFY_MACHINE_UTIL ((_nb_machines) ? (static_cast<double>(_nb_machines-_nb_available_machines)/_nb_machines) : 0)
+
 class EasyBackfilling3 : public ISchedulingAlgorithm
 {
 public:
@@ -37,16 +40,19 @@ public:
                                                 Job *& priority_job_after,
                                                 SortableJobOrder::UpdateInformation * update_info);
 
-    // @note LH: simulated checkpointing addtions                             
+    // @note LH: simulated checkpointing additions                             
     void on_machine_down_for_repair(double date);
     void on_machine_instant_down_up(double date);
     void on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml);
     void on_myKillJob_notify_event(double date);
     void on_no_more_static_job_to_submit_received(double date);
+
+    // @note LH: real checkpointing additions (TBA)
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
     virtual void on_checkpoint_batsched(double date);
     virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_first_jobs_submitted(double date);
+
 protected:
     bool _debug = false;
     std::string _output_folder;
@@ -56,7 +62,7 @@ protected:
 
     // @note LH: Additions for handling scheduling decisions
     void check_priority_job(const Job * priority_job, double date);
-    void check_next_job(const Job * next_job, double date);
+    void check_backfill_job(const Job * backfill_job, double date);
     void handle_scheduled_job(const Job * job, double date);
     void handle_finished_job(std::string job_id, double date);
 
@@ -104,7 +110,6 @@ protected:
     IntervalSet _available_machines;
     int _nb_available_machines = -1;
     bool _can_run = false;
-    bool _is_priority = false;
 
     // @note LH: Checkpointing variables
     IntervalSet _repair_machines;

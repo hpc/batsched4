@@ -80,6 +80,7 @@ void EasyBackfilling3::on_simulation_end(double date)
 /*********************************************************
  *      MODIFIED SIMULATED CHECKPOINTING FUNCTIONS       *
 **********************************************************/
+
 void EasyBackfilling3::on_machine_down_for_repair(double date){
     //get a random number of a machine to kill
     int number = machine_unif_distribution->operator()(generator_machine);
@@ -242,6 +243,10 @@ void EasyBackfilling3::on_no_more_static_job_to_submit_received(double date){
     ISchedulingAlgorithm::on_no_more_static_job_to_submit_received(date);
 }
 
+/*********************************************************
+ *         REAL CHECKPOINTING FUNCTIONS (TBA)            *
+**********************************************************/
+
 void EasyBackfilling3::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){}
 
 void EasyBackfilling3::on_checkpoint_batsched(double date){}
@@ -324,7 +329,7 @@ void EasyBackfilling3::make_decisions(double date,
             auto wj_it = find_waiting_job(new_job_id);
             if (wj_it != _waiting_jobs.end() && new_job != priority_job_after)
             {
-                check_next_job(new_job, date);
+                check_backfill_job(new_job, date);
 
                 if(_can_run){
                     _decision->add_execute_job(new_job_id, _tmp_job->allocated_machines, date);
@@ -345,7 +350,7 @@ void EasyBackfilling3::make_decisions(double date,
             Job * job = *job_it;
 
             if(job == priority_job_after) check_priority_job(job, date);
-            else check_next_job(job, date);
+            else check_backfill_job(job, date);
             
             if(_can_run){
 
@@ -384,11 +389,10 @@ void EasyBackfilling3::make_decisions(double date,
     }
 
     // @note LH: adds queuing info to the out_jobs_extra.csv file
-    _decision->add_generic_notification("queue_size",std::to_string(_waiting_jobs.size()),date);
-    _decision->add_generic_notification("schedule_size",std::to_string(_scheduled_jobs.size()),date);
-    _decision->add_generic_notification("number_running_jobs",std::to_string(_scheduled_jobs.size()),date);
-    // @todo fix this
-    //_decision->add_generic_notification("utilization",std::to_string(get_utilization()),date);
+    _decision->add_generic_notification("queue_size",to_string(_waiting_jobs.size()),date);
+    _decision->add_generic_notification("schedule_size",to_string(_scheduled_jobs.size()),date);
+    _decision->add_generic_notification("number_running_jobs",to_string(_scheduled_jobs.size()),date);
+    _decision->add_generic_notification("utilization",to_string(NOTIFY_MACHINE_UTIL), date);
 }
 
 void EasyBackfilling3::sort_queue_while_handling_priority_job(Job * priority_job_before,
@@ -436,6 +440,10 @@ void EasyBackfilling3::check_priority_job(const Job * priority_job, double date)
     if(_p_job->id != priority_job->id){
         _p_job->id = priority_job->id;
         _p_job->requested_resources = priority_job->nb_requested_resources;
+        // @note reinitailize predicted values
+        _p_job->shadow_time = 0.0;
+        _p_job->est_finish_time = 0.0;
+        _p_job->extra_resources = 0;
     }
 
     /* @note 
@@ -465,27 +473,37 @@ void EasyBackfilling3::check_priority_job(const Job * priority_job, double date)
     }
 }
 
-//@note LH: added function check if next job can be backfilled
-void EasyBackfilling3::check_next_job(const Job * next_job, double date){   
+//@note LH: added function check if next backfill job can be backfilled
+void EasyBackfilling3::check_backfill_job(const Job * backfill_job, double date){   
 
     /* @note LH:
         job can be backfilled if the following is true:
-            - job will finish before the priority jobs reserved start (shadow) time 
-                -AND- the requested resources are <= current available resources
-            - otherwise job finishs after priority jobs start time 
+            case A: job will finish after priority jobs start time 
                 -AND- the requested resources are <= MIN[current available nodes, waiting priority job extra nodes]
+            case B: otherwise job will finish before the priority jobs reserved start (shadow) time 
+                -AND- the requested resources are <= current available resources
+                ***Note: This case requires subtracting "extra resources" when priority job starts
     */
-    _can_run = ((date+C2DBL(next_job->walltime)) <= _p_job->shadow_time)
-        ? (next_job->nb_requested_resources <= _nb_available_machines) 
-        : (next_job->nb_requested_resources <= MIN(_nb_available_machines ,_p_job->extra_resources));
+    bool subtract_resources = ((date+C2DBL(backfill_job->walltime)) > _p_job->shadow_time);
+    _can_run = (subtract_resources)
+        ? (backfill_job->nb_requested_resources <= MIN(_nb_available_machines, _p_job->extra_resources))
+        : (backfill_job->nb_requested_resources <= _nb_available_machines);
 
     /* @note LH:
         job can be backfilled, 
             - add it to the schedule
             - sort the schedule
             - increase backfilled jobs count
+            - substract extra resources 
     */ 
-    if(_can_run) handle_scheduled_job(next_job, date);
+    if(_can_run) {
+        handle_scheduled_job(backfill_job, date);
+        /*  @note LH: 
+            this handles case A for when backfill job will end after priority job starts
+            and there is enough resources to run now, but not after priority job starts
+        */
+        if(subtract_resources) _p_job->extra_resources -= backfill_job->nb_requested_resources;
+    }
 }
 
 //@note LH: added function to add jobs to the schedule
