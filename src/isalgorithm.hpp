@@ -176,7 +176,7 @@ public:
     
 
 protected:
-
+    #define CCU() 1
     Workload * _workload;
     //myBatsched::Workloads * _myWorkloads;
     Machines * _machines;

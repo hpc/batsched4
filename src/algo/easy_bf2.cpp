@@ -42,7 +42,7 @@ void EasyBackfilling2::on_simulation_start(double date, const rapidjson::Value &
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
     _svg_output_end = batsim_config["svg-output-end"].GetInt64();
-    LOG_F(INFO,"output svg %s",_output_svg.c_str());
+    LOG_F(1,"output svg %s",_output_svg.c_str());
     
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");

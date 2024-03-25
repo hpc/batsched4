@@ -27,6 +27,7 @@ void ISchedulingAlgorithm::set_failure_map(std::map<double,batsched_tools::failu
 }
 void ISchedulingAlgorithm::set_nb_machines(int nb_machines)
 {
+    CLOG_F(CCU_DEBUG_FIN,"_nb_machines: %d",_nb_machines);
     PPK_ASSERT_ERROR(_nb_machines == -1);
     _nb_machines = nb_machines;
 }

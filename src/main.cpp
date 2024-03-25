@@ -120,7 +120,7 @@ int main(int argc, char ** argv)
     const set<string> policies_set = {"basic", "contiguous"};
     const set<string> queue_orders_set = {"fcfs", "original_fcfs" ,"lcfs", "desc_bounded_slowdown", "desc_slowdown",
                                           "asc_size", "desc_size", "asc_walltime", "desc_walltime"};
-    const set<string> verbosity_levels_set = {"debug", "info", "quiet", "silent"};
+    const set<string> verbosity_levels_set = {"debug", "info", "quiet", "silent","CCU_INFO","CCU_DEBUG","CCU_DEBUG_FIN","CCU_DEBUG_ALL"};
 
     const string variants_string = "{" + boost::algorithm::join(variants_set, ", ") + "}";
     const string policies_string = "{" + boost::algorithm::join(policies_set, ", ") + "}";
@@ -218,8 +218,15 @@ int main(int argc, char ** argv)
     try
     {
         // Logging configuration
-        if (verbosity_level == "debug")
+
+        if (verbosity_level == "CCU_INFO")
             loguru::g_stderr_verbosity = loguru::Verbosity_1;
+        else if (verbosity_level == "CCU_DEBUG")
+            loguru::g_stderr_verbosity = loguru::Verbosity_2;
+        else if (verbosity_level == "CCU_DEBUG_FIN")
+            loguru::g_stderr_verbosity = loguru::Verbosity_3;
+        else if (verbosity_level == "CCU_DEBUG_ALL")
+            loguru::g_stderr_verbosity = loguru::Verbosity_4;
         else if (verbosity_level == "quiet")
             loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
         else if (verbosity_level == "silent")

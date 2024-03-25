@@ -32,7 +32,7 @@ EasyBackfilling3::~EasyBackfilling3()
 
 void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
-    LOG_F(INFO,"on simulation start");
+    CLOG_F(INFO,"on simulation start");
     pid_t pid = batsched_tools::get_batsched_pid();
     _decision->add_generic_notification("PID",std::to_string(pid),date);
     const rapidjson::Value & batsim_config = batsim_event["config"];
@@ -40,7 +40,7 @@ void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value &
     // @note LH: set output folder for logging
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
-    LOG_F(3,"output folder %s",_output_folder.c_str());
+    CLOG_F(CCU_DEBUG_FIN,"output folder %s",_output_folder.c_str());
 
     // @note LH: config options for logging failures
     if(batsim_config["log_b_log"].GetBool()){
@@ -64,7 +64,7 @@ void EasyBackfilling3::on_simulation_start(double date, const rapidjson::Value &
     // @note LH: Get the queue policy, only "FCFS" and "ORIGINAL-FCFS" are valid
     _queue_policy=batsim_config["queue-policy"].GetString();
     PPK_ASSERT_ERROR(_queue_policy == "FCFS" || _queue_policy == "ORIGINAL-FCFS");
-    LOG_F(3, "queue-policy = %s", _queue_policy.c_str());
+    CLOG_F(CCU_DEBUG_FIN, "queue-policy = %s", _queue_policy.c_str());
     _myBLOG = new b_log();
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
     _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES);
@@ -89,7 +89,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
     BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_REPAIR.c_str(),number);
     if ((machine & _repair_machines).is_empty())
     {
-        LOG_F(3,"here, machine going down for repair %d",number);
+        CLOG_F(CCU_DEBUG_FIN,"here, machine going down for repair %d",number);
         //ok the machine is not down for repairs
         //it will be going down for repairs now
         _available_machines-=machine;
@@ -271,7 +271,7 @@ void EasyBackfilling3::make_decisions(double date,
         std::vector<batsched_tools::Job_Message *> kills;
         for( auto job_msg_pair:_my_kill_jobs)
         {
-            LOG_F(3,"adding kill job %s",job_msg_pair.first->id.c_str());
+            CLOG_F(CCU_DEBUG_FIN,"adding kill job %s",job_msg_pair.first->id.c_str());
             kills.push_back(job_msg_pair.second);
         }
         _decision->add_kill_job(kills,date);
@@ -294,7 +294,7 @@ void EasyBackfilling3::make_decisions(double date,
         else if (!new_job->has_walltime)
         {
             LOG_SCOPE_FUNCTION(INFO);
-            LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
+            CLOG_F(CCU_DEBUG_FIN, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
             _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NO_WALLTIME);
         }
         else
@@ -309,7 +309,7 @@ void EasyBackfilling3::make_decisions(double date,
     sort_queue_while_handling_priority_job(priority_job_before, priority_job_after, update_info);
 
     if (get_first_waiting_job() != nullptr)
-        LOG_F(4,"first waiting job: %s  resources: %d",get_first_waiting_job()->id.c_str(),get_first_waiting_job()->nb_requested_resources);
+        CLOG_F(CCU_DEBUG_ALL,"first waiting job: %s  resources: %d",get_first_waiting_job()->id.c_str(),get_first_waiting_job()->nb_requested_resources);
 
     // If no resources have been released, we can just try to backfill the newly-released jobs
     if (_jobs_ended_recently.empty() && !_need_to_backfill)
