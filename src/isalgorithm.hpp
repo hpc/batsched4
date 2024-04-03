@@ -14,6 +14,7 @@
 /**
  * @brief The base abstract class of (scheduling & machine state) decision algorithms
  */
+#define B_LOG_INSTANCE _myBLOG
 class ISchedulingAlgorithm
 {
 public:
@@ -169,6 +170,13 @@ public:
     virtual bool all_jobs_submitted_check_passed() {};
     void on_signal_checkpoint();
     void set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map);
+    void normal_start(double date, const rapidjson::Value & batsim_event);
+    void set_compute_resources(const rapidjson::Value & batsim_event);
+    void schedule_start(double date,const rapidjson::Value & batsim_event);
+    void requested_failure_call(double date,batsched_tools::CALL_ME_LATERS cml_in);
+    IntervalSet normal_repair(double date);
+    IntervalSet normal_downUp(double date);
+
     
     
     
@@ -176,19 +184,64 @@ public:
     
 
 protected:
-    #define CCU() 1
+    
     Workload * _workload;
     //myBatsched::Workloads * _myWorkloads;
     Machines * _machines;
     SchedulingDecision * _decision;
     Queue * _queue;
+    std::string _queue_policy;
     ResourceSelector * _selector;
     double _rjms_delay;
     rapidjson::Document * _variant_options;
     int _nb_machines = -1;
     RedisStorage * _redis = nullptr;
+    b_log *_myBLOG;
+    bool _reject_possible = false;
+    double _consumed_joules;
+    std::chrono::_V2::system_clock::time_point _real_time;
+    std::chrono::_V2::system_clock::time_point _start_real_time;
+    int _nb_call_me_laters=0;
+    std::string _output_folder;
+    bool _exit_make_decisions = false;
+    bool _need_to_backfill = false;
+   
+    //share-packing,cores variables
+    //*************************************************
+    struct machine{
+        int id;
+        std::string name;
+        int core_count = -1;
+        int cores_available;
+        double speed;
+    };
+    bool _share_packing = false;
+    double _core_percent = 1.0;
+    std::map<int,machine *> machines_by_int;
+    std::map<std::string,machine *> machines_by_name;
+    //*************************************************
+
+
+
+    //failure variables
+    //**************************************************
+    bool _need_to_send_finished_submitting_jobs = true;
     bool _no_more_static_job_to_submit_received = false;
     bool _no_more_external_event_to_occur_received = false;
+    bool _checkpointing_on=false;
+    std::vector<double> _call_me_laters;
+    bool _wrap_it_up = false;
+    std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups;
+    std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs;
+    std::map<double,batsched_tools::failure_tuple> _file_failures;
+    IntervalSet _available_machines;
+    IntervalSet _unavailable_machines;
+    int _nb_available_machines = -1;
+    IntervalSet _repair_machines;
+    int _repairs_done=0;
+    std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
+        //randomness
+        //**************************
     std::mt19937 generator_failure;
     unsigned int generator_failure_seed;
     std::exponential_distribution<double> * failure_exponential_distribution=nullptr;
@@ -203,14 +256,26 @@ protected:
     unsigned int generator_repair_time_seed;
     std::exponential_distribution<double> * repair_time_exponential_distribution;
     int nb_repair_time_exponential_distribution =0;
-    b_log *_myBLOG;
-    int _repairs_done=0;
-    bool _reject_possible = false;
+    //***************************************************
    
-    
+    //schedule variables
+    //***************************************************
+    std::string _output_svg;
+    std::string _output_svg_method;
+    long _svg_frame_start;
+    long _svg_frame_end;
+    long _svg_output_start;
+    long _svg_output_end;
+    Schedule::RESCHEDULE_POLICY _reschedule_policy;
+    Schedule::IMPACT_POLICY _impact_policy;
+    Schedule _schedule;
+    //**************************************************
     
 
 protected:
+
+    //recently variables
+    //***************************************************
     std::vector<std::string> _jobs_released_recently;
     std::vector<std::string> _jobs_ended_recently;
     std::unordered_map<std::string, batsched_tools::Job_Message *> _jobs_killed_recently;
@@ -220,23 +285,21 @@ protected:
     IntervalSet _machines_that_became_unavailable_recently;
     bool _nopped_recently;
     bool _consumed_joules_updated_recently;
-    double _consumed_joules;
-    std::chrono::_V2::system_clock::time_point _real_time;
-    std::chrono::_V2::system_clock::time_point _start_real_time;
+    //***************************************************
+    
+
+    //Real Checkpoint Variables
+    //***************************************************
     int _nb_batsim_checkpoints = 0;
     long _batsim_checkpoint_interval_seconds = 0;
     std::string _batsim_checkpoint_interval_type = "real";
     bool _need_to_checkpoint = false;
     bool _need_to_send_checkpoint = false;
-    int _nb_call_me_laters=0;
     batsched_tools::start_from_chkpt _start_from_checkpoint;
-    std::string _output_folder;
-    bool _exit_make_decisions = false;
     bool _recover_from_checkpoint = false;
     bool _block_checkpoint = false;
-    std::map<double,batsched_tools::failure_tuple> _file_failures;
     double _start_from_checkpoint_time=0;
-    
+    //***************************************************
 
     
 };

@@ -32,53 +32,12 @@ EasyBackfilling2::~EasyBackfilling2()
 void EasyBackfilling2::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
    //added
-    pid_t pid = batsched_tools::get_batsched_pid();
-    _decision->add_generic_notification("PID",std::to_string(pid),date);
-    const rapidjson::Value & batsim_config = batsim_event["config"];
-    LOG_F(INFO,"ON simulation start");
-    _output_svg=batsim_config["output-svg"].GetString();
-    std::string output_svg_method = batsim_config["output-svg-method"].GetString();
-    _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
-    _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
-    _svg_output_start = batsim_config["svg-output-start"].GetInt64();
-    _svg_output_end = batsim_config["svg-output-end"].GetInt64();
-    LOG_F(1,"output svg %s",_output_svg.c_str());
-    
-    _output_folder=batsim_config["output-folder"].GetString();
-    _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
-    LOG_F(INFO,"output folder %s",_output_folder.c_str());
-    
-    Schedule::convert_policy(batsim_config["reschedule-policy"].GetString(),_reschedule_policy);
-    Schedule::convert_policy(batsim_config["impact-policy"].GetString(),_impact_policy);
-    
-    //was there
-    _schedule = Schedule(_nb_machines, date);
-    //added
-    _schedule.set_output_svg(_output_svg);
-    _schedule.set_output_svg_method(output_svg_method);
-    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
-    _schedule.set_svg_prefix(_output_folder + "/svg/");
-    _schedule.set_policies(_reschedule_policy,_impact_policy);
-    ISchedulingAlgorithm::set_generators(date);
 
+    
+    ISchedulingAlgorithm::normal_start(date,batsim_event);
+    ISchedulingAlgorithm::schedule_start(date,batsim_event);
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
-
-    //re-intialize queue if necessary
-    if (batsim_config["queue-policy"].GetString() == "ORIGINAL-FCFS")
-    {
-        //ok we need to delete the _queue pointer and make a new queue
-        delete _queue;
-        SortableJobOrder * order = new OriginalFCFSOrder;
-        _queue = new Queue(order);
-
-    }
-    _myBLOG = new b_log();
-    _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
-    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES);
-    _myBLOG->add_header(blog_types::FAILURES,"simulated_time,event,data");
-    (void) batsim_config;
-  
-
+   
 }
 
 void EasyBackfilling2::on_simulation_end(double date)
@@ -107,7 +66,7 @@ void EasyBackfilling2::on_start_from_checkpoint(double date,const rapidjson::Val
     pid_t pid = batsched_tools::get_batsched_pid();
     _decision->add_generic_notification("PID",std::to_string(pid),date);
     const rapidjson::Value & batsim_config = batsim_event["config"];
-    LOG_F(INFO,"***** on_start_from_checkpoint ******");
+    CLOG_F(INFO,"***** on_start_from_checkpoint ******");
     _output_svg=batsim_config["output-svg"].GetString();
     std::string output_svg_method = batsim_config["output-svg-method"].GetString();
     //output_svg_method = "text";
@@ -115,10 +74,10 @@ void EasyBackfilling2::on_start_from_checkpoint(double date,const rapidjson::Val
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
     _svg_output_end = batsim_config["svg-output-end"].GetInt64();
-    LOG_F(INFO,"output svg %s",_output_svg.c_str());
+    CLOG_F(CCU_DEBUG_FIN,"output svg: %s  output svg method: %s",_output_svg.c_str(),output_svg_method.c_str());
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
-    
+    CLOG_F(CCU_DEBUG_FIN,"output_folder: %s",_output_folder.c_str());
     Schedule::convert_policy(batsim_config["reschedule-policy"].GetString(),_reschedule_policy);
     Schedule::convert_policy(batsim_config["impact-policy"].GetString(),_impact_policy);
 
@@ -144,9 +103,9 @@ void EasyBackfilling2::on_start_from_checkpoint(double date,const rapidjson::Val
     ifile.close();
     rapidjson::Document scheduleDoc;
     scheduleDoc.Parse(content.c_str());
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     _start_from_checkpoint.jobs_that_should_have_been_submitted_already = _schedule.get_jobs_that_should_have_been_submitted_already(scheduleDoc);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     //we need to set our generators even though they will be overwritten, so that distributions aren't null
     ISchedulingAlgorithm::set_generators(date);
 
@@ -168,16 +127,16 @@ void EasyBackfilling2::on_start_from_checkpoint(double date,const rapidjson::Val
 // @note Leslie added on_checkpoint_batsched(double date)
 void EasyBackfilling2::on_checkpoint_batsched(double date)
 {
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     std::string checkpoint_dir = _output_folder+"/checkpoint_latest";
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     std::ofstream f(checkpoint_dir+"/batsched_schedule.chkpt",std::ios_base::out);
     if (f.is_open())
     {
         f<<_schedule.to_json_string()<<std::endl;
         f.close();
     }
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     f.open(checkpoint_dir+"/batsched_queues.chkpt",std::ios_base::out);
     if (f.is_open())
     {
@@ -188,7 +147,7 @@ void EasyBackfilling2::on_checkpoint_batsched(double date)
         f<<"}";
         f.close();
     }
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     f.open(checkpoint_dir+"/batsched_variables.chkpt",std::ios_base::app);
     if (f.is_open())
     {
@@ -271,36 +230,34 @@ void EasyBackfilling2::on_ingest_variables(const rapidjson::Document & doc,doubl
         _on_machine_down_for_repairs.push_back(static_cast<batsched_tools::KILL_TYPES>(Vomdfr[i].GetInt()));
     }
     const Value & Vcml = derived["_call_me_laters"].GetArray();
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     std::map<int,batsched_tools::CALL_ME_LATERS> cmls;
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     for (SizeType i=0;i<Vcml.Size();i++)
     {
         batsched_tools::CALL_ME_LATERS cml;
-        LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         cml.time = Vcml[i]["value"]["time"].GetDouble();
-        LOG_F(INFO,"here");
         cml.forWhat = static_cast<batsched_tools::call_me_later_types>(Vcml[i]["value"]["forWhat"].GetInt());
-        LOG_F(INFO,"here");
         cml.extra_data = Vcml[i]["value"]["extra_data"].GetString();
-        LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         cml.id = Vcml[i]["value"]["id"].GetInt();
-        LOG_F(INFO,"here");
         cmls[cml.id]=cml;
     }
     _decision->set_call_me_laters(cmls,date,true);
     _decision->remove_blocked_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
 }
 bool EasyBackfilling2::all_submitted_jobs_check_passed()
 {
+    //this function checks whether all jobs have been submitted.
     for (auto job_id :_jobs_released_recently)
         _start_from_checkpoint.jobs_that_have_been_submitted_already.insert(job_id);
     for (auto job_id :_start_from_checkpoint.jobs_that_should_have_been_submitted_already)
     {
         if (!(_start_from_checkpoint.jobs_that_have_been_submitted_already.count(job_id)==1))
         {
-            LOG_F(INFO,"job_id: %s",job_id.c_str());
+            CLOG_F(CCU_DEBUG_ALL,"job_id: %s",job_id.c_str());
             return false;
         }
     }
@@ -329,12 +286,12 @@ void EasyBackfilling2::on_first_jobs_submitted(double date)
     ifile.close();
     rapidjson::Document scheduleDoc;
     scheduleDoc.Parse(content.c_str());
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     
     _schedule.ingest_schedule(scheduleDoc);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     ingest_variables(date);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     content = "";
     std::string batsim_filename = _output_folder + "/start_from_checkpoint/batsim_variables.chkpt";
     ifile.open(batsim_filename);
@@ -349,7 +306,7 @@ void EasyBackfilling2::on_first_jobs_submitted(double date)
     ifile.close();
     rapidjson::Document batVarDoc;
     batVarDoc.Parse(content.c_str());
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     /*  This was thought to be needed.  It may be in the future, but at this time
         it simply results in a duplication of the call_me_later at the target time
         This is because we are starting the simulation effectively at time 0 and going through all the call_me_laters.
@@ -367,7 +324,7 @@ void EasyBackfilling2::on_first_jobs_submitted(double date)
         _decision->add_call_me_later(forWhat,id,target_time,date);
     }
     */
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     //now get the first time slice jobs to execute on the same machines they exectued on before
     for (auto kv_pair:_schedule.begin()->allocated_jobs)
     {
@@ -375,34 +332,34 @@ void EasyBackfilling2::on_first_jobs_submitted(double date)
         _decision->add_execute_job(kv_pair.first->id,kv_pair.second,date);
         //we don't remove the job from queue because we are going to make the queue back to how it was in a second
     }
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     content = "";
     std::string queues_filename = _output_folder + "/start_from_checkpoint/batsched_queues.chkpt";
     ifile.open(queues_filename);
     PPK_ASSERT_ERROR(ifile.is_open(), "Cannot read batsched_queues.chkpt file '%s'", queues_filename.c_str());
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     ifile.seekg(0, ios::end);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     content.reserve(static_cast<unsigned long>(ifile.tellg()));
     ifile.seekg(0, ios::beg);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     content.assign((std::istreambuf_iterator<char>(ifile)),
                 std::istreambuf_iterator<char>());
 
     ifile.close();
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     rapidjson::Document queueDoc;
     queueDoc.Parse(content.c_str());
-    LOG_F(INFO,"content: %s",content.c_str());
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"content: %s",content.c_str());
+    CLOG_F(CCU_DEBUG_ALL,"here");
     if(!_queue->is_empty()) _queue->clear();
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     //@note !!! Error - restarting from checkpoint breaks here
     //@Leslie Not anymore, fixed.  took comma out of the queue file.
     rapidjson::Value & Vqueue = queueDoc["_queue"].GetArray();
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     SortableJobOrder::UpdateInformation update_info(date);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     for (rapidjson::SizeType i=0;i<Vqueue.Size();i++)
     {
         std::string job_id = Vqueue[i].GetString();
@@ -411,7 +368,7 @@ void EasyBackfilling2::on_first_jobs_submitted(double date)
         
         _queue->append_job(new_job,&update_info);
     }
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     /* @note Leslie commented out 
     _reservation_queue->clear();
     rapidjson::Value & Vrqueue = queueDoc["_reservation_queue"].GetArray();
@@ -460,7 +417,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
     if (_schedule.get_reservations_running_on_machines(machine).empty())
         added = _schedule.add_repair_machine(machine,repair_time);
     BLOG_F(blog_types::FAILURES,"%s,%f",blog_failure_event::REPAIR_TIME.c_str(),repair_time);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     //if the machine is already down for repairs ignore it.
     //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
     //BLOG_F(b_log::FAILURES,"Machine Repair: %d",number);
@@ -487,19 +444,22 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
 
             std::vector<std::string> jobs_to_kill;
             _schedule.get_jobs_running_on_machines(machine,jobs_to_kill);
-
-              std::string jobs_to_kill_str = !(jobs_to_kill.empty())? std::accumulate( /* otherwise, accumulate */
-            ++jobs_to_kill.begin(), jobs_to_kill.end(), /* the range 2nd to after-last */
-            *jobs_to_kill.begin(), /* and start accumulating with the first item */
-            [](auto& a, auto& b) { return a + "," + b; }) : "";
-            LOG_F(INFO,"jobs to kill %s",jobs_to_kill_str.c_str());
+            std::string jobs_to_kill_str = "";
+            if (loguru::g_stderr_verbosity == CCU_DEBUG)
+            {
+                jobs_to_kill_str = !(jobs_to_kill.empty())? std::accumulate( /* otherwise, accumulate */
+                ++jobs_to_kill.begin(), jobs_to_kill.end(), /* the range 2nd to after-last */
+                *jobs_to_kill.begin(), /* and start accumulating with the first item */
+                [](auto& a, auto& b) { return a + "," + b; }) : "";
+            }
+            CLOG_F(CCU_DEBUG,"jobs to kill %s",jobs_to_kill_str.c_str());
 
             if (!jobs_to_kill.empty()){
                 std::string killed_jobs;
                 std::vector<batsched_tools::Job_Message *> msgs;
                 for (auto job_id : jobs_to_kill){
                     
-                    LOG_F(INFO,"killing job %s",job_id.c_str());
+                    CLOG_F(CCU_DEBUG,"killing job %s",job_id.c_str());
                     auto msg = new batsched_tools::Job_Message;
                     msg->id = job_id;
                     msg->forWhat = forWhat;
@@ -556,8 +516,7 @@ void EasyBackfilling2::on_machine_instant_down_up(batsched_tools::KILL_TYPES for
     if (_output_svg == "all")
             _schedule.output_to_svg("On Machine Instant Down Up  Machine #: "+std::to_string(number));
     
-    //BLOG_F(b_log::FAILURES,"Machine Instant Down Up: %d",number);
-    LOG_F(INFO,"instant down up machine number %d",number);
+    CLOG_F(CCU_DEBUG,"instant down up machine number %d",number);
     //if there are no running jobs, then there are none to kill
     if (_schedule.get_number_of_running_jobs() > 0){
         //ok so there are running jobs
@@ -584,15 +543,14 @@ void EasyBackfilling2::on_machine_instant_down_up(batsched_tools::KILL_TYPES for
             _decision->add_kill_job(msgs,date);
             std::string jobs_to_kill_string;
             //remove jobs to kill from schedule and add to our log string
-             LOG_F(INFO,"instant down up");
+            CLOG_F(CCU_DEBUG,"instant down up");
             for (auto job_id:jobs_to_kill)
             {
                 jobs_to_kill_string += ", " + job_id;
                 _schedule.remove_job_if_exists((*_workload)[job_id]);
 
             }
-             LOG_F(INFO,"instant down up");
-            //BLOG_F(b_log::FAILURES,"Killing Jobs: %s",jobs_to_kill_string.c_str());
+             CLOG_F(CCU_DEBUG,"instant down up");
     
         }
             	
@@ -618,8 +576,8 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
                     if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                         {
                             double number = failure_exponential_distribution->operator()(generator_failure);
-                            LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
-                            if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
+                            CLOG_F(CCU_DEBUG_ALL,"_repair_time: %f _workload->MTTR: %f",_workload->_repair_time,_workload->_MTTR);
+                            if (_workload->_repair_time == -1.0 && _workload->_MTTR == -1.0)
                                 _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
                             else
                                 _on_machine_down_for_repairs.push_back(batsched_tools::KILL_TYPES::SMTBF);
@@ -649,10 +607,10 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
             case batsched_tools::call_me_later_types::FIXED_FAILURE:
                 {
                     BLOG_F(blog_types::FAILURES,"%s,%s", blog_failure_event::FAILURE.c_str(),"FIXED_FAILURE");
-                    LOG_F(INFO,"DEBUG");
+                    CLOG_F(CCU_DEBUG_ALL,"here");
                     if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                         {
-                            LOG_F(INFO,"DEBUG");
+                            CLOG_F(CCU_DEBUG_ALL,"DEBUG");
                             double number = _workload->_fixed_failures;
                             if (_workload->_repair_time == 0.0 & _workload->_MTTR == -1.0)
                                 _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::FIXED_FAILURE);//defer to after make_decisions
@@ -724,17 +682,17 @@ void EasyBackfilling2::make_decisions(double date,
         _exit_make_decisions = false;     
         return;
     }
-    LOG_F(INFO,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
+    CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
     send_batsim_checkpoint_if_ready(date);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     if (_need_to_checkpoint){
         checkpoint_batsched(date);
     }
         
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     if (_output_svg != "none")
         _schedule.set_now((Rational)date);
-    LOG_F(INFO,"make decisions");
+    CLOG_F(CCU_DEBUG_FIN,"make decisions");
 
     //define a sort function for sorting jobs based on original submit times
     auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
@@ -746,13 +704,13 @@ void EasyBackfilling2::make_decisions(double date,
 
 
     const Job * priority_job_before = _queue->first_job_or_nullptr();
-    LOG_F(INFO,"removing finished jobs");
+    CLOG_F(CCU_DEBUG,"removing finished jobs");
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently)
         _schedule.remove_job_if_exists((*_workload)[ended_job_id]);
 
     // Let's handle recently released jobs
-    LOG_F(INFO,"handling released recently");
+    CLOG_F(CCU_DEBUG,"handling released recently");
     std::vector<std::string> recently_queued_jobs;
     for (const string & new_job_id : _jobs_released_recently)
     {
@@ -770,7 +728,7 @@ void EasyBackfilling2::make_decisions(double date,
         else if (!new_job->has_walltime)
         {
             LOG_SCOPE_FUNCTION(INFO);
-            LOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
+            CLOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
             _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NO_WALLTIME);
         }
         else
@@ -786,14 +744,14 @@ void EasyBackfilling2::make_decisions(double date,
         PPK_ASSERT(date - _start_from_checkpoint.first_submitted_time <= epsilon,"Error, waiting on all submitted jobs to come back resulted in simulated time moving too far ahead.");
         if (all_submitted_jobs_check_passed())
         {
-            LOG_F(INFO,"all jobs submitted, running on first jobs submitted");
+            CLOG_F(CCU_DEBUG,"all jobs submitted, running on first jobs submitted");
             on_first_jobs_submitted(date);
             _recover_from_checkpoint = false;
         }
         
         return;
     }
-    LOG_F(INFO,"updating first slice");
+    CLOG_F(CCU_DEBUG_FIN,"updating first slice");
     // Let's update the schedule's present
     _schedule.update_first_slice(date);
 
@@ -813,17 +771,17 @@ void EasyBackfilling2::make_decisions(double date,
     {
         on_machine_down_for_repair(forWhat,date);
     }
-    LOG_F(INFO,"handled instant down ups and down for repairs. handling resubmission");
+    CLOG_F(CCU_DEBUG,"handled instant down ups and down for repairs. handling resubmission");
     //ok we handled them all, clear the container
     _on_machine_down_for_repairs.clear();
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
-    LOG_F(INFO,"handled resubmission. bout to sort queue while handling priority job");
+    CLOG_F(CCU_DEBUG,"handled resubmission. bout to sort queue while handling priority job");
     if (_output_svg == "short")
         _schedule.output_to_svg("before");
     // Queue sorting
     const Job * priority_job_after = nullptr;
     sort_queue_while_handling_priority_job(priority_job_before, priority_job_after, update_info, compare_info);
-    LOG_F(INFO,"bout to backfill");
+    CLOG_F(CCU_DEBUG,"bout to backfill");
     // If no resources have been released, we can just try to backfill the newly-released jobs
     if (_jobs_ended_recently.empty())
     {
@@ -864,10 +822,10 @@ void EasyBackfilling2::make_decisions(double date,
             const Job * job = (*job_it)->job;
             std::string message = "backfill job: " + job->id;
             _schedule.output_to_svg(message);
-            LOG_F(INFO,"backfill remove job first %s",job->id.c_str());
+            CLOG_F(CCU_DEBUG_ALL,"backfill remove job first %s",job->id.c_str());
             if (_schedule.contains_job(job))
                 _schedule.remove_job_if_exists(job);
-            LOG_F(INFO,"after remove job");
+            CLOG_F(CCU_DEBUG_ALL,"after remove job");
 
             if (job == priority_job_after) // If the current job is priority
             {
@@ -893,7 +851,7 @@ void EasyBackfilling2::make_decisions(double date,
                 }
                 else
                 {
-                    LOG_F(INFO,"backfill remove job second %s",job->id.c_str());
+                    CLOG_F(CCU_DEBUG_ALL,"backfill remove job second %s",job->id.c_str());
                     _schedule.remove_job_if_exists(job);
                     ++job_it;
                 }
@@ -913,7 +871,7 @@ void EasyBackfilling2::make_decisions(double date,
         _output_svg = "none";
         _need_to_send_finished_submitting_jobs = false;
     }
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     //descriptive log statement
     //LOG_F(INFO,"!killed= %d  jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
     //!_killed_jobs,_jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
@@ -964,7 +922,7 @@ void EasyBackfilling2::sort_queue_while_handling_priority_job(const Job * priori
                                                              SortableJobOrder::CompareInformation * compare_info)
 {
     if (_debug)
-        LOG_F(1, "sort_queue_while_handling_priority_job beginning, %s", _schedule.to_string().c_str());
+        CLOG_F(CCU_DEBUG_MAX, "sort_queue_while_handling_priority_job beginning, %s", _schedule.to_string().c_str());
 
     // Let's sort the queue
     _queue->sort_queue(update_info, compare_info);
@@ -1000,5 +958,5 @@ void EasyBackfilling2::sort_queue_while_handling_priority_job(const Job * priori
     }
 
     if (_debug)
-        LOG_F(1, "sort_queue_while_handling_priority_job ending, %s", _schedule.to_string().c_str());
+        CLOG_F(CCU_DEBUG_MAX, "sort_queue_while_handling_priority_job ending, %s", _schedule.to_string().c_str());
 }

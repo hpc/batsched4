@@ -14,6 +14,172 @@ namespace fs = std::experimental::filesystem;
 #endif
 
 using namespace std;
+void ISchedulingAlgorithm::normal_start(double date, const rapidjson::Value & batsim_event)
+{
+    CLOG_F(INFO,"on simulation start");
+    pid_t pid = batsched_tools::get_batsched_pid();
+    _decision->add_generic_notification("PID",std::to_string(pid),date);
+    const rapidjson::Value & batsim_config = batsim_event["config"];
+
+    // @note LH: set output folder for logging
+    _output_folder=batsim_config["output-folder"].GetString();
+    _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
+    CLOG_F(CCU_DEBUG_FIN,"output folder %s",_output_folder.c_str());
+    ISchedulingAlgorithm::set_generators(date);
+
+    // @note LH: Get the queue policy, only "FCFS" and "ORIGINAL-FCFS" are valid
+    _queue_policy=batsim_config["queue-policy"].GetString();
+    PPK_ASSERT_ERROR(_queue_policy == "FCFS" || _queue_policy == "ORIGINAL-FCFS");
+    CLOG_F(CCU_DEBUG_FIN, "queue-policy = %s", _queue_policy.c_str());
+    _myBLOG = new b_log();
+    _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
+    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES);
+    _myBLOG->add_header(blog_types::FAILURES,"simulated_time,event,data");
+    (void) batsim_config;
+}
+void ISchedulingAlgorithm::schedule_start(double date, const rapidjson::Value & batsim_event)
+{
+    const rapidjson::Value & batsim_config = batsim_event["config"];
+    _output_svg=batsim_config["output-svg"].GetString();
+    _output_svg_method = batsim_config["output-svg-method"].GetString();
+    _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
+    _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
+    _svg_output_start = batsim_config["svg-output-start"].GetInt64();
+    _svg_output_end = batsim_config["svg-output-end"].GetInt64();
+    Schedule::convert_policy(batsim_config["reschedule-policy"].GetString(),_reschedule_policy);
+    Schedule::convert_policy(batsim_config["impact-policy"].GetString(),_impact_policy);
+    CLOG_F(CCU_DEBUG_FIN,"output svg: %s, method: %s",_output_svg.c_str(),_output_svg_method.c_str());
+    //was there
+    _schedule = Schedule(_nb_machines, date);
+    //added
+    _schedule.set_output_svg(_output_svg);
+    _schedule.set_output_svg_method(_output_svg_method);
+    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
+    _schedule.set_svg_prefix(_output_folder + "/svg/");
+    _schedule.set_policies(_reschedule_policy,_impact_policy);
+}
+void ISchedulingAlgorithm::set_compute_resources(const rapidjson::Value & batsim_event)
+{
+    const rapidjson::Value& resources = batsim_event["compute_resources"];
+    for ( auto & itr : resources.GetArray())
+    {
+	machine* a_machine = new machine();
+        if (itr.HasMember("id"))
+            a_machine->id = (itr)["id"].GetInt();
+        if (itr.HasMember("core_count"))
+        {
+            a_machine->core_count = (itr)["core_count"].GetInt();
+            a_machine->cores_available = int(a_machine->core_count * _core_percent);
+        }
+        if (itr.HasMember("speed"))
+            a_machine->speed = (itr)["speed"].GetDouble();
+        if (itr.HasMember("name"))
+            a_machine->name = (itr)["name"].GetString();
+        machines_by_int[a_machine->id] = a_machine;
+        machines_by_name[a_machine->name] = a_machine;
+        //LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
+   }
+}
+void ISchedulingAlgorithm::requested_failure_call(double date, batsched_tools::CALL_ME_LATERS cml_in)
+{
+    double number = failure_exponential_distribution->operator()(generator_failure);
+    batsched_tools::KILL_TYPES killType;
+    switch(cml_in.forWhat){
+    
+        case batsched_tools::call_me_later_types::SMTBF:
+            //Log the failure
+            BLOG_F(blog_types::FAILURES,"%s,%s",blog_failure_event::FAILURE.c_str(),"SMTBF");
+            CLOG_F(CCU_DEBUG,"SMTBF Failure");
+            killType=batsched_tools::KILL_TYPES::SMTBF;
+        break;
+        case batsched_tools::call_me_later_types::MTBF:
+            BLOG_F(blog_types::FAILURES, "%s,%s",blog_failure_event::FAILURE.c_str(),"MTBF");
+            CLOG_F(CCU_DEBUG,"MTBF Failure");
+            killType=batsched_tools::KILL_TYPES::MTBF;
+        break;
+        case batsched_tools::call_me_later_types::FIXED_FAILURE:
+            BLOG_F(blog_types::FAILURES,"%s,%s", blog_failure_event::FAILURE.c_str(),"FIXED_FAILURE");
+            CLOG_F(CCU_DEBUG,"Fixed Failure");
+            killType=batsched_tools::KILL_TYPES::FIXED_FAILURE;
+        break;
+        case batsched_tools::call_me_later_types::REPAIR_DONE:
+        {
+            rapidjson::Document doc;
+            doc.Parse(cml_in.extra_data.c_str());
+            PPK_ASSERT(doc.HasMember("machine"),"Error, repair done but no 'machine' field in extra_data");
+            int machine_number = doc["machine"].GetInt();
+            BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::REPAIR_DONE.c_str() ,machine_number);
+            CLOG_F(CCU_DEBUG,"Repair Done On Machine: %d",machine_number);
+            //a repair is done, all that needs to happen is add the machines to available
+            //and remove them from repair machines and add one to the number of available
+            IntervalSet machine = machine_number;
+            _available_machines += machine;
+            _unavailable_machines -= machine;
+            _repair_machines -= machine;
+            _nb_available_machines=_available_machines.size();
+            _machines_that_became_available_recently += machine;
+            _need_to_backfill = true;
+            if (_reject_possible)
+                _repairs_done++;
+        }
+        break;
+    }
+    if (_workload->_repair_time == -1.0  && _workload->_MTTR == -1.0)
+        _on_machine_instant_down_ups.push_back(killType);
+    else
+        _on_machine_down_for_repairs.push_back(killType);
+    batsched_tools::CALL_ME_LATERS cml;
+    cml.forWhat = cml_in.forWhat;
+    cml.id = _nb_call_me_laters;
+    _decision->add_call_me_later(date,number+date,cml);
+    
+}
+IntervalSet ISchedulingAlgorithm::normal_repair(double date)
+{
+     //get a random number of a machine to kill
+    int number = machine_unif_distribution->operator()(generator_machine);
+    //make it an intervalset so we can find the intersection of it with current allocations
+    IntervalSet machine = number;
+    //if the machine is already down for repairs ignore it.
+    BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_REPAIR.c_str(),number);
+    if ((machine & _repair_machines).is_empty())
+    {
+        CLOG_F(CCU_DEBUG,"here, machine going down for repair %d",number);
+        //ok the machine is not down for repairs
+        //it will be going down for repairs now
+        _available_machines-=machine;
+        _unavailable_machines+=machine;
+        _repair_machines+=machine;
+        _nb_available_machines=_available_machines.size();
+        double repair_time = _workload->_repair_time;
+
+        if (_workload->_MTTR != -1.0)
+            repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
+        BLOG_F(blog_types::FAILURES,"%s,%f",blog_failure_event::REPAIR_TIME.c_str(),repair_time);
+        //call me back when the repair is done
+        std::string extra_data = batsched_tools::string_format("{\"machine\":%d}",number);
+        batsched_tools::CALL_ME_LATERS cml;
+        cml.forWhat = batsched_tools::call_me_later_types::REPAIR_DONE;
+        cml.id = _nb_call_me_laters;
+        cml.extra_data = extra_data;
+        _decision->add_call_me_later(date,date+repair_time,cml);
+        return machine;
+    }
+    else{
+        BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_ALREADY_DOWN.c_str(),number);
+        return IntervalSet::empty_interval_set();
+    }
+}
+IntervalSet ISchedulingAlgorithm::normal_downUp(double date)
+{
+    //get a random number of a machine to kill
+    int number = machine_unif_distribution->operator()(generator_machine);
+    //make it an intervalset so we can find the intersection of it with current allocations
+    IntervalSet machine = number;
+    BLOG_F(blog_types::FAILURES,"%s,%d",blog_failure_event::MACHINE_INSTANT_DOWN_UP.c_str(), number);
+    CLOG_F(CCU_DEBUG,"here, machine going down for repair %d",number);
+    return machine;
+}
 void ISchedulingAlgorithm::set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map)
 {
  _file_failures = failure_map;

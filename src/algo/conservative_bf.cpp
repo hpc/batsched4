@@ -361,54 +361,12 @@ void ConservativeBackfilling::on_first_jobs_submitted(double date)
 }
 void ConservativeBackfilling::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
-    pid_t pid = batsched_tools::get_batsched_pid();
-    _decision->add_generic_notification("PID",std::to_string(pid),date);
-    const rapidjson::Value & batsim_config = batsim_event["config"];
-    LOG_F(INFO,"ON simulation start");
-    _output_svg=batsim_config["output-svg"].GetString();
-    std::string output_svg_method = batsim_config["output-svg-method"].GetString();
-    _svg_frame_start = batsim_config["svg-frame-start"].GetInt64();
-    _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
-    _svg_output_start = batsim_config["svg-output-start"].GetInt64();
-    _svg_output_end = batsim_config["svg-output-end"].GetInt64();
-    LOG_F(INFO,"output svg %s",_output_svg.c_str());
-    
-    _output_folder=batsim_config["output-folder"].GetString();
-    
-    _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
-    
-    LOG_F(INFO,"output folder %s",_output_folder.c_str());
-   
-    
-    Schedule::convert_policy(batsim_config["reschedule-policy"].GetString(),_reschedule_policy);
-    Schedule::convert_policy(batsim_config["impact-policy"].GetString(),_impact_policy);
-
-    _schedule = Schedule(_nb_machines, date);
-    _schedule.set_output_svg(_output_svg);
-    _schedule.set_output_svg_method(output_svg_method);
-    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
-    _schedule.set_svg_prefix(_output_folder + "/svg/");
-    _schedule.set_policies(_reschedule_policy,_impact_policy);
-    if (_file_failures.empty())
-        ISchedulingAlgorithm::set_generators(date);
+    ISchedulingAlgorithm::normal_start(date,batsim_event);
+    ISchedulingAlgorithm::schedule_start(date,batsim_event);
     
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
     
-    //re-intialize queue if necessary
-    /*
-    if (batsim_config["queue-policy"].GetString() == "ORIGINAL-FCFS")
-    {
-        //ok we need to delete the _queue pointer and make a new queue
-        delete _queue;
-        SortableJobOrder * order = new OriginalFCFSOrder;
-        _queue = new Queue(order);
-
-    }
-*/
-    _myBLOG = new b_log();
-    _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS);
-    _myBLOG->add_log_file(_output_folder+"/log/simulated_failures.log",blog_types::FAILURES);
-    (void) batsim_config;
+    
 }
 
 
@@ -653,6 +611,8 @@ void ConservativeBackfilling::on_machine_instant_down_up(batsched_tools::KILL_TY
 }
 void ConservativeBackfilling::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml_in)
 {
+   
+        
         LOG_F(ERROR,"here");
         if (_output_svg != "none")
             _schedule.set_now((Rational)date);
@@ -665,15 +625,11 @@ void ConservativeBackfilling::on_requested_call(double date,batsched_tools::CALL
                             if (_schedule.get_number_of_running_jobs() > 0 || !_queue->is_empty() || !_no_more_static_job_to_submit_received)
                                 {
                                     
-                                    LOG_F(ERROR,"here");
                                     double number;
                                         if (_file_failures.empty())
                                             number = failure_exponential_distribution->operator()(generator_failure);
-                                        LOG_F(ERROR,"here");
-                                        nb_failure_exponential_distribution++;
-                                        LOG_F(ERROR,"here");
-                                        LOG_F(INFO,"%f %f",_workload->_repair_time,_workload->_MTTR);
-                                        LOG_F(ERROR,"here");
+
+    
                                         if (_workload->_repair_time == 0.0 && _workload->_MTTR == -1.0)
                                             _on_machine_instant_down_ups.push_back(batsched_tools::KILL_TYPES::SMTBF);                                        
                                         else

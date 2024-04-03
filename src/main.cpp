@@ -653,7 +653,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 */
             LOG_F(INFO, "after set workloads");
                 d.set_redis(redis_enabled, &redis);
-
+                
                 algo->set_nb_machines(nb_resources);
                 
                 if (workload.start_from_checkpoint->started_from_checkpoint)

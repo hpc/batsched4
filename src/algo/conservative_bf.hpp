@@ -47,15 +47,8 @@ private:
                             double date);
     void handle_schedule(std::vector<std::string>& recently_queued_jobs,double date);
     
-    Schedule _schedule;
     Queue * _reservation_queue=nullptr;
-    std::string _output_svg;
-    long _svg_frame_start;
-    long _svg_frame_end;
-    long _svg_output_start;
-    long _svg_output_end;
-    Schedule::RESCHEDULE_POLICY _reschedule_policy;
-    Schedule::IMPACT_POLICY _impact_policy;
+
     double _previous_date;
     std::vector<Schedule::ReservedTimeSlice> _saved_reservations;
     bool _killed_jobs = false;
@@ -68,17 +61,12 @@ private:
     bool _dump_provisional_schedules = false;
     std::string _dump_prefix = "/tmp/dump";
     //myBatsched::Workloads * _myWorkloads;
-    bool _checkpointing_on;
     bool _start_a_reservation=false;
     
     std::map<std::string,batsched_tools::KILL_TYPES>_resubmitted_jobs;
     std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>>_resubmitted_jobs_released;
-    
+       
 
-
-   
-    std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups;
-    std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs;
 
    
     

@@ -18,9 +18,10 @@ struct Job;
 
 
 #define CCU_INFO 1
-#define CCU_DEBUG 2
-#define CCU_DEBUG_FIN 3
+#define CCU_DEBUG_FIN 2
+#define CCU_DEBUG 3
 #define CCU_DEBUG_ALL 4
+#define CCU_DEBUG_MAX 9
 #define CLOG_F(verbosity_level, ...) LOG_F(verbosity_level,__VA_ARGS__)
 
 #define BLOG_F(log_type,fmt,...) B_LOG_INSTANCE->blog(log_type,fmt,date,## __VA_ARGS__)

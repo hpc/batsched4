@@ -93,23 +93,6 @@ private:
    // myBatsched::Workloads * _myWorkloads;
     double _oldDate=-1;
     int _killed=0;
-    bool _wrap_it_up = false;
-    bool _need_to_send_finished_submitting_jobs = true;
-    bool _checkpointing_on=false;
-    std::vector<double> _call_me_laters;
-    std::string _output_folder;
-        
-    struct machine{
-        int id;
-        std::string name;
-        int core_count = -1;
-        int cores_available;
-        double speed;
-    };
-    bool _share_packing = false;
-    double _core_percent = 1.0;
-    std::map<int,machine *> machines_by_int;
-    std::map<std::string,machine *> machines_by_name;
     
 
     // Allocations of running jobs

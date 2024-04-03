@@ -45,21 +45,16 @@ public:
     virtual void on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml);
     
 protected:
-    Schedule _schedule;
+    
     bool _debug = false;
 
     //added
     // @note Leslie commented out 
     //Queue * _reservation_queue=nullptr;
     //std::string _output_folder;
-    std::string _output_svg;
-    long _svg_frame_start;
-    long _svg_frame_end;
-    long _svg_output_start;
-    long _svg_output_end;
 
-    Schedule::RESCHEDULE_POLICY _reschedule_policy;
-    Schedule::IMPACT_POLICY _impact_policy;
+
+
     double _previous_date;
     // @note Leslie commented out 
     //std::vector<Schedule::ReservedTimeSlice> _saved_reservations;

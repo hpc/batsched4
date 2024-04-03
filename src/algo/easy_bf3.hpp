@@ -16,7 +16,7 @@
 #define MIN(a,b) (((a)<(b)) ? (a) : (b))
 
 //@note LH: added for optional failures logging
-#define B_LOG_INSTANCE _logFailure
+
 
 // @note LH: converts some numerical type to type double
 #define C2DBL(x) (x.convert_to<double>()) 
@@ -55,10 +55,7 @@ public:
 
 protected:
     bool _debug = false;
-    std::string _output_folder;
-    //added
-    b_log *_logFailure;
-    std::string _queue_policy;
+      
 
     // @note LH: Additions for handling scheduling decisions
     void check_priority_job(const Job * priority_job, double date);
@@ -79,6 +76,8 @@ protected:
     std::vector<Job *>::iterator delete_waiting_job(std::vector<Job *>::iterator wj_iter);
     std::vector<Job *>::iterator delete_waiting_job(std::string waiting_job_id);
     Job * get_first_waiting_job();
+    void max_heapify_schedule(int root, int size);
+    void heap_sort_schedule(int size);
 
     // @note LH: Additions for replacing the schedule class
     struct Scheduled_Job
@@ -92,8 +91,7 @@ protected:
     };
     Scheduled_Job * _tmp_job = NULL;
     std::vector<Scheduled_Job *> _scheduled_jobs;
-    void max_heapify_schedule(int root, int size);
-    void heap_sort_schedule(int size);
+
 
     // @note LH: Struct to keep track of priority job
     struct Priority_Job
@@ -107,16 +105,10 @@ protected:
     Priority_Job * _p_job = NULL;
 
     // @note LH: Added variables
-    IntervalSet _available_machines;
-    int _nb_available_machines = -1;
+    
     bool _can_run = false;
 
     // @note LH: Checkpointing variables
-    IntervalSet _repair_machines;
-    bool _need_to_send_finished_submitting_jobs = true;
-    bool _checkpointing_on=false;
-    std::vector<double> _call_me_laters;
-    std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
-    bool _need_to_backfill = false;
+        
     
 };

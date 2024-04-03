@@ -38,13 +38,11 @@ void easy_bf_fast2_holdback::on_start_from_checkpoint(double date,const rapidjso
 
 }
 void easy_bf_fast2_holdback::on_simulation_start(double date,
-    const rapidjson::Value &batsim_event_data)
+    const rapidjson::Value &batsim_event)
 {
-    pid_t pid = batsched_tools::get_batsched_pid();
-    _decision->add_generic_notification("PID",std::to_string(pid),date);
-    bool seedFailures = false;
-    bool logBLog = false;
-    const rapidjson::Value & batsim_config = batsim_event_data["config"];
+    ISchedulingAlgorithm::normal_start(date,batsim_event);
+
+    const rapidjson::Value & batsim_config = batsim_event["config"];
     if (batsim_config.HasMember("share-packing"))
         _share_packing = batsim_config["share-packing"].GetBool();
     if (batsim_config.HasMember("share-packing-holdback"))
@@ -52,45 +50,13 @@ void easy_bf_fast2_holdback::on_simulation_start(double date,
     if (batsim_config.HasMember("core-percent"))
         _core_percent = batsim_config["core-percent"].GetDouble();
 
-    if (batsim_config.HasMember("output-folder")){
-        _output_folder = batsim_config["output-folder"].GetString();
-        _output_folder=_output_folder.substr(0,_output_folder.find_last_of("/"));
-    }
-    
-    if (batsim_config.HasMember("seed-failures"))
-        seedFailures = batsim_config["seed-failures"].GetBool();
-    if (batsim_config.HasMember("log_b_log"))
-        logBLog = batsim_config["log_b_log"].GetBool();
-    //log BLogs, add log files that you want logged to.
-    if (logBLog){
-        _myBLOG->add_log_file(_output_folder+"/log/failures.log","FAILURES");
-    }
-    ISchedulingAlgorithm::set_generators(date);
     _available_machines.insert(IntervalSet::ClosedInterval(0, _nb_machines - 1));
     _nb_available_machines = _nb_machines;
-    //LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
+
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
-    const rapidjson::Value& resources = batsim_event_data["compute_resources"];
-    for ( auto & itr : resources.GetArray())
-    {
-	machine* a_machine = new machine();
-        if (itr.HasMember("id"))
-            a_machine->id = (itr)["id"].GetInt();
-        if (itr.HasMember("core_count"))
-        {
-            a_machine->core_count = (itr)["core_count"].GetInt();
-            a_machine->cores_available = int(a_machine->core_count * _core_percent);
-        }
-        if (itr.HasMember("speed"))
-            a_machine->speed = (itr)["speed"].GetDouble();
-        if (itr.HasMember("name"))
-            a_machine->name = (itr)["name"].GetString();
-        machines_by_int[a_machine->id] = a_machine;
-        machines_by_name[a_machine->name] = a_machine;
-        
+
+    ISchedulingAlgorithm::set_compute_resources(batsim_event);
     
-        //LOG_F(INFO,"machine id = %d, core_count= %d , cores_available= %d",a_machine->id,a_machine->core_count,a_machine->cores_available);
-   }
    if (_share_packing_holdback > 0)
    {
         _nb_available_machines -=_share_packing_holdback;
@@ -151,54 +117,33 @@ void easy_bf_fast2_holdback::on_myKillJob_notify_event(double date){
 
 
 void easy_bf_fast2_holdback::on_machine_down_for_repair(double date){
-    //get a random number of a machine to kill
-    int number = machine_unif_distribution->operator()(generator_machine);
-    //make it an intervalset so we can find the intersection of it with current allocations
-    IntervalSet machine = number;
-    //if the machine is already down for repairs ignore it.
-    //LOG_F(INFO,"repair_machines.size(): %d    nb_avail: %d  avail:%d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-    BLOG_F(blog_types::FAILURES,"Machine Repair: %d",number);
-    if ((machine & _repair_machines).is_empty())
+    //do we do a normal repair?
+    IntervalSet machine = ISchedulingAlgorithm::normal_repair(date);
+    
+    //now kill the jobs that are running on machines that need to be repaired.        
+    //if there are no running jobs, then there are none to kill
+    if(!machine.is_empty() && !_running_jobs.empty())
     {
-        //ok the machine is not down for repairs
-        //it will be going down for repairs now
-        _available_machines-=machine;
-        _unavailable_machines+=machine;
-        _repair_machines+=machine;
-        _nb_available_machines=_available_machines.size();
-
-        double repair_time = _workload->_repair_time;
-        if (_workload->_MTTR != -1.0)
-           repair_time = repair_time_exponential_distribution->operator()(generator_repair_time);
-        //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d  avail: %d running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-        //LOG_F(INFO,"date: %f , repair: %f ,repair + date: %f",date,repair_time,date+repair_time);
-        //call me back when the repair is done
-        std::string extra_data = batsched_tools::string_format("{\"machine\":%d}",number);
-        batsched_tools::CALL_ME_LATERS cml;
-        cml.forWhat = batsched_tools::call_me_later_types::REPAIR_DONE;
-        cml.id = _nb_call_me_laters;
-        cml.extra_data = extra_data;
-        _decision->add_call_me_later(date,date+repair_time,cml);
-        //now kill the jobs that are running on machines that need to be repaired.        
-        //if there are no running jobs, then there are none to kill
-        if (!_running_jobs.empty()){
-            for(auto key_value : _current_allocations)
-            {
-                if (!((key_value.second.machines & machine).is_empty())){
-                    Job * job_ref = (*_workload)[key_value.first];
-                    auto msg = new batsched_tools::Job_Message;
-                    msg->id = key_value.first;
-                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
-                    _my_kill_jobs.insert(std::make_pair(job_ref,msg));
-                    BLOG_F(blog_types::FAILURES,"Killing Job: %s",key_value.first.c_str());
-                }
+        
+        //ok there are jobs to kill
+        std::string killed_jobs;
+        for(auto key_value : _current_allocations)
+        {
+            if (!((key_value.second.machines & machine).is_empty())){
+                Job * job_ref = (*_workload)[key_value.first];
+                auto msg = new batsched_tools::Job_Message;
+                msg->id = key_value.first;
+                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                _my_kill_jobs.insert(std::make_pair(job_ref,msg));
+                if (killed_jobs.empty())
+                    killed_jobs = job_ref->id;
+                else
+                    killed_jobs=batsched_tools::string_format("%s %s",killed_jobs.c_str(),job_ref->id.c_str());
             }
         }
+        BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(),killed_jobs.c_str());
     }
-    else
-    {
-        BLOG_F(blog_types::FAILURES,"Machine Already Being Repaired: %d",number);
-    }
+    
 }
 
 
