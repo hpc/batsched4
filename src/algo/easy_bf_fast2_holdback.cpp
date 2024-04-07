@@ -116,7 +116,7 @@ void easy_bf_fast2_holdback::on_myKillJob_notify_event(double date){
 
 
 
-void easy_bf_fast2_holdback::on_machine_down_for_repair(double date){
+void easy_bf_fast2_holdback::on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat, double date){
     //do we do a normal repair?
     IntervalSet machine = ISchedulingAlgorithm::normal_repair(date);
     
@@ -133,7 +133,7 @@ void easy_bf_fast2_holdback::on_machine_down_for_repair(double date){
                 Job * job_ref = (*_workload)[key_value.first];
                 auto msg = new batsched_tools::Job_Message;
                 msg->id = key_value.first;
-                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                msg->forWhat = forWhat;
                 _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                 if (killed_jobs.empty())
                     killed_jobs = job_ref->id;
@@ -147,7 +147,7 @@ void easy_bf_fast2_holdback::on_machine_down_for_repair(double date){
 }
 
 
-void easy_bf_fast2_holdback::on_machine_instant_down_up(double date){
+void easy_bf_fast2_holdback::on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat, double date){
     //get a random number of a machine to kill
     int number = machine_unif_distribution->operator()(generator_machine);
     //make it an intervalset so we can find the intersection of it with current allocations
@@ -161,7 +161,7 @@ void easy_bf_fast2_holdback::on_machine_instant_down_up(double date){
                 	Job * job_ref = (*_workload)[key_value.first];
                     auto msg = new batsched_tools::Job_Message;
                     msg->id = key_value.first;
-                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                    msg->forWhat = forWhat;
                     _my_kill_jobs.insert(std::make_pair(job_ref,msg));
 	                BLOG_F(blog_types::FAILURES,"Killing Job: %s",key_value.first.c_str());
             }
@@ -182,76 +182,17 @@ void easy_bf_fast2_holdback::on_requested_call(double date,batsched_tools::CALL_
 {
     
         switch (cml_in.forWhat){
-            case batsched_tools::call_me_later_types::SMTBF:
-                        {
-                            //Log the failure
-                            BLOG_F(blog_types::FAILURES,"FAILURE SMTBF");
-                            if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
-                                {
-                                    double number = failure_exponential_distribution->operator()(generator_failure);
-                                    if (_workload->_repair_time == 0.0  && _workload->_MTTR == -1.0)
-                                        on_machine_instant_down_up(date);
-                                    else
-                                        on_machine_down_for_repair(date);
-                                    batsched_tools::CALL_ME_LATERS cml;
-                                    cml.forWhat = batsched_tools::call_me_later_types::SMTBF;
-                                    cml.id = _nb_call_me_laters;
-                                    _decision->add_call_me_later(date,number+date,cml);
-                                }
-                        }
-                        break;
-            case batsched_tools::call_me_later_types::MTBF:
-                        {
-                            if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
-                            {
-                                double number = failure_exponential_distribution->operator()(generator_failure);
-                                on_myKillJob_notify_event(date);
-                                batsched_tools::CALL_ME_LATERS cml;
-                                cml.forWhat = batsched_tools::call_me_later_types::MTBF;
-                                cml.id = _nb_call_me_laters;
-                                _decision->add_call_me_later(date,number+date,cml);
-
-                            }
-                        
-                            
-                        }
-                        break;
-            case batsched_tools::call_me_later_types::FIXED_FAILURE:
-                        {
-                            BLOG_F(blog_types::FAILURES,"FAILURE FIXED_FAILURE");
-                            if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
-                                {
-                                    double number = _workload->_fixed_failures;
-                                    if (_workload->_repair_time == 0.0)
-                                        on_machine_instant_down_up(date);
-                                    else
-                                        on_machine_down_for_repair(date);
-                                    batsched_tools::CALL_ME_LATERS cml;
-                                    cml.forWhat = batsched_tools::call_me_later_types::FIXED_FAILURE;
-                                    cml.id = _nb_call_me_laters;
-                                    _decision->add_call_me_later(date,number+date,cml);
-                                }
-                        }
-                        break;
-            case batsched_tools::call_me_later_types::REPAIR_DONE:
-                        {
-                            BLOG_F(blog_types::FAILURES,"REPAIR_DONE");
-                            rapidjson::Document doc;
-                            doc.Parse(cml_in.extra_data.c_str());
-                            PPK_ASSERT(doc.HasMember("machine"),"Error, repair done but no 'machine' field in extra_data");
-                            int machine_number = doc["machine"].GetInt();
-                            //a repair is done, all that needs to happen is add the machines to available
-                            //and remove them from repair machines and add one to the number of available
-                            IntervalSet machine = machine_number;
-                            _available_machines += machine;
-                            _unavailable_machines -= machine;
-                            _repair_machines -= machine;
-                            _nb_available_machines=_available_machines.size();
-                            _machines_that_became_available_recently += machine;
-                           //LOG_F(INFO,"in repair_machines.size(): %d nb_avail: %d avail: %d  running_jobs: %d",_repair_machines.size(),_nb_available_machines,_available_machines.size(),_running_jobs.size());
-                        }
-                        break;
-        }
+        case batsched_tools::call_me_later_types::SMTBF: 
+        case batsched_tools::call_me_later_types::MTBF:
+        case batsched_tools::call_me_later_types::FIXED_FAILURE:
+            if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
+                ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+            break;
+        
+        case batsched_tools::call_me_later_types::REPAIR_DONE:
+            ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+            break;
+    }
     
 
 }

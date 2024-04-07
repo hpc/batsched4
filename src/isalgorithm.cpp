@@ -121,6 +121,7 @@ void ISchedulingAlgorithm::requested_failure_call(double date, batsched_tools::C
             _need_to_backfill = true;
             if (_reject_possible)
                 _repairs_done++;
+            return;
         }
         break;
     }
@@ -133,6 +134,22 @@ void ISchedulingAlgorithm::requested_failure_call(double date, batsched_tools::C
     cml.id = _nb_call_me_laters;
     _decision->add_call_me_later(date,number+date,cml);
     
+}
+
+void ISchedulingAlgorithm::handle_failures(double date){
+    for(batsched_tools::KILL_TYPES forWhat : _on_machine_instant_down_ups)
+    {
+        on_machine_instant_down_up(forWhat,date);
+    }
+    LOG_F(INFO,"here");
+    //ok we handled them all, clear the container
+    _on_machine_instant_down_ups.clear();
+    //handle any machine down for repairs (machine going down with a repair time)
+    for(batsched_tools::KILL_TYPES forWhat : _on_machine_down_for_repairs)
+    {
+        on_machine_down_for_repair(forWhat,date);
+    }
+    LOG_F(INFO,"here");
 }
 IntervalSet ISchedulingAlgorithm::normal_repair(double date)
 {

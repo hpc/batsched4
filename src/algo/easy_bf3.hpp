@@ -41,8 +41,8 @@ public:
                                                 SortableJobOrder::UpdateInformation * update_info);
 
     // @note LH: simulated checkpointing additions                             
-    void on_machine_down_for_repair(double date);
-    void on_machine_instant_down_up(double date);
+    virtual void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat, double date);
+    virtual void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat, double date);
     void on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml);
     void on_myKillJob_notify_event(double date);
     void on_no_more_static_job_to_submit_received(double date);

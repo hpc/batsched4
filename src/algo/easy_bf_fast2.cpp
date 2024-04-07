@@ -106,7 +106,7 @@ void easy_bf_fast2::on_myKillJob_notify_event(double date){
 
 
 
-void easy_bf_fast2::on_machine_down_for_repair(double date){
+void easy_bf_fast2::on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date){
     //do we do a normal repair?
     IntervalSet machine = ISchedulingAlgorithm::normal_repair(date);
     
@@ -123,7 +123,7 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
                     Job * job_ref = (*_workload)[key_value.first];
                     auto msg = new batsched_tools::Job_Message;
                     msg->id = key_value.first;
-                    msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                    msg->forWhat = forWhat;
                     _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                    if (killed_jobs.empty())
                     killed_jobs = job_ref->id;
@@ -136,7 +136,7 @@ void easy_bf_fast2::on_machine_down_for_repair(double date){
 }
 
 
-void easy_bf_fast2::on_machine_instant_down_up(double date){
+void easy_bf_fast2::on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date){
     IntervalSet machine = ISchedulingAlgorithm::normal_downUp(date);
     //if there are no running jobs, then there are none to kill
     if (!_running_jobs.empty()){
@@ -147,7 +147,7 @@ void easy_bf_fast2::on_machine_instant_down_up(double date){
                 Job * job_ref = (*_workload)[key_value.first];
                 auto msg = new batsched_tools::Job_Message;
                 msg->id = key_value.first;
-                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                msg->forWhat = forWhat;
                 _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                 if (killed_jobs.empty())
                     killed_jobs = job_ref->id;

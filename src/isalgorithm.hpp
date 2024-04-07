@@ -167,6 +167,8 @@ public:
     virtual void on_checkpoint_batsched(double date);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
     virtual void on_first_jobs_submitted(double date) {}
+    virtual void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date) {}
+    virtual void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date) {}
     virtual bool all_jobs_submitted_check_passed() {};
     void on_signal_checkpoint();
     void set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map);
@@ -174,6 +176,7 @@ public:
     void set_compute_resources(const rapidjson::Value & batsim_event);
     void schedule_start(double date,const rapidjson::Value & batsim_event);
     void requested_failure_call(double date,batsched_tools::CALL_ME_LATERS cml_in);
+    void handle_failures(double date);
     IntervalSet normal_repair(double date);
     IntervalSet normal_downUp(double date);
 

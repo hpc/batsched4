@@ -54,7 +54,7 @@ void EasyBackfilling3::on_simulation_end(double date)
  *      MODIFIED SIMULATED CHECKPOINTING FUNCTIONS       *
 **********************************************************/
 
-void EasyBackfilling3::on_machine_down_for_repair(double date){
+void EasyBackfilling3::on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date){
     
 
     //do we do a normal repair?
@@ -71,7 +71,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
                 Job * job_ref = (*_workload)[sj->id];
                 batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
                 msg->id = sj->id;
-                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                msg->forWhat = forWhat;
                 _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                 CLOG_F(CCU_DEBUG,"Killing Job: %s",sj->id.c_str());
                 if (killed_jobs.empty())
@@ -86,7 +86,7 @@ void EasyBackfilling3::on_machine_down_for_repair(double date){
    
 }
 
-void EasyBackfilling3::on_machine_instant_down_up(double date){
+void EasyBackfilling3::on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date){
     IntervalSet machine = ISchedulingAlgorithm::normal_downUp(date);
     std::string killed_jobs;
     if (!_scheduled_jobs.empty()){
@@ -97,7 +97,7 @@ void EasyBackfilling3::on_machine_instant_down_up(double date){
                 Job * job_ref = (*_workload)[sj->id];
                 batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
                 msg->id = sj->id;
-                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                msg->forWhat = forWhat;
                 _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                 CLOG_F(CCU_DEBUG,"Killing Job: %s",sj->id.c_str());
                 if (killed_jobs.empty())
@@ -118,6 +118,7 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
         case batsched_tools::call_me_later_types::FIXED_FAILURE:
             if ( !_scheduled_jobs.empty() || !_waiting_jobs.empty() || !_no_more_static_job_to_submit_received)
                 ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+                ISchedulingAlgorithm::handle_failures(date);
             break;
         
         case batsched_tools::call_me_later_types::REPAIR_DONE:

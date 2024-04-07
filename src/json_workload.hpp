@@ -83,7 +83,7 @@ public:
     bool _compute_checkpointing = false;
     double _MTBF = -1.0;
     double _SMTBF = -1.0;
-    double _repair_time = 0.0;
+    double _repair_time = -1.0;
     double _host_speed;
     double _fixed_failures = -1.0;
     double _checkpointing_interval = -1.0;
