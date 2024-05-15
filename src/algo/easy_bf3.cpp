@@ -14,7 +14,7 @@ EasyBackfilling3::EasyBackfilling3(Workload * workload,
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay, variant_options)
 {
     // @note allocate priority job
-    _p_job = new Priority_Job();
+    _p_job = new batsched_tools::Priority_Job();
     (void) queue;
 }
 
@@ -124,6 +124,9 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
         case batsched_tools::call_me_later_types::REPAIR_DONE:
             ISchedulingAlgorithm::requested_failure_call(date,cml_in);
             break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
+            _need_to_checkpoint = true;
+            break;
     }
 }
 
@@ -144,11 +147,43 @@ void EasyBackfilling3::on_no_more_static_job_to_submit_received(double date){
  *         REAL CHECKPOINTING FUNCTIONS (TBA)            *
 **********************************************************/
 
-void EasyBackfilling3::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){}
+void EasyBackfilling3::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_event)
+{
+    ISchedulingAlgorithm::on_start_from_checkpoint_normal(date,batsim_event);
+    
+}
 
-void EasyBackfilling3::on_checkpoint_batsched(double date){}
+void EasyBackfilling3::on_checkpoint_batsched(double date){
+    std::string checkpoint_dir = _output_folder + "/checkpoint_latest";
+    std::ofstream f;
+    f.open(checkpoint_dir+"/easy_bf3.chkpt",std::ios_base::out);
+    if (f.is_open())
+    {
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"{\n"
+        <<"\t\"_waiting_jobs\":"                << batsched_tools::vector_to_json_string(_waiting_jobs)         <<","<<std::endl
+        <<"\t\"_scheduled_jobs\":"              << batsched_tools::vector_to_json_string(_scheduled_jobs)       <<","<<std::endl
+        <<"\t\"_tmp_job\":"                     << batsched_tools::to_json_string(_tmp_job)                     <<","<<std::endl
+        <<"\t\"_p_job\":"                       << batsched_tools::to_json_string(_p_job)                       <<","<<std::endl
+        <<"\t\"_can_run\":"                     << batsched_tools::to_json_string(_can_run)                     <<","<<std::endl
+        <<"}";
+        f.close();
+    }
+}
 
-void EasyBackfilling3::on_ingest_variables(const rapidjson::Document & doc,double date){}
+void EasyBackfilling3::on_ingest_variables(const rapidjson::Document & doc,double date){
+    
+    std::string checkpoint_dir = _output_folder + "/start_from_checkpoint";
+    using namespace rapidjson;
+    rapidjson::Document easy_bf3Doc = ISchedulingAlgorithm::ingestDoc(checkpoint_dir + "/easy_bf3.chkpt");
+    ingestM(_waiting_jobs,easy_bf3Doc,easy_bf3Doc);
+    ingestM(_scheduled_jobs,easy_bf3Doc,easy_bf3Doc);
+    ingestM(_tmp_job,easy_bf3Doc,easy_bf3Doc);
+    ingestM(_p_job,easy_bf3Doc,easy_bf3Doc);
+    ingestM(_can_run,easy_bf3Doc,easy_bf3Doc);
+
+
+}
 
 void EasyBackfilling3::on_first_jobs_submitted(double date){}
 
@@ -161,6 +196,18 @@ void EasyBackfilling3::make_decisions(double date,
                                      SortableJobOrder::CompareInformation *compare_info)
 {
     (void) compare_info;
+    if (_exit_make_decisions)
+    {   
+        _exit_make_decisions = false;     
+        return;
+    }
+    CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
+    send_batsim_checkpoint_if_ready(date);
+    CLOG_F(CCU_DEBUG_ALL,"here");
+    if (_need_to_checkpoint){
+        checkpoint_batsched(date);
+    }
+        
     Job * priority_job_before = get_first_waiting_job();
 
     // Let's remove finished jobs from the schedule
@@ -188,6 +235,9 @@ void EasyBackfilling3::make_decisions(double date,
     for (const string & new_job_id : _jobs_released_recently)
     {
         Job * new_job = (*_workload)[new_job_id];
+        if (!_start_from_checkpoint.received_submitted_jobs)
+            _start_from_checkpoint.first_submitted_time = date;
+        _start_from_checkpoint.received_submitted_jobs = true;
 
         if (new_job->nb_requested_resources > _nb_machines)
         {
@@ -204,7 +254,9 @@ void EasyBackfilling3::make_decisions(double date,
             _waiting_jobs.push_back(new_job);
             recently_queued_jobs.push_back(new_job_id);
         }
-    }    
+    }
+    if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
+        return;    
 
     // Queue sorting
     Job * priority_job_after = nullptr;
@@ -406,7 +458,7 @@ void EasyBackfilling3::check_backfill_job(const Job * backfill_job, double date)
 //@note LH: added function to add jobs to the schedule
 void EasyBackfilling3::handle_scheduled_job(const Job * job, double date){
     // allocate space for scheduled job
-    _tmp_job = new Scheduled_Job();
+    _tmp_job = new batsched_tools::Scheduled_Job();
     // @note convert wall time to a double
     double tmp_walltime = C2DBL(job->walltime);
 
@@ -430,7 +482,7 @@ void EasyBackfilling3::handle_scheduled_job(const Job * job, double date){
 void EasyBackfilling3::handle_finished_job(string job_id, double date){
     // @note LH: get finished job from schedule
     auto fj_it = find_if(_scheduled_jobs.begin(), _scheduled_jobs.end(), 
-        [job_id](Scheduled_Job *sj){ 
+        [job_id](batsched_tools::Scheduled_Job *sj){ 
             return (sj->id == job_id);
     });
 
@@ -598,3 +650,5 @@ vector<Job *>::iterator EasyBackfilling3::delete_waiting_job(string wjob_id){
 vector<Job *>::iterator EasyBackfilling3::delete_waiting_job(vector<Job *>::iterator wj_iter){
     return _waiting_jobs.erase(wj_iter);
 }
+
+

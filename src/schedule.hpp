@@ -76,7 +76,7 @@ public:
     Schedule(const Schedule & other);
     std::string vector_to_json_string(const std::vector<ReservedTimeSlice> *vec) const;
     std::string list_to_json_string(const std::list<ReservedTimeSlice> *lst) const;
-    void ingest_schedule(rapidjson::Document & doc);
+    void ingest_schedule(const rapidjson::Document & doc);
     std::set<std::string> get_jobs_that_should_have_been_submitted_already(rapidjson::Document & doc);
     TimeSlice TimeSlice_from_json(const rapidjson::Value & Vslice);
     std::map<const Job *, IntervalSet, JobComparator> JobMap_from_json(const rapidjson::Value & Vjobs,Rational begin);

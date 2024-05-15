@@ -54,9 +54,7 @@ public:
     virtual void on_first_jobs_submitted(double date);
 
 protected:
-    bool _debug = false;
       
-
     // @note LH: Additions for handling scheduling decisions
     void check_priority_job(const Job * priority_job, double date);
     void check_backfill_job(const Job * backfill_job, double date);
@@ -80,29 +78,14 @@ protected:
     void heap_sort_schedule(int size);
 
     // @note LH: Additions for replacing the schedule class
-    struct Scheduled_Job
-    {
-        std::string id;
-        int requested_resources;
-        double wall_time;
-        double start_time;
-        double est_finish_time;
-        IntervalSet allocated_machines;
-    };
-    Scheduled_Job * _tmp_job = NULL;
-    std::vector<Scheduled_Job *> _scheduled_jobs;
+    
+    batsched_tools::Scheduled_Job * _tmp_job = NULL;
+    std::vector<batsched_tools::Scheduled_Job *> _scheduled_jobs;
 
 
     // @note LH: Struct to keep track of priority job
-    struct Priority_Job
-    {
-        std::string id;
-        int requested_resources;
-        int extra_resources;
-        double shadow_time;
-        double est_finish_time;
-    };
-    Priority_Job * _p_job = NULL;
+    
+    batsched_tools::Priority_Job * _p_job = NULL;
 
     // @note LH: Added variables
     

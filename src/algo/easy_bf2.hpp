@@ -35,7 +35,7 @@ public:
     virtual void on_checkpoint_batsched(double date);
     virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_first_jobs_submitted(double date);
-    virtual bool all_submitted_jobs_check_passed();
+   
 
     //added
     virtual void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat, double date);
@@ -46,7 +46,7 @@ public:
     
 protected:
     
-    bool _debug = false;
+    
 
     //added
     // @note Leslie commented out 
@@ -55,24 +55,12 @@ protected:
 
 
 
-    double _previous_date;
-    // @note Leslie commented out 
-    //std::vector<Schedule::ReservedTimeSlice> _saved_reservations;
-    bool _killed_jobs = false;
-    bool _need_to_send_finished_submitting_jobs = true;
-    std::vector<std::string> _saved_recently_queued_jobs;
-    std::vector<std::string> _saved_recently_ended_jobs;
-    IntervalSet _recently_under_repair_machines;
-    bool _checkpointing_on;
-    // @note Leslie commented out
-    //bool _start_a_reservation=false; 
-    bool _need_to_compress = false;
+    //double _previous_date;
+       
+   
     
-    b_log *_myBLOG;
-    std::map<std::string,batsched_tools::KILL_TYPES>_resubmitted_jobs;
-    std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>>_resubmitted_jobs_released;
     
-    std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups;
-    std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs;
+    
+ 
 
 };

@@ -27,6 +27,8 @@ public:
     virtual void on_simulation_start(double date,
         const rapidjson::Value & batsim_event);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
+    virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
+    virtual void on_first_jobs_submitted(double date){};
 
     virtual void on_simulation_end(double date);
     //virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);
@@ -61,70 +63,13 @@ private:
     void handle_newly_released_jobs(double date);
     void handle_null_priority_job(double date);
 
-    //backfilling
-    struct FinishedHorizonPoint
-    {
-        double date;
-        int nb_released_machines;
-        IntervalSet machines; //used if share-packing
-    };
-
-    struct Allocation
-    {
-        IntervalSet machines;
-        std::list<FinishedHorizonPoint>::iterator horizon_it;
-    };
 
 
 private:
-    // Machines currently available
-    IntervalSet _available_machines;
-    IntervalSet _unavailable_machines;
-    IntervalSet _repair_machines;
-    IntervalSet _available_core_machines;
-   
-    int _nb_available_machines = -1;
-
-    // Pending jobs (queue)
-    std::list<Job *> _pending_jobs;
-    std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
-    std::unordered_set<std::string> _running_jobs;
-    //myBatsched::Workloads * _myWorkloads;
-    double _oldDate=-1;
-    int _killed=0;
-    bool _wrap_it_up = false;
-    bool _need_to_send_finished_submitting_jobs = true;
-    bool _checkpointing_on=false;
-    std::vector<double> _call_me_laters;
-    std::string _output_folder;
-        
-    struct machine{
-        int id;
-        std::string name;
-        int core_count = -1;
-        int cores_available;
-        double speed;
-    };
-    bool _share_packing = false;
-    double _core_percent = 1.0;
-    std::map<int,machine *> machines_by_int;
-    std::map<std::string,machine *> machines_by_name;
-    const std::string SEQUENTIAL = "sequential";
-    const std::string PARALLEL = "parallel";
-
-    // Allocations of running jobs
-    //std::unordered_map<std::string, IntervalSet> _current_allocations;
-
+  
     //backfilling
     double compute_priority_job_expected_earliest_starting_time();
 
-    std::list<FinishedHorizonPoint>::iterator insert_horizon_point(const FinishedHorizonPoint & point);
-
-    std::unordered_map<std::string, Allocation> _current_allocations;
-    std::list<FinishedHorizonPoint> _horizons;
-    Job * _priority_job = nullptr;
-    int _p_counter = 0; //pending jobs erased counter
-    int _e_counter = 0; //execute job counter
-    b_log *_myBLOG;
+    std::list<batsched_tools::FinishedHorizonPoint>::iterator insert_horizon_point(const batsched_tools::FinishedHorizonPoint & point);
 
 };

@@ -23,9 +23,8 @@ easy_bf_fast2::easy_bf_fast2(Workload *workload,
         variant_options)
 {
     
-    //_myWorkloads = new myBatsched::Workloads;
-    //batsim log object.  declared in batsched_tools.hpp
-    _myBLOG = new b_log();
+    _share_packing_algorithm = true;
+    _horizon_algorithm = true;
     
     
 }
@@ -34,8 +33,13 @@ easy_bf_fast2::~easy_bf_fast2()
 {
     
 }
-void easy_bf_fast2::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
+void easy_bf_fast2::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_event){
+    ISchedulingAlgorithm::on_start_from_checkpoint_normal(date,batsim_event);
 
+}
+void easy_bf_fast2::on_ingest_variables(const rapidjson::Document & doc,double date)
+{
+    
 }
 void easy_bf_fast2::on_simulation_start(double date,
     const rapidjson::Value &batsim_event)
@@ -53,32 +57,12 @@ void easy_bf_fast2::on_simulation_start(double date,
     _nb_available_machines = _nb_machines;
     //LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
-    ISchedulingAlgorithm::set_compute_resources(batsim_event);
-     _oldDate=date;
-   
+      
 }      
 void easy_bf_fast2::on_simulation_end(double date){
     (void) date;
 }
-    
- /*void easy_bf_fast2::on_machine_unavailable_notify_event(double date, IntervalSet machines){
-    //LOG_F(INFO,"unavailable %s",machines.to_string_hyphen().c_str());
-    _unavailable_machines+=machines;
-    _available_machines-=machines;
-    for(auto key_value : _current_allocations)
-    {
-            if (!((key_value.second.machines & machines).is_empty()))
-                _decision->add_kill_job({key_value.first},date);
-    }
-    
-}
-*/
-/*void easy_bf_fast2::set_workloads(myBatsched::Workloads *w){
-    _myWorkloads = w;
-    _checkpointing_on = w->_checkpointing_on;
-    
-}
-*/
+  
 void easy_bf_fast2::on_machine_available_notify_event(double date, IntervalSet machines){
     ISchedulingAlgorithm::on_machine_available_notify_event(date, machines);
     _unavailable_machines-=machines;
@@ -158,15 +142,7 @@ void easy_bf_fast2::on_machine_instant_down_up(batsched_tools::KILL_TYPES forWha
         BLOG_F(blog_types::FAILURES,"%s,\"%s\"",blog_failure_event::KILLING_JOBS.c_str(), killed_jobs.c_str());
     }
 }
-/*void easy_bf_fast2::on_job_fault_notify_event(double date, std::string job){
-    std::unordered_set<std::string>::const_iterator found = _running_jobs.find(job);
-  //LOG_F(INFO,"on_job_fault_notify_event called");
-  if ( found != _running_jobs.end() )    
-        _decision->add_kill_job({job},date);
-  else
-      LOG_F(INFO,"Job %s was not running but was supposed to be killed due to job_fault event",job.c_str());
-}
-*/
+
 
 void easy_bf_fast2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml_in)
 {
@@ -178,10 +154,14 @@ void easy_bf_fast2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS
         case batsched_tools::call_me_later_types::FIXED_FAILURE:
             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                 ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+                ISchedulingAlgorithm::handle_failures(date);
             break;
         
         case batsched_tools::call_me_later_types::REPAIR_DONE:
             ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+            break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
+            _need_to_checkpoint = true;
             break;
     }
 }
@@ -194,7 +174,7 @@ void easy_bf_fast2::on_no_more_static_job_to_submit_received(double date){
 }
 void easy_bf_fast2::on_no_more_external_event_to_occur(double date){
     
-    _wrap_it_up = true;    
+    (void)date;  
     
     
 }
@@ -223,9 +203,19 @@ void easy_bf_fast2::make_decisions(double date,
    ////LOG_F(INFO,"line 322   fcfs_fast2.cpp");
     (void) update_info;
     (void) compare_info;
+    if (_exit_make_decisions)
+    {   
+        _exit_make_decisions = false;     
+        return;
+    }
+    CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
+    send_batsim_checkpoint_if_ready(date);
+    CLOG_F(CCU_DEBUG_ALL,"here");
+    if (_need_to_checkpoint){
+        checkpoint_batsched(date);
+    }
     std::vector<int> mapping = {0};
-    if (_oldDate == -1)
-        _oldDate=date;
+   
     // This algorithm is a fast version of EASY backfilling.
     // It is meant to be fast in the usual case, not to handle corner cases.
     // It is not meant to be easily readable or hackable ;).
@@ -267,6 +257,8 @@ void easy_bf_fast2::make_decisions(double date,
     handle_ended_job_execution(job_ended,date);
     LOG_F(INFO,"line 374");
     handle_newly_released_jobs(date);
+    if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
+        return;
     LOG_F(INFO,"line 376");
     
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
@@ -315,17 +307,18 @@ bool easy_bf_fast2::handle_newly_finished_jobs()
 {
    //LOG_F(INFO,"line 410");
    std::vector<int> mapping = {0};
+   std::string prefix = "a";
     bool job_ended = false;
     for (const std::string & ended_job_id : _jobs_ended_recently)
     {
         job_ended = true;
         Job * finished_job = (*_workload)[ended_job_id];
-        const Allocation & alloc = _current_allocations[ended_job_id];
+        const batsched_tools::Allocation & alloc = _current_allocations[ended_job_id];
         if (_share_packing && finished_job->nb_requested_resources == 1)
         {
                 //first get the machine it was running on
                 int machine_number = alloc.machines[0];
-                machine* current_machine = machines_by_int[machine_number];
+                Machine* current_machine = (*_machines)(prefix,machine_number);
 
                 //now increase cores_available on that machine
                 current_machine->cores_available += 1;
@@ -400,6 +393,7 @@ void easy_bf_fast2::handle_machines_coming_available(double date)
 void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
 {
     std::vector<int> mapping = {0};
+    std::string prefix = "a";
     // If jobs have finished, execute jobs as long as they fit
     std::list<Job *>::iterator job_it =_pending_jobs.begin();
     if (job_ended || (!_machines_that_became_available_recently.is_empty()))
@@ -417,8 +411,8 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             //it fits if share_packing is disabled, or it's greater than a 1 resource job
             //and
             //there are enough machines available for the priority job's nb_requested_resources
-            Allocation alloc;
-            FinishedHorizonPoint point;
+            batsched_tools::Allocation alloc;
+            batsched_tools::FinishedHorizonPoint point;
             bool executed = false;
             if (_share_packing && _priority_job->nb_requested_resources == 1)
             {
@@ -429,7 +423,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                 {
                     //is this machine able to handle another job?
-                    machine* current_machine = machines_by_int[*it];
+                    Machine* current_machine = (*_machines)(prefix,*it);
                     if (current_machine->cores_available >= 1)
                     {                                
                         //it is able to handle another job
@@ -447,7 +441,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     _e_counter+=1;
                     executed = true;
                     //update data structures
-                    machine* current_machine = machines_by_int[alloc.machines[0]];
+                    Machine* current_machine = (*_machines)(prefix,alloc.machines[0]);
                     point.nb_released_machines = _priority_job->nb_requested_resources;
                     point.date = date + (double)_priority_job->walltime;
                     point.machines = alloc.machines;
@@ -477,7 +471,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     alloc.horizon_it = insert_horizon_point(point);
 
                     //update data structures
-                    machine* current_machine = machines_by_int[alloc.machines[0]];
+                    Machine* current_machine = (*_machines)(prefix,alloc.machines[0]);
                     current_machine->cores_available -= 1;
                     _available_core_machines += alloc.machines;
                     _available_machines -= alloc.machines;
@@ -521,7 +515,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                 while(job_it!=_pending_jobs.end())
                 {
                     Job * pending_job = *job_it;
-                    Allocation alloc;
+                    batsched_tools::Allocation alloc;
                     executed2 = false;
             
                     std::string pending_job_id = pending_job->id;
@@ -534,7 +528,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                         for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                         {
                             //is this machine able to handle another job?
-                            machine* current_machine = machines_by_int[*it];
+                            Machine* current_machine = (*_machines)(prefix,*it);
                             if (current_machine->cores_available >= 1)
                             {                                
                                 //it is able to handle another job, execute a job on it and subtract from cores_available
@@ -577,7 +571,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             point.machines = alloc.machines;
                             alloc.horizon_it = insert_horizon_point(point);
                             //update data structures
-                            machine* current_machine = machines_by_int[alloc.machines[0]];
+                            Machine* current_machine = (*_machines)(prefix,alloc.machines[0]);
                             current_machine->cores_available -= 1;
                             _available_core_machines += alloc.machines;
                             _available_machines -= alloc.machines;
@@ -646,7 +640,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
             {
                 bool execute = false;
                 Job * pending_job = *job_it;
-                Allocation alloc;
+                batsched_tools::Allocation alloc;
            //LOG_F(INFO,"line 715");
                 std::string pending_job_id = pending_job->id;
             
@@ -659,7 +653,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                     for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                     {
                         //is this machine able to handle another job?
-                        machine* current_machine = machines_by_int[*it];
+                        Machine* current_machine = (*_machines)(prefix,*it);
                         //LOG_F(INFO,"line 728");
                         if (current_machine->cores_available >= 1)
                         {                                
@@ -712,7 +706,7 @@ void easy_bf_fast2::handle_ended_job_execution(bool job_ended,double date)
                             point.machines = alloc.machines;
                             alloc.horizon_it = insert_horizon_point(point);
                             //update data structures
-                            machine* current_machine = machines_by_int[alloc.machines[0]];
+                            Machine* current_machine = (*_machines)(prefix,alloc.machines[0]);
                             current_machine->cores_available -= 1;
                             _available_core_machines += alloc.machines;
                             _available_machines -= alloc.machines;
@@ -783,11 +777,14 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
     int counter = 0;
     int pending = 0;
     std::vector<int> mapping = {0};
+    std::string prefix = "a";
     // Handle newly released jobs
     for (const std::string & new_job_id : _jobs_released_recently)
     {
         Job * new_job = (*_workload)[new_job_id];
-
+        if (!_start_from_checkpoint.received_submitted_jobs)
+            _start_from_checkpoint.first_submitted_time = date;
+        _start_from_checkpoint.received_submitted_jobs = true;
         // Is this job valid?
         if (new_job->nb_requested_resources > _nb_machines)
         {
@@ -796,7 +793,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
             _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
             continue;
         }
-        Allocation alloc;
+        batsched_tools::Allocation alloc;
         bool executed = false;
         //Are we share-packing?
         if (_share_packing && new_job->nb_requested_resources == 1)
@@ -808,7 +805,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
             for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
             {
                 //is this machine able to handle another job?
-                machine* current_machine = machines_by_int[*it];
+                Machine* current_machine = (*_machines)(prefix,*it);
                 if (current_machine->cores_available >= 1)
                 {                                
                     //it is able to handle another job
@@ -828,13 +825,13 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                     _e_counter+=1;
                     executed = true;
                     //update data structures
-                    FinishedHorizonPoint point;
+                    batsched_tools::FinishedHorizonPoint point;
                     point.nb_released_machines = new_job->nb_requested_resources;
                     point.date = date + (double)new_job->walltime;
                     point.machines = alloc.machines;
                     alloc.horizon_it = insert_horizon_point(point);
 
-                    machine * current_machine = machines_by_int[alloc.machines[0]];
+                    Machine * current_machine = (*_machines)(prefix,alloc.machines[0]);
                     current_machine->cores_available -=1;
                     _current_allocations[new_job_id] = alloc;
                     _running_jobs.insert(new_job_id);
@@ -854,7 +851,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                     _decision->add_execute_job(new_job_id,alloc.machines,date,mapping);
                     _e_counter+=1;
                     executed = true;
-                    FinishedHorizonPoint point;
+                    batsched_tools::FinishedHorizonPoint point;
                     point.nb_released_machines = new_job->nb_requested_resources;
                     point.date = date + (double) new_job->walltime;
                     point.machines = alloc.machines;
@@ -862,7 +859,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
 
 
                     //update data structures
-                    machine* current_machine = machines_by_int[alloc.machines[0]];
+                    Machine* current_machine = (*_machines)(prefix,alloc.machines[0]);
                     current_machine->cores_available -= 1;
                     _available_core_machines += alloc.machines;
                     _available_machines -= alloc.machines;
@@ -890,7 +887,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
                 _e_counter+=1;
                 executed = true;
 
-                FinishedHorizonPoint point;
+                batsched_tools::FinishedHorizonPoint point;
                 point.nb_released_machines = new_job->nb_requested_resources;
                 point.date = date + (double)new_job->walltime;
                 point.machines = alloc.machines;
@@ -929,7 +926,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
 
 
 
-std::list<easy_bf_fast2::FinishedHorizonPoint>::iterator easy_bf_fast2::insert_horizon_point(const easy_bf_fast2::FinishedHorizonPoint &point)
+std::list<batsched_tools::FinishedHorizonPoint>::iterator easy_bf_fast2::insert_horizon_point(const batsched_tools::FinishedHorizonPoint &point)
 {
     // The data structure is sorted, we can therefore traverse it in order
     // until finding an insertion point.
@@ -948,17 +945,18 @@ std::list<easy_bf_fast2::FinishedHorizonPoint>::iterator easy_bf_fast2::insert_h
 
 double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
 {
+    std::string prefix = "a";
     int nb_available = _nb_available_machines;
     int required = _priority_job->nb_requested_resources;
     //LOG_F(INFO,"line 1294");
     //make a shallow copy of machines_by_int if share-packing
-    std::map<int,machine *> machines_by_int_copy;
+    std::map<int,Machine *> machines_by_int_copy;
     if (_share_packing)
     {
         for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
             {
-                machine* current_machine = machines_by_int[*it];
-                machine* a_machine = new machine();
+                Machine* current_machine = (*_machines)(prefix,*it);
+                Machine* a_machine = new Machine();
                 //all we need to copy are cores_available and core_count
                 a_machine->cores_available = current_machine->cores_available;
                 a_machine->core_count = current_machine->core_count;
@@ -980,7 +978,7 @@ double easy_bf_fast2::compute_priority_job_expected_earliest_starting_time()
                 return it->date;
             //ok that isn't all we needed, let's keep track of these released cores on each machine
             int machine_number = it->machines[0];
-            machine * current_machine = machines_by_int_copy[machine_number];
+            Machine * current_machine = machines_by_int_copy[machine_number];
             current_machine->cores_available +=1;
             //ok so we added a core to the released machine
             //does this bring a whole machine available?

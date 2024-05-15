@@ -165,20 +165,69 @@ public:
     void ingest_variables(double date);
     virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_checkpoint_batsched(double date);
-    virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config) = 0;
-    virtual void on_first_jobs_submitted(double date) {}
+    virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_event) = 0;
+    void on_start_from_checkpoint_normal(double date, const rapidjson::Value & batsim_event);
+    void on_start_from_checkpoint_schedule(double date, const rapidjson::Value & batsim_event);
+    virtual void on_first_jobs_submitted(double date);
     virtual void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date) {}
     virtual void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date) {}
-    virtual bool all_jobs_submitted_check_passed() {};
     void on_signal_checkpoint();
     void set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map);
     void normal_start(double date, const rapidjson::Value & batsim_event);
-    void set_compute_resources(const rapidjson::Value & batsim_event);
+    bool all_submitted_jobs_check_passed();
+    bool ingest_variables_if_ready(double date);
+    //void set_compute_resources(const rapidjson::Value & batsim_event);
     void schedule_start(double date,const rapidjson::Value & batsim_event);
     void requested_failure_call(double date,batsched_tools::CALL_ME_LATERS cml_in);
     void handle_failures(double date);
     IntervalSet normal_repair(double date);
     IntervalSet normal_downUp(double date);
+    void schedule_repair(IntervalSet machine,batsched_tools::KILL_TYPES forWhat,double date);
+    void schedule_downUp(IntervalSet machine,batsched_tools::KILL_TYPES forWhat,double date);
+    bool schedule_kill_jobs(IntervalSet machine,batsched_tools::KILL_TYPES forWhat, double date);
+    void set_index_of_horizons();
+
+    //ingest functions
+    rapidjson::Document ingestDoc(std::string filename);
+    void ingest(Machines * machines,const rapidjson::Value & json);
+    double ingest(double aDouble, const rapidjson::Value &json);
+    bool ingest(bool aBool,const rapidjson::Value &json);
+    int ingest(int aInt,const rapidjson::Value &json);
+    long ingest(long aLong,const rapidjson::Value &json);
+    std::string ingest(std::string aString,const rapidjson::Value &json);
+    Schedule::RESCHEDULE_POLICY ingest(Schedule::RESCHEDULE_POLICY aPolicy, const rapidjson::Value &json);
+    Schedule::IMPACT_POLICY ingest(Schedule::IMPACT_POLICY aPolicy,const rapidjson::Value &json);
+    Queue * ingest(Queue * queue,const rapidjson::Value & json,double date);
+    Job * ingest(Job * aJob, const rapidjson::Value &json);
+    IntervalSet ingest(IntervalSet intervalSet,const rapidjson::Value &json);
+    std::map<int,IntervalSet> ingest(std::map<int,IntervalSet> &aMap,const rapidjson::Value &json);
+    std::vector<std::string> ingest(std::vector<std::string> &aVector,const rapidjson::Value &json);
+    std::unordered_map<std::string, batsched_tools::Job_Message *> ingest(std::unordered_map<std::string, batsched_tools::Job_Message *> &aUMap, const rapidjson::Value &json);
+    std::vector<double> ingest(std::vector<double> &aVector, const rapidjson::Value &json);
+    void ingestCMLS(const rapidjson::Value &json,double date);
+    std::vector<batsched_tools::KILL_TYPES> ingest(std::vector<batsched_tools::KILL_TYPES> &aVector, const rapidjson::Value &json);
+    std::map<Job *,batsched_tools::Job_Message *> ingest(std::map<Job *,batsched_tools::Job_Message *> &aMap, const rapidjson::Value &json);
+    std::map<std::string,batsched_tools::KILL_TYPES> ingest(std::map<std::string,batsched_tools::KILL_TYPES> &aMap, const rapidjson::Value &json);
+    std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>> ingest(std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>> &aVector, const rapidjson::Value &json);
+    std::vector<Schedule::ReservedTimeSlice> ingest(std::vector<Schedule::ReservedTimeSlice> &aVector, const rapidjson::Value &json);
+    std::list<Job *> ingest(std::list<Job *> &aList,const rapidjson::Value &json);
+    std::unordered_set<std::string> ingest(std::unordered_set<std::string> &aUSet, const rapidjson::Value &json);
+    std::unordered_map<std::string,batsched_tools::Allocation> ingest(std::unordered_map<std::string,batsched_tools::Allocation> &aUMap, const rapidjson::Value &json);
+    std::list<batsched_tools::FinishedHorizonPoint> ingest(std::list<batsched_tools::FinishedHorizonPoint> &aList, const rapidjson::Value &json);
+
+
+    //easy_bf3
+    std::vector<Job *> ingest(std::vector<Job *> jobs, const rapidjson::Value &json);
+    std::vector<batsched_tools::Scheduled_Job *> ingest(std::vector<batsched_tools::Scheduled_Job *> sj,const rapidjson::Value &json);
+    batsched_tools::Scheduled_Job * ingest(batsched_tools::Scheduled_Job * sj,const rapidjson::Value &json);
+    batsched_tools::Priority_Job * ingest(batsched_tools::Priority_Job* pj, const rapidjson::Value &json);
+
+    
+
+
+
+
+
 
     
     
@@ -187,122 +236,147 @@ public:
     
 
 protected:
+    //X = not checkpointed
+    //C = checkpointed
+
+    //base_variables
+    //***************************************************
+    Machines * _machines; //C
+    Queue * _queue; //C
+    Workload * _workload; //X
+    SchedulingDecision * _decision; //X
+    std::string _queue_policy; //X
+    ResourceSelector * _selector; //X
+    double _rjms_delay; //X
+    rapidjson::Document * _variant_options; //X
+    int _nb_machines = -1; //X
+    RedisStorage * _redis = nullptr; //X
+    b_log *_myBLOG; //X
+    std::string _output_folder; //X
+    bool _exit_make_decisions = false; //X
+    std::chrono::_V2::system_clock::time_point _start_real_time; //X
+    std::chrono::_V2::system_clock::time_point _real_time; //C
+    double _consumed_joules; //C
+    bool _reject_possible = false; //C
+    int _nb_call_me_laters=0; //C
+    bool _need_to_backfill = false; //C
     
-    Workload * _workload;
-    //myBatsched::Workloads * _myWorkloads;
-    Machines * _machines;
-    SchedulingDecision * _decision;
-    Queue * _queue;
-    std::string _queue_policy;
-    ResourceSelector * _selector;
-    double _rjms_delay;
-    rapidjson::Document * _variant_options;
-    int _nb_machines = -1;
-    RedisStorage * _redis = nullptr;
-    b_log *_myBLOG;
-    bool _reject_possible = false;
-    double _consumed_joules;
-    std::chrono::_V2::system_clock::time_point _real_time;
-    std::chrono::_V2::system_clock::time_point _start_real_time;
-    int _nb_call_me_laters=0;
-    std::string _output_folder;
-    bool _exit_make_decisions = false;
-    bool _need_to_backfill = false;
-   
-    //share-packing,cores variables
-    //*************************************************
-    struct machine{
-        int id;
-        std::string name;
-        int core_count = -1;
-        int cores_available;
-        double speed;
-    };
-    bool _share_packing = false;
-    double _core_percent = 1.0;
-    std::map<int,machine *> machines_by_int;
-    std::map<std::string,machine *> machines_by_name;
-    //*************************************************
+    //recently_variables
+    //***************************************************
+    IntervalSet _machines_that_became_available_recently; //C
+    IntervalSet _machines_that_became_unavailable_recently; //C
+    std::map<int, IntervalSet> _machines_whose_pstate_changed_recently; //C
+    std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently; //C
+    std::unordered_map<std::string, batsched_tools::Job_Message *> _jobs_killed_recently; //C
+    std::vector<std::string> _jobs_ended_recently; //C
+    std::vector<std::string> _jobs_released_recently; //C
+    IntervalSet _recently_under_repair_machines; //C
+    bool _nopped_recently; //C
+    bool _consumed_joules_updated_recently; //C
+    //***************************************************
 
-
-
-    //failure variables
+    //failure_variables
     //**************************************************
-    bool _need_to_send_finished_submitting_jobs = true;
-    bool _no_more_static_job_to_submit_received = false;
-    bool _no_more_external_event_to_occur_received = false;
-    bool _checkpointing_on=false;
-    std::vector<double> _call_me_laters;
-    bool _wrap_it_up = false;
-    std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups;
-    std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs;
-    std::map<double,batsched_tools::failure_tuple> _file_failures;
-    IntervalSet _available_machines;
-    IntervalSet _unavailable_machines;
-    int _nb_available_machines = -1;
-    IntervalSet _repair_machines;
-    int _repairs_done=0;
-    std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
+    bool _need_to_send_finished_submitting_jobs = true; //C
+    bool _no_more_static_job_to_submit_received = false; //C
+    bool _no_more_external_event_to_occur_received = false; //C
+    bool _checkpointing_on=false; //C
+    std::vector<double> _call_me_laters; //C
+    
+    std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups; //C
+    std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs; //C
+    std::map<double,batsched_tools::failure_tuple> _file_failures; //X TODO
+    IntervalSet _available_machines; //C
+    IntervalSet _unavailable_machines; //C
+    int _nb_available_machines = -1; //C
+    IntervalSet _repair_machines; //C
+    int _repairs_done=0; //C
+    std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs; //C
         //randomness
         //**************************
-    std::mt19937 generator_failure;
-    unsigned int generator_failure_seed;
-    std::exponential_distribution<double> * failure_exponential_distribution=nullptr;
-    std::uniform_int_distribution<int> * failure_unif_distribution=nullptr;
-    int nb_failure_unif_distribution = 0;
-    int nb_failure_exponential_distribution=0;
-    std::mt19937 generator_machine;
-    unsigned int generator_machine_seed;
-    std::uniform_int_distribution<int> * machine_unif_distribution = nullptr;
-    int nb_machine_unif_distribution = 0;
-    std::mt19937 generator_repair_time;
-    unsigned int generator_repair_time_seed;
-    std::exponential_distribution<double> * repair_time_exponential_distribution;
-    int nb_repair_time_exponential_distribution =0;
+    std::mt19937 generator_failure; //C
+    unsigned int generator_failure_seed; //X
+    std::exponential_distribution<double> * failure_exponential_distribution=nullptr; //C
+    std::uniform_int_distribution<int> * failure_unif_distribution=nullptr; //C
+    std::mt19937 generator_machine; //C
+    unsigned int generator_machine_seed; //X
+    std::uniform_int_distribution<int> * machine_unif_distribution = nullptr; //C
+    std::mt19937 generator_repair_time; //C
+    unsigned int generator_repair_time_seed; //X
+    std::exponential_distribution<double> * repair_time_exponential_distribution; //C
     //***************************************************
-   
-    //schedule variables
+
+    //schedule_variables
     //***************************************************
-    std::string _output_svg;
-    std::string _output_svg_method;
-    long _svg_frame_start;
-    long _svg_frame_end;
-    long _svg_output_start;
-    long _svg_output_end;
-    Schedule::RESCHEDULE_POLICY _reschedule_policy;
-    Schedule::IMPACT_POLICY _impact_policy;
-    Schedule _schedule;
+    std::string _output_svg; //C
+    std::string _output_svg_method; //C
+    long _svg_frame_start; //C
+    long _svg_frame_end; //C
+    long _svg_output_start; //C
+    long _svg_output_end; //C
+    Schedule::RESCHEDULE_POLICY _reschedule_policy; //C
+    Schedule::IMPACT_POLICY _impact_policy; //C
+    bool _killed_jobs = false; //C
+    std::map<std::string,batsched_tools::KILL_TYPES> _resubmitted_jobs; //C
+    std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>>_resubmitted_jobs_released; //C
+    bool _dump_provisional_schedules = false; //C
+    std::string _dump_prefix = "/tmp/dump"; //C
+    Schedule _schedule; //C
+    Schedule * _scheduleP = nullptr; //X
+    
     //**************************************************
-    
 
-protected:
+    //backfill variables
+    //**************************************************
+    bool _horizon_algorithm = false; //X
+    Job * _priority_job = nullptr; //C
 
-    //recently variables
-    //***************************************************
-    std::vector<std::string> _jobs_released_recently;
-    std::vector<std::string> _jobs_ended_recently;
-    std::unordered_map<std::string, batsched_tools::Job_Message *> _jobs_killed_recently;
-    std::vector<std::string> _jobs_whose_waiting_time_estimation_has_been_requested_recently;
-    std::map<int, IntervalSet> _machines_whose_pstate_changed_recently;
-    IntervalSet _machines_that_became_available_recently;
-    IntervalSet _machines_that_became_unavailable_recently;
-    bool _nopped_recently;
-    bool _consumed_joules_updated_recently;
-    //***************************************************
-    
+    //**************************************************
+
+
+    //reservation variables
+    //**************************************************
+    bool _reservation_algorithm = false; //X
+    Queue * _reservation_queue=nullptr; //C
+    bool _start_a_reservation=false; //C
+    bool _need_to_compress = false; //C
+    std::vector<Schedule::ReservedTimeSlice> _saved_reservations; //C
+    std::vector<std::string> _saved_recently_queued_jobs; //C
+    std::vector<std::string> _saved_recently_ended_jobs; //C
+    //**************************************************
 
     //Real Checkpoint Variables
     //***************************************************
-    int _nb_batsim_checkpoints = 0;
-    long _batsim_checkpoint_interval_seconds = 0;
-    std::string _batsim_checkpoint_interval_type = "real";
-    bool _need_to_checkpoint = false;
-    bool _need_to_send_checkpoint = false;
-    batsched_tools::start_from_chkpt _start_from_checkpoint;
-    bool _recover_from_checkpoint = false;
-    bool _block_checkpoint = false;
-    double _start_from_checkpoint_time=0;
+    int _nb_batsim_checkpoints = 0; //C
+    batsched_tools::start_from_chkpt _start_from_checkpoint; //X
+    long _batsim_checkpoint_interval_seconds = 0; //X
+    std::string _batsim_checkpoint_interval_type = "real"; //X
+    bool _need_to_checkpoint = false; //X
+    bool _need_to_send_checkpoint = false; //X
+    bool _recover_from_checkpoint = false; //X
+    bool _block_checkpoint = false; //X
+    double _start_from_checkpoint_time=0; //X
     //***************************************************
+
+
+    //share-packing,cores variables
+    //*************************************************
+    bool _share_packing_algorithm = false; //X
+    bool _share_packing = false; //X
+    double _core_percent = 1.0; //X
+    IntervalSet _available_core_machines; //C
+    std::list<Job *> _pending_jobs; //C
+    std::list<Job *> _pending_jobs_heldback; //C
+    std::unordered_set<std::string> _running_jobs; //C
+    std::list<batsched_tools::FinishedHorizonPoint> _horizons; //C
+    std::unordered_map<std::string, batsched_tools::Allocation> _current_allocations; //C
+    int _share_packing_holdback = 0; //X
+    int _p_counter = 0; //pending jobs erased counter  //X
+    int _e_counter = 0; //execute job counter  //X
+    IntervalSet _heldback_machines; //C
+    //*************************************************
+
+  
 
     
 };

@@ -288,7 +288,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     }
     std::string batsched_tools::to_json_string(const IntervalSet is)
     {
-        return is.to_string_hyphen();
+        return "\"" + is.to_string_hyphen() + "\"";
     }
     std::string batsched_tools::to_json_string(const Job_Message * jm)
     {
@@ -301,11 +301,29 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         return ret;
     }
 
-    std::string id;
-        std::string progress_str;
-        double progress;
-        batsched_tools::KILL_TYPES forWhat = batsched_tools::KILL_TYPES::NONE;
-    
+    std::string batsched_tools::to_json_string(const batsched_tools::Allocation *alloc)
+    {
+        using namespace std;
+        std::string ret;
+        ret = "{";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,string>("machines",alloc->machines.to_string_hyphen())) + ",";
+        if (alloc->has_horizon)
+            ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",alloc->horizon_it->index)) + ",";
+        else
+            ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",-1)) + ",";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,bool>("has_horizon",alloc->has_horizon)) + "}";
+        return ret;
+    }
+    std::string batsched_tools::to_json_string(const batsched_tools::FinishedHorizonPoint * fhp)
+    {
+        using namespace std;
+        std::string ret;
+        ret = "{";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,double>("date",fhp->date)) + ",";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("nb_released_machines",fhp->nb_released_machines)) + ",";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,string>("machines",fhp->machines.to_string_hyphen())) + "}";
+        return ret;
+    }
     
     std::string batsched_tools::to_json_string(const JobAlloc * alloc)
     {
@@ -343,7 +361,53 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         std::strftime(std::data(timeString),std::size(timeString),"%F %T\n",std::localtime(&myTime));
         return "\""+std::string(timeString)+"\"";
     }
-    
+    std::string to_json_string(const batsched_tools::Scheduled_Job* sj){
+        std::string s;
+            s = "{";
+            s += "\"id\":"                      +   batsched_tools::to_json_string(sj->id)                              + ",";
+            s += "\"requested_resources\":"     +   batsched_tools::to_json_string(sj->requested_resources)             + ",";
+            s += "\"wall_time\":"               +   batsched_tools::to_json_string(sj->wall_time)                       + ",";
+            s += "\"start_time\":"              +   batsched_tools::to_json_string(sj->start_time)                      + ",";
+            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(sj->est_finish_time)                 + ",";
+            s += "\"allocated_machines\":"      +   batsched_tools::to_json_string(sj->allocated_machines)              + ",";
+            s += "}";
+        return s;
+    }
+    std::string to_json_string(const batsched_tools::Scheduled_Job& sj){
+        std::string s;
+            s = "{";
+            s += "\"id\":"                      +   batsched_tools::to_json_string(sj.id)                              + ",";
+            s += "\"requested_resources\":"     +   batsched_tools::to_json_string(sj.requested_resources)             + ",";
+            s += "\"wall_time\":"               +   batsched_tools::to_json_string(sj.wall_time)                       + ",";
+            s += "\"start_time\":"              +   batsched_tools::to_json_string(sj.start_time)                      + ",";
+            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(sj.est_finish_time)                 + ",";
+            s += "\"allocated_machines\":"      +   batsched_tools::to_json_string(sj.allocated_machines)              + ",";
+            s += "}";
+        return s;
+    }
+    std::string to_json_string(const batsched_tools::Priority_Job* pj){
+        std::string s;
+            s = "{";
+            s += "\"id\":"                      +   batsched_tools::to_json_string(pj->id)                              + ",";
+            s += "\"requested_resources\":"     +   batsched_tools::to_json_string(pj->requested_resources)             + ",";
+            s += "\"extra_resources\":"         +   batsched_tools::to_json_string(pj->extra_resources)                 + ",";
+            s += "\"shadow_time\":"             +   batsched_tools::to_json_string(pj->shadow_time)                     + ",";
+            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(pj->est_finish_time)                 + ",";
+            s += "}";
+        return s;
+
+    }
+    std::string to_json_string(const batsched_tools::Priority_Job& pj){
+        std::string s;
+            s = "{";
+            s += "\"id\":"                      +   batsched_tools::to_json_string(pj.id)                              + ",";
+            s += "\"requested_resources\":"     +   batsched_tools::to_json_string(pj.requested_resources)             + ",";
+            s += "\"extra_resources\":"         +   batsched_tools::to_json_string(pj.extra_resources)                 + ",";
+            s += "\"shadow_time\":"             +   batsched_tools::to_json_string(pj.shadow_time)                     + ",";
+            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(pj.est_finish_time)                 + ",";
+            s += "}";
+        return s;
+    }
     
     
     /*std::string batsched_tools::to_json_string(const Schedule::ReservedTimeSlice *rts){

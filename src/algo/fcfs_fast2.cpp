@@ -22,11 +22,8 @@ FCFSFast2::FCFSFast2(Workload *workload,
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay,
         variant_options)
 {
-    //LOG_F(INFO,"created 4");
-    //_myWorkloads = new myBatsched::Workloads;
-    //batsim log object.  declared in batsched_tools.hpp
-    _myBLOG = new b_log();
-    
+  
+    _share_packing_algorithm = true;
     
 }
 
@@ -34,8 +31,8 @@ FCFSFast2::~FCFSFast2()
 {
     
 }
-void FCFSFast2::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config){
-
+void FCFSFast2::on_start_from_checkpoint(double date,const rapidjson::Value & batsim_event){
+    ISchedulingAlgorithm::on_start_from_checkpoint_normal(date,batsim_event);   
 }
 void FCFSFast2::on_simulation_start(double date,
     const rapidjson::Value &batsim_event)
@@ -55,8 +52,7 @@ void FCFSFast2::on_simulation_start(double date,
     _nb_available_machines = _nb_machines;
     //LOG_F(INFO,"avail: %d   nb_machines: %d",_available_machines.size(),_nb_machines);
     PPK_ASSERT_ERROR(_available_machines.size() == (unsigned int) _nb_machines);
-    ISchedulingAlgorithm::set_compute_resources(batsim_event);
-     _oldDate=date;
+    
      
 }      
 void FCFSFast2::on_simulation_end(double date){
@@ -121,7 +117,7 @@ void FCFSFast2::on_machine_down_for_repair(double date){
         std::string killed_jobs;
         for(auto key_value : _current_allocations)
         {
-            if (!((key_value.second & machine).is_empty())){
+            if (!((key_value.second.machines & machine).is_empty())){
                 Job * job_ref = (*_workload)[key_value.first];
                 batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
                 msg->id = key_value.first;
@@ -147,7 +143,7 @@ void FCFSFast2::on_machine_instant_down_up(double date){
         std::string killed_jobs;
         for(auto key_value : _current_allocations)   
 	    {
-		    if (!((key_value.second & machine).is_empty())){
+		    if (!((key_value.second.machines & machine).is_empty())){
                 Job * job_ref = (*_workload)[key_value.first];
                 batsched_tools::Job_Message* msg = new batsched_tools::Job_Message;
                 msg->id = key_value.first;
@@ -185,9 +181,20 @@ void FCFSFast2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml
         case batsched_tools::call_me_later_types::REPAIR_DONE:
             ISchedulingAlgorithm::requested_failure_call(date,cml_in);
             break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
+            _need_to_checkpoint = true;
+            break;
+
     }
 }
-        
+void FCFSFast2::on_ingest_variables(const rapidjson::Document & doc,double date)
+{
+
+}
+void FCFSFast2::on_checkpoint_batsched(double date)
+{
+    
+}
     
 
 
@@ -197,7 +204,7 @@ void FCFSFast2::on_no_more_static_job_to_submit_received(double date){
 }
 void FCFSFast2::on_no_more_external_event_to_occur(double date){
     
-    _wrap_it_up = true;    
+    (void) date;   
     
     
 }
@@ -214,9 +221,19 @@ void FCFSFast2::make_decisions(double date,
    LOG_F(INFO,"Line 322   fcfs_fast2.cpp");
     (void) update_info;
     (void) compare_info;
+    if (_exit_make_decisions)
+    {   
+        _exit_make_decisions = false;     
+        return;
+    }
+    CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
+    send_batsim_checkpoint_if_ready(date);
+    CLOG_F(CCU_DEBUG_ALL,"here");
+    if (_need_to_checkpoint){
+        checkpoint_batsched(date);
+    }
     std::vector<int> mapping = {0};
-    if (_oldDate == -1)
-        _oldDate=date;
+   
     // This algorithm is a fast version of FCFS without backfilling.
     // It is meant to be fast in the usual case, not to handle corner cases.
     // It is not meant to be easily readable or hackable ;).
@@ -234,23 +251,27 @@ void FCFSFast2::make_decisions(double date,
     // Handle newly finished jobs
     //*****************************************************************
     bool job_ended = false;
+    std::string prefix = "a";
     for (const std::string & ended_job_id : _jobs_ended_recently)
     {
         job_ended = true;
+        if (!_start_from_checkpoint.received_submitted_jobs)
+            _start_from_checkpoint.first_submitted_time = date;
+        _start_from_checkpoint.received_submitted_jobs = true;
         Job * finished_job = (*_workload)[ended_job_id];
         if (_share_packing && finished_job->nb_requested_resources == 1)
         {
                 //first get the machine it was running on
-                int machine_number = (_current_allocations[ended_job_id])[0];
-                machine* current_machine = machines_by_int[machine_number];
+                int machine_number = (_current_allocations[ended_job_id].machines)[0];
+                Machine* current_machine = (*_machines)(prefix,machine_number);
 
                 //now increase cores_available on that machine
                 current_machine->cores_available += 1;
                 //if that increase means no jobs are running on that machine (all its cores are available) then put it back in the mix
                 if (current_machine->cores_available == int(current_machine->core_count * _core_percent))
                 {
-                    _available_core_machines -= _current_allocations[ended_job_id];  // we subtract a core machine because it is now a regular machine
-                    _available_machines.insert(_current_allocations[ended_job_id]); // we insert the machine into available machines
+                    _available_core_machines -= _current_allocations[ended_job_id].machines;  // we subtract a core machine because it is now a regular machine
+                    _available_machines.insert(_current_allocations[ended_job_id].machines); // we insert the machine into available machines
                     _nb_available_machines += 1; // we increase available machines by 1
                 }
                 _current_allocations.erase(ended_job_id);
@@ -258,7 +279,7 @@ void FCFSFast2::make_decisions(double date,
         }
             // was not a 1 resource job, do things normally
         else{
-                IntervalSet machines_to_add = _current_allocations[ended_job_id];
+                IntervalSet machines_to_add = _current_allocations[ended_job_id].machines;
                 machines_to_add-=_unavailable_machines;
                 _available_machines.insert(machines_to_add);
 
@@ -269,7 +290,8 @@ void FCFSFast2::make_decisions(double date,
                 _my_kill_jobs.erase((*_workload)[ended_job_id]);
         }
     }
-    
+    if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
+        return;
 
     
     //LOG_F(INFO,"Line 379  fcfs_fast2.cpp");
@@ -310,7 +332,7 @@ void FCFSFast2::make_decisions(double date,
                 for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                 {
                     //is this machine able to handle another job?
-                    machine* current_machine = machines_by_int[*it];
+                    Machine* current_machine = (*_machines)(prefix,*it);
                     if (current_machine->cores_available >= 1)
                     {                                
                             //it is able to handle another job, execute a job on it and subtract from cores_available
@@ -319,7 +341,7 @@ void FCFSFast2::make_decisions(double date,
                             _decision->add_execute_job(pending_job_id,machines,date,mapping);
                             //update data structures
                             current_machine->cores_available -=1;
-                            _current_allocations[pending_job_id] = machines;
+                            _current_allocations[pending_job_id].machines = machines;
                             _running_jobs.insert(pending_job_id);
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
@@ -339,12 +361,12 @@ void FCFSFast2::make_decisions(double date,
                     _decision->add_execute_job(pending_job_id,machines,date,mapping);
 
                     //update data structures
-                    machine* current_machine = machines_by_int[machines[0]];
+                    Machine* current_machine = (*_machines)(prefix,machines[0]);
                     current_machine->cores_available -= 1;
                     _available_core_machines += machines;
                     _available_machines -= machines;
                     _nb_available_machines -= 1;
-                    _current_allocations[pending_job_id] = machines;
+                    _current_allocations[pending_job_id].machines = machines;
                     _running_jobs.insert(pending_job_id);
                     job_it = _pending_jobs.erase(job_it);
                     erased = true;
@@ -363,7 +385,7 @@ void FCFSFast2::make_decisions(double date,
                 // Update data structures
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
-                 _current_allocations[pending_job_id] = machines;
+                 _current_allocations[pending_job_id].machines = machines;
                 job_it = _pending_jobs.erase(job_it);
                 erased = true;
                 _running_jobs.insert(pending_job->id);
@@ -407,7 +429,7 @@ void FCFSFast2::make_decisions(double date,
                 for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                 {
                     //is this machine able to handle another job?
-                    machine* current_machine = machines_by_int[*it];
+                    Machine* current_machine = (*_machines)(prefix,*it);
                     if (current_machine->cores_available >= 1)
                     {                                
                             //it is able to handle another job, execute a job on it and subtract from cores_available
@@ -416,7 +438,7 @@ void FCFSFast2::make_decisions(double date,
                             _decision->add_execute_job(pending_job_id,machines,date,mapping);
                             //update data structures
                             current_machine->cores_available -=1;
-                            _current_allocations[pending_job_id] = machines;
+                            _current_allocations[pending_job_id].machines = machines;
                             _running_jobs.insert(pending_job_id);
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
@@ -437,13 +459,13 @@ void FCFSFast2::make_decisions(double date,
                     _decision->add_execute_job(pending_job_id,machines,date,mapping);
 
                     //update data structures
-                    machine* current_machine = machines_by_int[machines[0]];
+                    Machine* current_machine = (*_machines)(prefix,machines[0]);
                     current_machine->cores_available -= 1;
                     _available_core_machines += machines;
                     _available_machines -= machines;
                     _nb_available_machines -= 1;
                     //LOG_F(INFO,"Line 531  fcfs_fast2.cpp");
-                    _current_allocations[pending_job_id] = machines;
+                    _current_allocations[pending_job_id].machines = machines;
                     //LOG_F(INFO,"Line 533  fcfs_fast2.cpp");
                     _running_jobs.insert(pending_job_id);
                     //LOG_F(INFO,"Line 535  fcfs_fast2.cpp");
@@ -467,7 +489,7 @@ void FCFSFast2::make_decisions(double date,
                 // Update data structures
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
-                 _current_allocations[pending_job_id] = machines;
+                 _current_allocations[pending_job_id].machines = machines;
                 job_it = _pending_jobs.erase(job_it);
                 erased = true;
                 _running_jobs.insert(pending_job->id);
@@ -525,7 +547,7 @@ void FCFSFast2::make_decisions(double date,
                 for (auto it = _available_core_machines.elements_begin(); it != _available_core_machines.elements_end(); ++it)
                 {
                     //is this machine able to handle another job?
-                    machine* current_machine = machines_by_int[*it];
+                    Machine* current_machine = (*_machines)(prefix,*it);
                     if (current_machine->cores_available >= 1)
                     {                                
                             //it is able to handle another job, execute a job on it and subtract from cores_available
@@ -534,7 +556,7 @@ void FCFSFast2::make_decisions(double date,
                             _decision->add_execute_job(new_job_id,machines,date,mapping);
                             //update data structures
                             current_machine->cores_available -=1;
-                            _current_allocations[new_job_id] = machines;
+                            _current_allocations[new_job_id].machines = machines;
                             _running_jobs.insert(new_job_id);
                             found = true;
                     }
@@ -552,12 +574,12 @@ void FCFSFast2::make_decisions(double date,
                     _decision->add_execute_job(new_job_id,machines,date,mapping);
 
                     //update data structures
-                    machine* current_machine = machines_by_int[machines[0]];
+                    Machine* current_machine = (*_machines)(prefix,machines[0]);
                     current_machine->cores_available -= 1;
                     _available_core_machines += machines;
                     _available_machines -= machines;
                     _nb_available_machines -= 1;
-                    _current_allocations[new_job_id] = machines;
+                    _current_allocations[new_job_id].machines = machines;
                     _running_jobs.insert(new_job_id);
 
                 } 
@@ -578,7 +600,7 @@ void FCFSFast2::make_decisions(double date,
                 // Update data structures
                 _available_machines -= machines;
                 _nb_available_machines -= new_job->nb_requested_resources;
-                 _current_allocations[new_job_id] = machines;
+                 _current_allocations[new_job_id].machines = machines;
                 _running_jobs.insert(new_job->id);
             }
             

@@ -14,8 +14,14 @@
 struct JobAlloc;
 struct Job;
 
-
-
+//ingestMacro
+#define ingestM(variable,outervariable,json) PPK_ASSERT_ERROR(json.HasMember(#variable),"ingesting '%s' failed, no '%s' in json",#outervariable,#variable); variable = ingest(variable,json[#variable])
+//ingestDateMacro
+#define ingestDM(variable,outervariable,json) PPK_ASSERT_ERROR(json.HasMember(#variable),"ingesting '%s' failed, no '%s' in json",#outervariable,#variable); variable = ingest(variable,json[#variable],date)
+//ingestVoidDateMacro
+#define ingestVDM(json) PPK_ASSERT_ERROR(json.HasMember("_call_me_laters"),"ingesting 'failures' failed, no '_call_me_laters' in json"); ingestCMLS(json["_call_me_laters"],date)
+//ingestTypeTestMacro
+#define ingestTTM(variable,outervariable,json,type) PPK_ASSERT_ERROR(json.HasMember(#variable),"ingesting '%s' failed, no '%s' in json",#outervariable,#variable); PPK_ASSERT_ERROR(json.Is##type(),"ingesting '%s' failed, field '%s' is not '%s' type",#outervariable,#variable,#type); variable = ingest(variable,json[#variable])
 
 #define CCU_INFO 1
 #define CCU_DEBUG_FIN 2
@@ -116,16 +122,52 @@ namespace batsched_tools{
         double progress;
         batsched_tools::KILL_TYPES forWhat = batsched_tools::KILL_TYPES::NONE;
     };
+    struct FinishedHorizonPoint
+    {
+        double date;
+        int nb_released_machines;
+        IntervalSet machines; //used if share-packing
+        int index = -1; //only set during a checkpoint, not any other use
+    };
+
+    struct Allocation
+    {
+        IntervalSet machines;
+        std::list<FinishedHorizonPoint>::iterator horizon_it;
+        bool has_horizon = true;
+
+    };
+
+
+    //easy_bf3 structs
+    struct Scheduled_Job
+    {
+        std::string id;
+        int requested_resources;
+        double wall_time;
+        double start_time;
+        double est_finish_time;
+        IntervalSet allocated_machines;
+    };
+    struct Priority_Job
+    {
+        std::string id;
+        int requested_resources;
+        int extra_resources;
+        double shadow_time;
+        double est_finish_time;
+    };
+    //end easy_bf3 structs
     struct tools{
         static id_separation separate_id(const std::string job_id);
     };
      struct job_parts{
-        int job_number;
-        int job_resubmit;
-        int job_checkpoint;
-        std::string workload;
-        std::string next_checkpoint;
-        std::string next_resubmit;
+        int job_number;   //the job number part
+        int job_resubmit; //the job resubmit number
+        int job_checkpoint; // the job checkpoint number
+        std::string workload; // the job's workload part
+        std::string next_checkpoint; //the whole job name with the next_checkpoint tacked on
+        std::string next_resubmit; //the whole job name with the next_resubmit tacked on
 
     };
     struct checkpoint_job_data{
@@ -147,7 +189,6 @@ namespace batsched_tools{
       std::string checkpoint_folder="null"; //the actual folder to read in from
       bool received_submitted_jobs = false;
       std::set<std::string> jobs_that_should_have_been_submitted_already = {};
-      std::set<std::string> jobs_that_have_been_submitted_already = {};
       double first_submitted_time=0;
     };
     struct CALL_ME_LATERS{
@@ -219,8 +260,14 @@ namespace batsched_tools{
     std::string to_json_string(batsched_tools::KILL_TYPES kt);
     std::string to_json_string(const IntervalSet is);
     std::string to_json_string(const batsched_tools::Job_Message * jm);
+    std::string to_json_string(const batsched_tools::Allocation * alloc);
+    std::string to_json_string(const batsched_tools::FinishedHorizonPoint * fhp);
     std::string to_json_string(const batsched_tools::CALL_ME_LATERS &cml);
     std::string to_json_string(const std::chrono::_V2::system_clock::time_point &tp);
+    std::string to_json_string(const batsched_tools::Scheduled_Job* sj);
+    std::string to_json_string(const batsched_tools::Scheduled_Job& sj);
+    std::string to_json_string(const batsched_tools::Priority_Job* pj);
+    std::string to_json_string(const batsched_tools::Priority_Job& pj);
     //std::string to_json_string(Schedule::ReservedTimeSlice rts);
     //std::string to_json_string(const Schedule::ReservedTimeSlice rts);
     //std::string to_json_string(Schedule::ReservedTimeSlice * rts);
@@ -483,6 +530,16 @@ namespace batsched_tools{
     {
         return "{ \"key\":"+batsched_tools::to_json_string(pair.first)+", \"value\":"+batsched_tools::to_json_string(pair.second)+"}";
     }
+    template<typename K,typename V>
+    std::string pair_to_simple_json_string(std::pair<K,V> pair)
+    {
+        return batsched_tools::to_json_string(pair.first) + ":" + batsched_tools::to_json_string(pair.second);
+    }
+    template<typename K,typename V>
+    std::string const_pair_to_simple_string(const std::pair<K,V> pair)
+    {
+         return batsched_tools::to_json_string(pair.first) + ":" + batsched_tools::to_json_string(pair.second);
+    }
 
     template<typename T>
     std::string vector_to_json_string(std::vector<T> &v)
@@ -743,6 +800,66 @@ namespace batsched_tools{
         std::string ourString="[";
         bool first = true;
         for (T value:(*list))
+        {
+            if(!first)
+                ourString += ", "; 
+            first = false;
+            ourString = ourString + batsched_tools::to_json_string(value);
+        }
+        ourString = ourString + "]";
+        return ourString;
+    }
+    template<typename T>
+    std::string unordered_set_to_json_string(std::unordered_set<T> &set)
+    {
+        std::string ourString="[";
+        bool first = true;
+        for (T value:set)
+        {
+            if(!first)
+                ourString += ", "; 
+            first = false;
+            ourString = ourString + batsched_tools::to_json_string(value);
+        }
+        ourString = ourString + "]";
+        return ourString;
+    }
+    template<typename T>
+    std::string unordered_set_to_json_string(std::unordered_set<T> *set)
+    {
+        std::string ourString="[";
+        bool first = true;
+        for (T value:(*set))
+        {
+            if(!first)
+                ourString += ", "; 
+            first = false;
+            ourString = ourString + batsched_tools::to_json_string(value);
+        }
+        ourString = ourString + "]";
+        return ourString;
+    }
+    template<typename T>
+    std::string unordered_set_to_json_string(const std::unordered_set<T> &set)
+    {
+        std::string ourString="[";
+        bool first = true;
+        for (T value:set)
+        {
+            if(!first)
+                ourString += ", "; 
+            first = false;
+            ourString = ourString + batsched_tools::to_json_string(value);
+        }
+        ourString = ourString + "]";
+        return ourString;
+    }
+    template<typename T>
+    std::string unordered_set_to_json_string(const std::unordered_set<T> *set)
+    {
+        std::string ourString="[";
+        bool first = true;
+        for (T value:(*set))
         {
             if(!first)
                 ourString += ", "; 

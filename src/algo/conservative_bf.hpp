@@ -38,7 +38,6 @@ public:
     virtual void on_checkpoint_batsched(double date);
     virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
     virtual void on_first_jobs_submitted(double date);
-    virtual bool all_submitted_jobs_check_passed();
 
 private:
     void handle_killed_jobs(std::vector<std::string> & recently_queued_jobs,double date);
@@ -47,24 +46,14 @@ private:
                             double date);
     void handle_schedule(std::vector<std::string>& recently_queued_jobs,double date);
     
-    Queue * _reservation_queue=nullptr;
+    
 
-    double _previous_date;
-    std::vector<Schedule::ReservedTimeSlice> _saved_reservations;
-    bool _killed_jobs = false;
-    bool _need_to_send_finished_submitting_jobs = true;
-    std::vector<std::string> _saved_recently_queued_jobs;
-    std::vector<std::string> _saved_recently_ended_jobs;
-    IntervalSet _recently_under_repair_machines;
-    bool _need_to_compress = false;
+    //double _previous_date;
+           
     
-    bool _dump_provisional_schedules = false;
-    std::string _dump_prefix = "/tmp/dump";
+
     //myBatsched::Workloads * _myWorkloads;
-    bool _start_a_reservation=false;
-    
-    std::map<std::string,batsched_tools::KILL_TYPES>_resubmitted_jobs;
-    std::vector<std::pair<const Job *,batsched_tools::KILL_TYPES>>_resubmitted_jobs_released;
+   
        
 
 

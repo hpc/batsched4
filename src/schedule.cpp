@@ -119,7 +119,7 @@ std::set<std::string> Schedule::get_jobs_that_should_have_been_submitted_already
     }
     return jobs_that_should_have_been_submitted_already;
 }
-void Schedule::ingest_schedule(rapidjson::Document & doc)
+void Schedule::ingest_schedule(const rapidjson::Document & doc)
 {
        
     using namespace rapidjson;
@@ -2823,7 +2823,6 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
         if (job->allocations.find(this->begin)!= job->allocations.end())
         {
            
-                
             jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":" +
                               batsched_tools::to_json_string(job->allocations[this->begin]) +"}");
         }

@@ -556,50 +556,21 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     redis.set_instance_key_prefix(redis_prefix);
                 }
 
-                //get the workloads
-                
-                
-                /*for (auto &member : event_data["workloads"].GetObject())
+
+                const rapidjson::Value & Vstart_from_checkpoint = event_data["config"]["start-from-checkpoint"];
+                workload.start_from_checkpoint = new batsched_tools::start_from_chkpt();
+                workload.start_from_checkpoint->started_from_checkpoint = Vstart_from_checkpoint["started_from_checkpoint"].GetBool();
+                workload.start_from_checkpoint->nb_folder = Vstart_from_checkpoint["nb_folder"].GetInt();
+                workload.start_from_checkpoint->nb_checkpoint = Vstart_from_checkpoint["nb_checkpoint"].GetInt();
+                workload.start_from_checkpoint->nb_previously_completed = Vstart_from_checkpoint["nb_previously_completed"].GetInt();
+                workload.start_from_checkpoint->nb_original_jobs = Vstart_from_checkpoint["nb_original_jobs"].GetInt();
+                for (const rapidjson::Value & job : Vstart_from_checkpoint["expected_submissions"].GetArray())
                 {
-                        std::string workload_name = member.name.GetString();
-                        std::string workload_filename = member.value.GetString();
-                        myB::Workload * myWorkload= myB::Workload::new_static_workload(workload_name,event_data["workloads"][workload_name.c_str()].GetString());
-                        myWorkload->_checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
-                        myWorkload->_compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
-                        myWorkload->_MTBF = event_data["config"]["MTBF"].GetDouble();
-                        myWorkload->_SMTBF = event_data["config"]["SMTBF"].GetDouble();
-                        myWorkload->_repair_time = event_data["config"]["repair_time"].GetDouble();
-
-                        
-
-                        r::Document myCopy;
-                        myCopy.CopyFrom(event_data,myCopy.GetAllocator());
-                        r::Value & temp = myCopy["jobs"];
-                        r::Value & job_json = temp[workload_name.c_str()];
-                        r::Value & temp2 = myCopy["profiles"];
-                        r::Value &profile_json = temp2[workload_name.c_str()];
-                        myWorkload->load_from_batsim(workload_filename,
-                                                     job_json,
-                                                     profile_json);
-                        LOG_F(INFO,"line 468");
-                        myWorkload->_host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
-                        //just doing single workloads
-                        //if this changes uncomment this line
-                        //myWorkloads.insert_workload(workload_name,myWorkload);
-                        workload._myWorkload = myWorkload;
+                    workload.start_from_checkpoint->jobs_that_should_have_been_submitted_already.insert(job.GetString());
                 }
-                LOG_F(INFO,"line 472");
-               /*
-                JUST DOING SINGLE WORKLOADS 
-                myWorkloads._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
-                myWorkloads._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
-                myWorkloads._MTBF = event_data["config"]["MTBF"].GetDouble();
-                myWorkloads._SMTBF = event_data["config"]["SMTBF"].GetDouble();
-                myWorkloads._repair_time = event_data["config"]["repair_time"].GetDouble();
-                myWorkloads._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
-                myWorkloads._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
-                */
+
                 Machines * machines = new Machines;
+                machines->set_core_percent(event_data["config"]["core-percent"].GetDouble());
                 LOG_F(INFO,"line 489");
                 for(const rapidjson::Value & resource : event_data["compute_resources"].GetArray())
                 {
@@ -620,9 +591,9 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                     algo->set_failure_map(failure_map);
                 }
                 
-                    workload._MTBF = event_data["config"]["MTBF"].GetDouble();
-                    workload._SMTBF = event_data["config"]["SMTBF"].GetDouble();
-                    workload._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
+                workload._MTBF = event_data["config"]["MTBF"].GetDouble();
+                workload._SMTBF = event_data["config"]["SMTBF"].GetDouble();
+                workload._fixed_failures = event_data["config"]["fixed_failures"].GetDouble();
                 
                 workload._repair_time = event_data["config"]["repair_time"].GetDouble();
                 workload._host_speed = event_data["compute_resources"][0]["speed"].GetDouble();
@@ -633,18 +604,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 workload._seed_repair_time = event_data["config"]["seed-repair-time"].GetInt();
                 workload._MTTR = event_data["config"]["MTTR"].GetDouble();
                 workload._reject_jobs_after_nb_repairs = event_data["config"]["reject-jobs-after-nb-repairs"].GetInt();
-                const rapidjson::Value & Vstart_from_checkpoint = event_data["config"]["start-from-checkpoint"];
-                workload.start_from_checkpoint = new batsched_tools::start_from_chkpt();
-               
-                workload.start_from_checkpoint->started_from_checkpoint = Vstart_from_checkpoint["started_from_checkpoint"].GetBool();
-             
-                workload.start_from_checkpoint->nb_folder = Vstart_from_checkpoint["nb_folder"].GetInt();
-               
-                workload.start_from_checkpoint->nb_checkpoint = Vstart_from_checkpoint["nb_checkpoint"].GetInt();
-               
-                workload.start_from_checkpoint->nb_previously_completed = Vstart_from_checkpoint["nb_previously_completed"].GetInt();
-               
-                workload.start_from_checkpoint->nb_original_jobs = Vstart_from_checkpoint["nb_original_jobs"].GetInt();
+                
                              
                 LOG_F(INFO, "before set workloads");
                 /*

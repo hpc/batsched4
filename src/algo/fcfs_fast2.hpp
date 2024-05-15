@@ -46,28 +46,10 @@ public:
     virtual void on_job_end(double date, std::vector<std::string> job_ids);
     virtual void on_machine_state_changed(double date, IntervalSet machines, int new_state);
     virtual void on_no_more_static_job_to_submit_received(double date);
+
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
-
-private:
-    // Machines currently available
-    IntervalSet _available_machines;
-    IntervalSet _unavailable_machines;
-    IntervalSet _repair_machines;
-    IntervalSet _available_core_machines;
-   
-    int _nb_available_machines = -1;
-
-    // Pending jobs (queue)
-    std::list<Job *> _pending_jobs;
-    std::map<Job *,batsched_tools::Job_Message *> _my_kill_jobs;
-    std::unordered_set<std::string> _running_jobs;
-    //myBatsched::Workloads * _myWorkloads;
-    double _oldDate=-1;
-    int _killed=0;
-     
-
-
-    // Allocations of running jobs
-    std::unordered_map<std::string, IntervalSet> _current_allocations;
+    virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
+    virtual void on_checkpoint_batsched(double date);
+    virtual void on_first_jobs_submitted(double date){};
   
 };
