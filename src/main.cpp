@@ -574,8 +574,10 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 LOG_F(INFO,"line 489");
                 for(const rapidjson::Value & resource : event_data["compute_resources"].GetArray())
                 {
+                    LOG_F(INFO,"here");
                     machines->add_machine_from_json_object(resource);
                 }
+                LOG_F(INFO,"here");
                 algo->set_machines(machines);
                 workload._checkpointing_on = event_data["config"]["checkpointing_on"].GetBool();
                 workload._compute_checkpointing = event_data["config"]["compute_checkpointing"].GetBool();
@@ -703,10 +705,15 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 LOG_F(INFO,"DEBUG");
                 requested_callback_received = true;
                 batsched_tools::CALL_ME_LATERS cml;
+                LOG_F(INFO,"DEBUG");
                 cml.id = event_data["id"].GetInt();
+                LOG_F(INFO,"DEBUG");
                 cml.forWhat = static_cast<batsched_tools::call_me_later_types>(event_data["forWhat"].GetInt());
+                LOG_F(INFO,"DEBUG");
                 cml.extra_data = event_data["extra_data"].GetString();
+                LOG_F(INFO,"DEBUG");
                 algo->on_requested_call(current_date,cml);
+                LOG_F(INFO,"DEBUG");
             }
             else if (event_type == "ANSWER")
             {

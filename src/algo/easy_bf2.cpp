@@ -32,12 +32,9 @@ EasyBackfilling2::~EasyBackfilling2()
 void EasyBackfilling2::on_simulation_start(double date, const rapidjson::Value & batsim_event)
 {
    //added
-
-    
     ISchedulingAlgorithm::normal_start(date,batsim_event);
     ISchedulingAlgorithm::schedule_start(date,batsim_event);
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
-   
 }
 
 void EasyBackfilling2::on_simulation_end(double date)
@@ -89,6 +86,7 @@ void EasyBackfilling2::on_machine_down_for_repair(batsched_tools::KILL_TYPES for
     IntervalSet machine = ISchedulingAlgorithm::normal_repair(date);
     
     ISchedulingAlgorithm::schedule_repair(machine,forWhat,date);
+    
 
 }
 
@@ -103,6 +101,7 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
 {
         if (_output_svg != "none")
             _schedule.set_now((Rational)date);
+        LOG_F(INFO,"DEBUG");
         switch (cml_in.forWhat){
             case batsched_tools::call_me_later_types::SMTBF: 
             case batsched_tools::call_me_later_types::MTBF:
@@ -206,16 +205,34 @@ void EasyBackfilling2::make_decisions(double date,
 
 
     ISchedulingAlgorithm::handle_failures(date);
+    LOG_F(INFO,"here");
     CLOG_F(CCU_DEBUG,"handled instant down ups and down for repairs. handling resubmission");
     //ok we handled them all, clear the container
     _on_machine_down_for_repairs.clear();
+    for ( auto job_message_pair : _jobs_killed_recently)
+    {
+        batsched_tools::id_separation separation = batsched_tools::tools::separate_id(job_message_pair.first);
+        LOG_F(INFO,"next_resubmit_string %s",separation.next_resubmit_string.c_str());
+        _resubmitted_jobs[separation.next_resubmit_string]=job_message_pair.second->forWhat;
+    }
+    if (!_resubmitted_jobs.empty())
+    {
+        for ( auto job_id : recently_queued_jobs)
+        {
+            _resubmitted_jobs.erase(job_id);
+        }
+        if (_resubmitted_jobs.empty())
+            _killed_jobs = false;
+    }
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
+    LOG_F(INFO,"here");
     CLOG_F(CCU_DEBUG,"handled resubmission. bout to sort queue while handling priority job");
     if (_output_svg == "short")
         _schedule.output_to_svg("before");
     // Queue sorting
     const Job * priority_job_after = nullptr;
     sort_queue_while_handling_priority_job(priority_job_before, priority_job_after, update_info, compare_info);
+    LOG_F(INFO,"here");
     CLOG_F(CCU_DEBUG,"bout to backfill");
     // If no resources have been released, we can just try to backfill the newly-released jobs
     if (_jobs_ended_recently.empty())
@@ -256,7 +273,8 @@ void EasyBackfilling2::make_decisions(double date,
         {
             const Job * job = (*job_it)->job;
             std::string message = "backfill job: " + job->id;
-            _schedule.output_to_svg(message);
+            if (_output_svg == "all")
+                _schedule.output_to_svg(message);
             CLOG_F(CCU_DEBUG_ALL,"backfill remove job first %s",job->id.c_str());
             if (_schedule.contains_job(job))
                 _schedule.remove_job_if_exists(job);
@@ -278,7 +296,8 @@ void EasyBackfilling2::make_decisions(double date,
             else // The job is not priority
             {
                 JobAlloc alloc = _schedule.add_job_first_fit(job, _selector);
-                _schedule.output_to_svg("added job first fit");
+                if (_output_svg == "all")
+                    _schedule.output_to_svg("added job first fit");
                 if (alloc.started_in_first_slice)
                 {
                     _decision->add_execute_job(job->id, alloc.used_machines, date);
@@ -293,12 +312,14 @@ void EasyBackfilling2::make_decisions(double date,
             }
         }
     }
+    LOG_F(INFO,"here");
     if (_output_svg == "short")
         _schedule.output_to_svg("after");
     if (!_killed_jobs && _jobs_killed_recently.empty() && _queue->is_empty()  && _schedule.size() == 0 &&
             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !(date<1.0) )
     {
       //  LOG_F(INFO,"finished_submitting_jobs sent");
+      LOG_F(INFO,"here");
         _decision->add_scheduler_finished_submitting_jobs(date);
         if (_output_svg == "all" || _output_svg == "short")
             _schedule.output_to_svg("Simulation Finished");
@@ -306,11 +327,13 @@ void EasyBackfilling2::make_decisions(double date,
         _output_svg = "none";
         _need_to_send_finished_submitting_jobs = false;
     }
+    LOG_F(INFO,"here");
     CLOG_F(CCU_DEBUG_ALL,"here");
     //descriptive log statement
-    //LOG_F(INFO,"!killed= %d  jkr = %d  qie = %d rqie = %d ss = %d ntsfsj = %d nmsjtsr = %d",
-    //!_killed_jobs,_jobs_killed_recently.empty(), _queue->is_empty(), _reservation_queue->is_empty() , _schedule.size(),
-    //         _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received);
+    
+    LOG_F(INFO,"!killed= %d  jkr = %d  qie = %d ss = %d ntsfsj = %d nmsjtsr = %d\n _queue: %s",
+    !_killed_jobs,_jobs_killed_recently.empty(), _queue->is_empty(), _schedule.size(),
+             _need_to_send_finished_submitting_jobs , _no_more_static_job_to_submit_received,_queue->to_string().c_str());
 
     //if there are jobs that can't run then we need to start rejecting them at this point
     if (!_killed_jobs && _jobs_killed_recently.empty() && _schedule.size() == 0 &&

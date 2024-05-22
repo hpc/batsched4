@@ -198,24 +198,25 @@ std::vector<const Job *> Schedule::JobVector_from_json(const rapidjson::Value & 
 JobAlloc * Schedule::JobAlloc_from_json(const rapidjson::Value & Valloc)
 {
     JobAlloc *alloc = new JobAlloc;
+    const rapidjson::Value & ObjAlloc = Valloc.GetObject();
+    LOG_F(INFO,"here");
+        alloc->begin = Rational(ObjAlloc["begin"].GetString());
+        
+        alloc->end = Rational(ObjAlloc["end"].GetString());
+        
+        alloc->has_been_inserted = ObjAlloc["has_been_inserted"].GetBool();
+        
+        alloc->started_in_first_slice = ObjAlloc["started_in_first_slice"].GetBool();
     
-    if (Valloc.HasMember("begin"))
-    {
-    
-        alloc->begin = Rational(std::stod(Valloc["begin"].GetString()));
-        
-        alloc->end = Rational(std::stod(Valloc["end"].GetString()));
-        
-        alloc->has_been_inserted = Valloc["has_been_inserted"].GetBool();
-        
-        alloc->started_in_first_slice = Valloc["started_in_first_slice"].GetBool();
-    }
+    //else
+    //    LOG_F(INFO,"Valloc no begin:  %s\n",ObjAlloc["job"].GetString());
    // std::string job_id_str = Valloc["job"].GetString();
     
-    
+    LOG_F(INFO,"here");
     //a job has to have used_machines in a schedule
     std::string used_machines = Valloc["used_machines"].GetString();
     //PPK_ASSERT(used_machines != "","Error, job: %s has an empty string for used_machines in batsched_schedule.chkpt",job_id_str.c_str() );
+    LOG_F(INFO,"here");
     alloc->used_machines = IntervalSet::from_string_hyphen(used_machines);
     
     return alloc;
@@ -296,21 +297,26 @@ std::map<const Job *, IntervalSet, JobComparator>  Schedule::JobMap_from_json(co
         
         const Value & Vid = Vjob["job_id"];
        
-        const Value & Valloc = Vjob["alloc"];
-        JobAlloc * alloc = JobAlloc_from_json(Valloc);
+        const Value & allocsArray = Vjob["allocs"].GetArray();
+        JobAlloc * alloc = JobAlloc_from_json(allocsArray[0].GetObject());
         batsched_tools::job_parts parts = batsched_tools::get_job_parts(Vid.GetString()); 
+        LOG_F(INFO,"here");
         std::string next_checkpoint = parts.next_checkpoint;
-    
+        LOG_F(INFO,"here");
         const Job * job = (*_workload)[next_checkpoint];
+        LOG_F(INFO,"here");
         //LOG_F(INFO,"here job:%s ",job->id.c_str());
         ourMap[job]=alloc->used_machines;
-       
+        LOG_F(INFO,"here");
         alloc->job = job;
-      
-        if (Valloc.HasMember("begin"))
+        alloc->job->allocations[alloc->begin]=alloc;
+        //now that we have the job, get any extra allocations
+        for(rapidjson::SizeType j = 1;j<allocsArray.Size();j++)
+        {
+            alloc = JobAlloc_from_json(allocsArray[j].GetObject());
+            alloc->job = job;
             alloc->job->allocations[alloc->begin]=alloc;
-       
-        
+        }
 
     }
     return ourMap;
@@ -2820,17 +2826,38 @@ string Schedule::TimeSlice::to_string_allocated_jobs() const
         //for (auto kv_pair:job->allocations)
         //    LOG_F(INFO,"%.15f, ",kv_pair.first.convert_to<double>());
         //LOG_F(INFO,"here %.15f",this->begin.convert_to<double>());
-        if (job->allocations.find(this->begin)!= job->allocations.end())
-        {
-           
-            jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":" +
-                              batsched_tools::to_json_string(job->allocations[this->begin]) +"}");
-        }
+        //if (job->allocations.find(this->begin)!= job->allocations.end())
+        //{
+            /*
+            for adding all of the allocations.  Reminder: begin and end of an alloc do not change when updating a slice.  So it is completely normal for begin to
+            not match the begin of the timeslice.
+            */
+            std::string allocs_str="[";
+            bool first = true;
+            for (auto pair : job->allocations)
+            {
+                if (!first)
+                    allocs_str += ",";first = false;
+                allocs_str +=  batsched_tools::to_json_string(pair.second);
+            }
+                allocs_str += "]";
+            
+            jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"allocs\":" +
+                              allocs_str + "}\n");
+        //}
+        /*
         else
         {
-         
+           /* std::string str="";
+            for (auto alloc : job->allocations)
+            {
+                str += "begin:" + batsched_tools::to_string(alloc.second->begin.convert_to<double>()) + "end:" + batsched_tools::to_string(alloc.second->end.convert_to<double>()) + ",";
+            }
+            str += "]";
+            
             jobs_str.push_back("{\"job_id\":\"" + job->id + "\", \"alloc\":{ \"used_machines\":\""+mit.second.to_string_hyphen()+"\" }}");
         }
+        */
 
         
     }

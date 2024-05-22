@@ -128,7 +128,7 @@ void ConservativeBackfilling::on_requested_call(double date,batsched_tools::CALL
             break;
         }
         //sometimes we get back a call me later at the wrong time, this handles that
-        double difference = _decision->remove_call_me_later(cml_in.forWhat,cml_in.id,date,_workload);
+        double difference = _decision->remove_call_me_later(cml_in,date,_workload);
         if (difference != 0 && cml_in.forWhat == batsched_tools::call_me_later_types::RESERVATION_START)
         {
             LOG_F(INFO,"difference: %f",difference);

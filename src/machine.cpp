@@ -74,7 +74,8 @@ void Machines::set_core_percent(double core_percent)
 }
 std::string Machines::to_json_string()
 {
-    std::string machines="{\n\t";
+    std::string machines="{\n";
+    machines+="\t\"_machines\":[\n\t\t";
     
     std::map<int,Machine*>::iterator it;
     for (it=_machinesById.begin();it!=_machinesById.end();)
@@ -82,8 +83,9 @@ std::string Machines::to_json_string()
         machines += it->second->to_json_string();
         it++;
         if (it != _machinesById.end())
-            machines+=",\n\t";
+            machines+=",\n\t\t";
     }
+    machines+="\n\t]\n";
     machines+="}";
     return machines;
 }
@@ -95,16 +97,16 @@ void Machines::add_machine_from_json_object(const rapidjson::Value & object){
     
     PPK_ASSERT_ERROR(object.HasMember("name"),"machine has no name");
     new_machine->name = object["name"].GetString();
-
+  
     PPK_ASSERT_ERROR(object.HasMember("core_count"),"machine %s has no core_count",new_machine->name.c_str());
     new_machine->core_count = object["core_count"].GetInt();
 
     PPK_ASSERT_ERROR(object.HasMember("speed"),"machine %s has no speed",new_machine->name.c_str());
     new_machine->speed = object["speed"].GetDouble();
-
+    
     PPK_ASSERT_ERROR(object.HasMember("repair_time"),"machine %s has no repair_time",new_machine->name.c_str());
-    new_machine->repair_time = object["repair-time"].GetDouble();
-
+    new_machine->repair_time = object["repair_time"].GetDouble();
+   
     PPK_ASSERT_ERROR(object.HasMember("id"),"machine %s has no id",new_machine->name.c_str());
     new_machine->id = object["id"].GetInt();
         

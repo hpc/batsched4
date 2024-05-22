@@ -11,6 +11,7 @@
 #include "json_workload.hpp"
 #include "schedule.hpp"
 #include <set>
+#include "pempek_assert.hpp"
 struct JobAlloc;
 struct Job;
 
@@ -21,7 +22,7 @@ struct Job;
 //ingestVoidDateMacro
 #define ingestVDM(json) PPK_ASSERT_ERROR(json.HasMember("_call_me_laters"),"ingesting 'failures' failed, no '_call_me_laters' in json"); ingestCMLS(json["_call_me_laters"],date)
 //ingestTypeTestMacro
-#define ingestTTM(variable,outervariable,json,type) PPK_ASSERT_ERROR(json.HasMember(#variable),"ingesting '%s' failed, no '%s' in json",#outervariable,#variable); PPK_ASSERT_ERROR(json.Is##type(),"ingesting '%s' failed, field '%s' is not '%s' type",#outervariable,#variable,#type); variable = ingest(variable,json[#variable])
+#define ingestTTM(variable,outervariable,json,type) PPK_ASSERT_ERROR(json.HasMember(#variable),"ingesting '%s' failed, no '%s' in json",#outervariable,#variable); PPK_ASSERT_ERROR(json[#variable].Is##type(),"ingesting '%s' failed, field '%s' is not '%s' type",#outervariable,#variable,#type); variable = ingest(variable,json[#variable])
 
 #define CCU_INFO 1
 #define CCU_DEBUG_FIN 2
@@ -30,15 +31,16 @@ struct Job;
 #define CCU_DEBUG_MAX 9
 #define CLOG_F(verbosity_level, ...) LOG_F(verbosity_level,__VA_ARGS__)
 
-#define BLOG_F(log_type,fmt,...) B_LOG_INSTANCE->blog(log_type,fmt,date,## __VA_ARGS__)
+#define BLOG_F(log_type,fmt,...) B_LOG_INSTANCE->blog(log_type,date,fmt,## __VA_ARGS__)
 class b_log{
     
 public:
 b_log();
 ~b_log();
-void blog(std::string type,std::string fmt, double date,...);
-void add_log_file(std::string file, std::string type);
+void blog(std::string type,double date,std::string fmt,...);
+void add_log_file(std::string file, std::string type,std::string open_method);
 void add_header(std::string type,std::string header);
+void copy_file(std::string file, std::string type,std::string copy_location);
 
 std::unordered_map<std::string,FILE*> _files;
 };
@@ -46,6 +48,11 @@ namespace blog_types
     {
         const std::string SOFT_ERRORS="SOFT_ERRORS";
         const std::string FAILURES="FAILURES";
+    };
+namespace blog_open_method
+    {
+        const std::string APPEND = "APPEND";
+        const std::string OVERWRITE = "OVERWRITE";
     };
 namespace blog_failure_event
     {
@@ -261,7 +268,9 @@ namespace batsched_tools{
     std::string to_json_string(const IntervalSet is);
     std::string to_json_string(const batsched_tools::Job_Message * jm);
     std::string to_json_string(const batsched_tools::Allocation * alloc);
+    std::string to_json_string(const batsched_tools::Allocation & alloc);
     std::string to_json_string(const batsched_tools::FinishedHorizonPoint * fhp);
+    std::string to_json_string(const batsched_tools::FinishedHorizonPoint & fhp);
     std::string to_json_string(const batsched_tools::CALL_ME_LATERS &cml);
     std::string to_json_string(const std::chrono::_V2::system_clock::time_point &tp);
     std::string to_json_string(const batsched_tools::Scheduled_Job* sj);
@@ -291,7 +300,7 @@ namespace batsched_tools{
     for (T value:v)
     {
         if (!first)
-        ourString += ", "; first = false;
+            ourString += ", \n"; first = false;
         ourString = ourString + batsched_tools::to_string(value);
     }
     ourString = ourString + "]";
@@ -305,7 +314,7 @@ namespace batsched_tools{
         for (T value:(*v))
         {
             if (!first)
-            ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString +  batsched_tools::to_string(value);
         }
         ourString = ourString + "]";
@@ -319,7 +328,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:m)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -333,7 +342,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*m)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -347,7 +356,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:um)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -361,7 +370,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*um)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -375,7 +384,7 @@ namespace batsched_tools{
         for (T value:list)
         {
             if(!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_string(value);
         }
         ourString = ourString + "]";
@@ -389,7 +398,7 @@ namespace batsched_tools{
         for (T value:list)
         {
             if(!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_string(value);
         }
         ourString = ourString + "]";
@@ -403,7 +412,7 @@ namespace batsched_tools{
     for (T value:v)
     {
         if (!first)
-        ourString += ", "; first = false;
+            ourString += ", \n"; first = false;
         ourString = ourString + "\"" + batsched_tools::to_string(value) + "\"";
     }
     ourString = ourString + "]";
@@ -417,7 +426,7 @@ namespace batsched_tools{
         for (T value:*v)
         {
             if (!first)
-            ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + "\"" + batsched_tools::to_string(value) + "\"";
         }
         ourString = ourString + "]";
@@ -433,7 +442,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:m)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -447,7 +456,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*m)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -461,7 +470,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:um)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -475,7 +484,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*um)
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -489,7 +498,7 @@ namespace batsched_tools{
         for (T value:list)
         {
             if(!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_string(value);
         }
         ourString = ourString + "]";
@@ -503,7 +512,7 @@ namespace batsched_tools{
         for (T value:list)
         {
             if(!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_string(value);
         }
         ourString = ourString + "]";
@@ -523,12 +532,12 @@ namespace batsched_tools{
     template<typename K,typename V>
     std::string pair_to_json_string(std::pair<K,V> pair)
     {
-        return "{ \"key\":"+batsched_tools::to_json_string(pair.first)+", \"value\":"+batsched_tools::to_json_string(pair.second)+"}";
+        return "{\"key\":"+batsched_tools::to_json_string(pair.first)+", \"value\":"+batsched_tools::to_json_string(pair.second)+"}";
     }
     template<typename K,typename V>
     std::string const_pair_to_string(const std::pair<K,V> pair)
     {
-        return "{ \"key\":"+batsched_tools::to_json_string(pair.first)+", \"value\":"+batsched_tools::to_json_string(pair.second)+"}";
+        return "{\"key\":"+batsched_tools::to_json_string(pair.first)+", \"value\":"+batsched_tools::to_json_string(pair.second)+"}";
     }
     template<typename K,typename V>
     std::string pair_to_simple_json_string(std::pair<K,V> pair)
@@ -549,7 +558,7 @@ namespace batsched_tools{
     for (T value:v)
     {
         if (!first)
-            ourString += ", "; first = false;
+            ourString += ", \n"; first = false;
         ourString = ourString + batsched_tools::to_json_string(value);
     }
     ourString = ourString + "]";
@@ -563,7 +572,7 @@ namespace batsched_tools{
         for (T value:(*v))
         {
             if (!first)
-                ourString += ", "; first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -577,8 +586,7 @@ namespace batsched_tools{
     for (T value:v)
     {
         if (!first)
-            ourString += ", "; 
-        first = false;
+            ourString += ", \n"; first = false;
         ourString = ourString + batsched_tools::to_json_string(value);
     }
     ourString = ourString + "]";
@@ -592,8 +600,7 @@ namespace batsched_tools{
         for (T value:(*v))
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -607,8 +614,7 @@ namespace batsched_tools{
     for (std::pair<K,V> kv_pair:v)
     {
         if (!first)
-            ourString += ", "; 
-        first = false;
+            ourString += ", \n"; first = false;
         ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
     }
     ourString = ourString + "]";
@@ -622,8 +628,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:(*v))
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -637,8 +642,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:m)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -652,8 +656,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*m)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -667,8 +670,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:m)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -682,8 +684,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*m)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -697,8 +698,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:um)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -712,8 +712,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*um)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -727,8 +726,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:um)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -742,8 +740,7 @@ namespace batsched_tools{
         for (std::pair<K,V> kv_pair:*um)
         {
             if (!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
@@ -757,8 +754,7 @@ namespace batsched_tools{
         for (T value:list)
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -772,8 +768,7 @@ namespace batsched_tools{
         for (T value:(*list))
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -787,8 +782,7 @@ namespace batsched_tools{
         for (T value:list)
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -802,8 +796,7 @@ namespace batsched_tools{
         for (T value:(*list))
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -817,8 +810,7 @@ namespace batsched_tools{
         for (T value:set)
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -832,8 +824,7 @@ namespace batsched_tools{
         for (T value:(*set))
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -847,8 +838,7 @@ namespace batsched_tools{
         for (T value:set)
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
@@ -862,8 +852,7 @@ namespace batsched_tools{
         for (T value:(*set))
         {
             if(!first)
-                ourString += ", "; 
-            first = false;
+                ourString += ", \n"; first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";

@@ -524,10 +524,10 @@ void SchedulingDecision::add_call_me_later(double date,double future_date, batsc
     _call_me_laters[_nb_call_me_laters]=cml;
     _nb_call_me_laters++;
 }
-double SchedulingDecision::remove_call_me_later(batsched_tools::call_me_later_types forWhat, int id, double date, Workload * w0)
+double SchedulingDecision::remove_call_me_later(batsched_tools::CALL_ME_LATERS cml_in, double date, Workload * w0)
 {
-    batsched_tools::CALL_ME_LATERS call_me_later = _call_me_laters[id];
-    _call_me_laters.erase(id);
+    batsched_tools::CALL_ME_LATERS call_me_later = _call_me_laters[cml_in.id];
+    _call_me_laters.erase(cml_in.id);
     if (date > call_me_later.time)
     {
         if (call_me_later.forWhat == batsched_tools::call_me_later_types::RESERVATION_START)

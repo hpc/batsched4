@@ -6,6 +6,13 @@
 #include <unistd.h>
 #include <fstream>
 #include <loguru.hpp>
+#if __has_include(<filesystem>)
+#include <filesystem>
+namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#endif
 //#include "schedule.cpp"
 
 b_log::b_log(){
@@ -15,9 +22,31 @@ b_log::~b_log(){
  for (auto key_value:_files)
     fclose(key_value.second);
 }
-void b_log::add_log_file(std::string file,std::string type){
-    FILE* myFile=fopen(file.c_str(),"w");
+void b_log::add_log_file(std::string file,std::string type, std::string open_method){
+    LOG_F(INFO,"here");
+    FILE* myFile;
+    if (open_method == blog_open_method::OVERWRITE)
+        myFile=fopen(file.c_str(),"w");
+    else if (open_method == blog_open_method::APPEND)
+        myFile=fopen(file.c_str(),"a");
+    else
+        PPK_ASSERT_ERROR(false,"ERROR opening file %s, type: %s, open_method: %s",file.c_str(),type.c_str(),open_method.c_str());
+    LOG_F(INFO,"here");
+    std::fprintf(myFile,"");
+    LOG_F(INFO,"here");
     _files[type]=myFile;
+}
+void b_log::copy_file(std::string file, std::string type, std::string copy_location)
+{
+    //first get file
+    FILE* myFile = _files[type];
+    //then flush file
+    fflush(myFile);
+    fclose(myFile);
+    fs::copy(file,copy_location);
+    myFile = fopen(file.c_str(),"a");
+    _files[type]=myFile;
+
 }
 void b_log::add_header(std::string type,std::string header){
     FILE* file = _files[type];
@@ -25,21 +54,36 @@ void b_log::add_header(std::string type,std::string header){
     fflush(file);
 
 }
-void b_log::blog(std::string type, std::string fmt, double date, ...){
+void b_log::blog(std::string type, double date,std::string fmt, ...){
     
     bool csv = false;
+    LOG_F(INFO,"here");
     if (type == blog_types::FAILURES)
         csv = true;
     if (_files.size() > 0 && _files.find(type) != _files.end()){
         va_list args;
+        LOG_F(INFO,"here");
         va_start(args,date);
+        LOG_F(INFO,"here");
         FILE* file = _files[type];
+        LOG_F(INFO,"here");
         if(!csv)
+        {
+            LOG_F(INFO,"here");
             std::fprintf(file,"%-60f ||",date);
+            LOG_F(INFO,"here");
+        }
         else
+        {
+            
+            LOG_F(INFO,"here");
             std::fprintf(file,"%f,",date);
+            LOG_F(INFO,"here");
+        }
+        LOG_F(INFO,"here");
         fmt=fmt + "\n";
         std::vfprintf(file,fmt.c_str(),args);
+        LOG_F(INFO,"here");
         va_end(args);
         fflush(file);
     }
@@ -314,6 +358,19 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         ret += batsched_tools::pair_to_simple_json_string(std::pair<string,bool>("has_horizon",alloc->has_horizon)) + "}";
         return ret;
     }
+    std::string batsched_tools::to_json_string(const batsched_tools::Allocation &alloc)
+    {
+        using namespace std;
+        std::string ret;
+        ret = "{";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,string>("machines",alloc.machines.to_string_hyphen())) + ",";
+        if (alloc.has_horizon)
+            ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",alloc.horizon_it->index)) + ",";
+        else
+            ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",-1)) + ",";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,bool>("has_horizon",alloc.has_horizon)) + "}";
+        return ret;
+    }
     std::string batsched_tools::to_json_string(const batsched_tools::FinishedHorizonPoint * fhp)
     {
         using namespace std;
@@ -324,14 +381,27 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         ret += batsched_tools::pair_to_simple_json_string(std::pair<string,string>("machines",fhp->machines.to_string_hyphen())) + "}";
         return ret;
     }
+    std::string batsched_tools::to_json_string(const batsched_tools::FinishedHorizonPoint & fhp)
+    {
+        using namespace std;
+        std::string ret;
+        ret = "{";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,double>("date",fhp.date)) + ",";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("nb_released_machines",fhp.nb_released_machines)) + ",";
+        ret += batsched_tools::pair_to_simple_json_string(std::pair<string,string>("machines",fhp.machines.to_string_hyphen())) + "}";
+        return ret;
+    }
     
     std::string batsched_tools::to_json_string(const JobAlloc * alloc)
     {
         std::string s = "{";
         
-            s+="\"begin\":\""+batsched_tools::to_json_string(alloc->begin.convert_to<double>())+"\"";
+            s+="\"begin\":"+batsched_tools::to_json_string(alloc->begin.convert_to<std::string>());
            
-            s+=",\"end\":\""+batsched_tools::to_json_string(alloc->end.convert_to<double>())+"\"";
+            s+=",\"end\":"+batsched_tools::to_json_string(alloc->end.convert_to<std::string>());
+            //for visualizing the Rational only
+            s+=",\"dbl_begin\":\""+batsched_tools::to_json_string(alloc->begin.convert_to<double>())+"\"";
+            s+=",\"dbl_end\":\""+batsched_tools::to_json_string(alloc->end.convert_to<double>())+"\"";
            
             s+=",\"has_been_inserted\":"+std::string((alloc->has_been_inserted ? "true":"false"));
            
@@ -361,7 +431,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         std::strftime(std::data(timeString),std::size(timeString),"%F %T\n",std::localtime(&myTime));
         return "\""+std::string(timeString)+"\"";
     }
-    std::string to_json_string(const batsched_tools::Scheduled_Job* sj){
+    std::string batsched_tools::to_json_string(const batsched_tools::Scheduled_Job* sj){
         std::string s;
             s = "{";
             s += "\"id\":"                      +   batsched_tools::to_json_string(sj->id)                              + ",";
@@ -373,7 +443,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
             s += "}";
         return s;
     }
-    std::string to_json_string(const batsched_tools::Scheduled_Job& sj){
+    std::string batsched_tools::to_json_string(const batsched_tools::Scheduled_Job& sj){
         std::string s;
             s = "{";
             s += "\"id\":"                      +   batsched_tools::to_json_string(sj.id)                              + ",";
@@ -385,7 +455,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
             s += "}";
         return s;
     }
-    std::string to_json_string(const batsched_tools::Priority_Job* pj){
+    std::string batsched_tools::to_json_string(const batsched_tools::Priority_Job* pj){
         std::string s;
             s = "{";
             s += "\"id\":"                      +   batsched_tools::to_json_string(pj->id)                              + ",";
@@ -397,7 +467,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         return s;
 
     }
-    std::string to_json_string(const batsched_tools::Priority_Job& pj){
+    std::string batsched_tools::to_json_string(const batsched_tools::Priority_Job& pj){
         std::string s;
             s = "{";
             s += "\"id\":"                      +   batsched_tools::to_json_string(pj.id)                              + ",";

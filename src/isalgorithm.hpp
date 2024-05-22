@@ -189,7 +189,7 @@ public:
 
     //ingest functions
     rapidjson::Document ingestDoc(std::string filename);
-    void ingest(Machines * machines,const rapidjson::Value & json);
+    Machines * ingest(Machines * machines,const rapidjson::Value & json);
     double ingest(double aDouble, const rapidjson::Value &json);
     bool ingest(bool aBool,const rapidjson::Value &json);
     int ingest(int aInt,const rapidjson::Value &json);
@@ -308,8 +308,8 @@ protected:
 
     //schedule_variables
     //***************************************************
-    std::string _output_svg; //C
-    std::string _output_svg_method; //C
+    std::string _output_svg; //C   //all|short|none
+    std::string _output_svg_method; //C   //svg|text|both
     long _svg_frame_start; //C
     long _svg_frame_end; //C
     long _svg_output_start; //C
