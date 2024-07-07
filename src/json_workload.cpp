@@ -44,6 +44,10 @@ void Workload::set_rjms_delay(Rational rjms_delay)
     PPK_ASSERT_ERROR(rjms_delay >= 0);
     _rjms_delay = rjms_delay;
 }
+std::map<std::string,Job*>& Workload::get_jobs()
+{
+    return _jobs;
+}
 
 void Workload::add_job_from_redis(RedisStorage & storage, const string &job_id, double submission_time)
 {
@@ -67,7 +71,8 @@ void Workload::add_job_from_json_object(const Value &object, const string & job_
     Job * job = job_from_json_object(object["job"],object["profile"]);
     LOG_F(INFO,"here");
     job->id = job_id;
-    job->submission_time = submission_time;
+    //this submission time is now gathered from job_from_json_object(), and potentially changed to original_submit
+    //job->submission_time = submission_time;
 
 
     // Let's apply the RJMS delay on the job
@@ -81,7 +86,8 @@ void Workload::add_job_from_json_description_string(const string &json_string, c
 {
     Job * job = job_from_json_description_string(json_string);
     job->id = job_id;
-    job->submission_time = submission_time;
+    //this submission time is now gathered from job_from_json_object(), and potentially changed to original_submit
+    //job->submission_time = submission_time;
 
     // Let's apply the RJMS delay on the job
     job->walltime += _rjms_delay;
@@ -143,38 +149,56 @@ Job *Workload::job_from_json_object(const Value &object)
     PPK_ASSERT_ERROR(object["res"].IsInt(), "Invalid json object: 'res' member is not an integer");
 LOG_F(INFO,"here");
     Job * j = new Job;
+    LOG_F(INFO,"here");
     j->id = object["id"].GetString();
+    LOG_F(INFO,"here");
     j->walltime = -1;
+    LOG_F(INFO,"here");
     j->has_walltime = true;
+    LOG_F(INFO,"here");
     j->nb_requested_resources = object["res"].GetInt();
+    LOG_F(INFO,"here");
     j->unique_number = _job_number++;
+    LOG_F(INFO,"here");
     j->checkpoint_interval = -1.0;
+    LOG_F(INFO,"here");
+    PPK_ASSERT_ERROR(object.HasMember("subtime"), "%s: job '%s' has no 'subtime' field",j->id.c_str());
+    j->submission_time = object["subtime"].GetDouble();
     if (start_from_checkpoint->started_from_checkpoint)
     {
+        LOG_F(INFO,"here");
         j->checkpoint_job_data = new batsched_tools::checkpoint_job_data();
         PPK_ASSERT_ERROR(object.HasMember("allocation"), "%s: job '%s' has no 'allocation' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
-        j->checkpoint_job_data->allocation = object["allocation"].GetString();
-        
+        std::string interval = object["allocation"].GetString();
+        if (interval != "null")
+            j->checkpoint_job_data->allocation = IntervalSet::from_string_hyphen(interval);
+        LOG_F(INFO,"here");
         PPK_ASSERT_ERROR(object.HasMember("progress"), "%s: job '%s' has no 'progress' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         j->checkpoint_job_data->progress = object["progress"].GetDouble();
-
+LOG_F(INFO,"here");
         PPK_ASSERT_ERROR(object.HasMember("state"), "%s: job '%s' has no 'state' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
-        j->checkpoint_job_data->state = object["state"].GetInt();
-
+        int state = object["state"].GetInt();
+        j->checkpoint_job_data->state = static_cast<batsched_tools::JobState>(state);
+LOG_F(INFO,"here");
         PPK_ASSERT_ERROR(object.HasMember("jitter"), "%s: job '%s' has no 'jitter' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         j->checkpoint_job_data->jitter = object["jitter"].GetString();
-
+LOG_F(INFO,"here");
         PPK_ASSERT_ERROR(object.HasMember("runtime"), "%s: job '%s' has no 'runtime' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         j->checkpoint_job_data->runtime = object["runtime"].GetDouble();
-
+LOG_F(INFO,"here");
+        //this is so sorting by submit time will work whether you use the FCFS or ORIGINAL-FCFS queuing policy
+        //basically the scheduler doesn't need to know the submit time in the start-from-checkpoint simulation, it needs to know the original
+        
         
     }
-LOG_F(INFO,"here");
+    PPK_ASSERT_ERROR(object.HasMember("original_submit"), "%s: job '%s' has no 'original_submit' field",j->id.c_str());
+    j->original_submit = object["original_submit"].GetDouble();
+    LOG_F(INFO,"here");
     if (object.HasMember("walltime"))
     {
         PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");

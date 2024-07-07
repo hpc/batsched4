@@ -76,16 +76,17 @@ protected:
     Job * get_first_waiting_job();
     void max_heapify_schedule(int root, int size);
     void heap_sort_schedule(int size);
+    std::string queue_to_string();
 
     // @note LH: Additions for replacing the schedule class
     
-    batsched_tools::Scheduled_Job * _tmp_job = NULL;
+    batsched_tools::Scheduled_Job * _tmp_job = nullptr;
     std::vector<batsched_tools::Scheduled_Job *> _scheduled_jobs;
 
 
     // @note LH: Struct to keep track of priority job
     
-    batsched_tools::Priority_Job * _p_job = NULL;
+    batsched_tools::Priority_Job * _p_job = nullptr;
 
     // @note LH: Added variables
     

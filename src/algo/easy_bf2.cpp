@@ -68,6 +68,7 @@ void EasyBackfilling2::on_ingest_variables(const rapidjson::Document & doc,doubl
     //using namespace rapidjson;
     //const Value & derived = doc["derived"];
     
+    
 }
 
 // @note Leslie added on_first_jobs_submitted(double date)
@@ -112,6 +113,9 @@ void EasyBackfilling2::on_requested_call(double date,batsched_tools::CALL_ME_LAT
                           
             case batsched_tools::call_me_later_types::REPAIR_DONE:
                 ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+                break;
+            case batsched_tools::call_me_later_types::CHECKPOINT_SYNC:
+                _checkpoint_sync++;
                 break;
             case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
                 _need_to_checkpoint = true;

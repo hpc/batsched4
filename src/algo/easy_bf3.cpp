@@ -124,6 +124,9 @@ void EasyBackfilling3::on_requested_call(double date,batsched_tools::CALL_ME_LAT
         case batsched_tools::call_me_later_types::REPAIR_DONE:
             ISchedulingAlgorithm::requested_failure_call(date,cml_in);
             break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_SYNC:
+            _checkpoint_sync++;
+            break;
         case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
             _need_to_checkpoint = true;
             break;
@@ -160,12 +163,43 @@ void EasyBackfilling3::on_checkpoint_batsched(double date){
     if (f.is_open())
     {
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
-        <<"{\n"
-        <<"\t\"_waiting_jobs\":"                << batsched_tools::vector_to_json_string(_waiting_jobs)         <<","<<std::endl
-        <<"\t\"_scheduled_jobs\":"              << batsched_tools::vector_to_json_string(_scheduled_jobs)       <<","<<std::endl
-        <<"\t\"_tmp_job\":"                     << batsched_tools::to_json_string(_tmp_job)                     <<","<<std::endl
-        <<"\t\"_p_job\":"                       << batsched_tools::to_json_string(_p_job)                       <<","<<std::endl
-        <<"\t\"_can_run\":"                     << batsched_tools::to_json_string(_can_run)                     <<","<<std::endl
+        <<"{\n";
+        LOG_F(INFO,"Checkpointing _waiting_jobs");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\"_waiting_jobs\":"                << batsched_tools::vector_to_json_string(_waiting_jobs,false)         <<","<<std::endl;
+
+        LOG_F(INFO,"Checkpointing _scheduled_jobs");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\"_scheduled_jobs\":"              << batsched_tools::vector_to_json_string(_scheduled_jobs)       <<","<<std::endl;
+
+        LOG_F(INFO,"Checkpointing _tmp_job");
+        
+        if (_tmp_job==nullptr)
+        {
+            f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+            <<"\t\"_tmp_job\":"                     << batsched_tools::to_json_string("nullptr")                     <<","<<std::endl;
+        }
+        else
+        {
+            f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+            <<"\t\"_tmp_job\":"                     << batsched_tools::to_json_string(_tmp_job)                     <<","<<std::endl;
+        }
+        LOG_F(INFO,"Checkpointing _p_job");
+        if (_p_job==nullptr)
+        {
+            f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+            <<"\t\"_p_job\":"                     << batsched_tools::to_json_string("nullptr")                     <<","<<std::endl;
+        }
+        else
+        {
+            f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+            <<"\t\"_p_job\":"                     << batsched_tools::to_json_string(_p_job)                     <<","<<std::endl;
+        }
+
+        
+        LOG_F(INFO,"Checkpointing _can_run");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\"_can_run\":"                     << _can_run                     <<std::endl
         <<"}";
         f.close();
     }
@@ -175,18 +209,28 @@ void EasyBackfilling3::on_ingest_variables(const rapidjson::Document & doc,doubl
     
     std::string checkpoint_dir = _output_folder + "/start_from_checkpoint";
     using namespace rapidjson;
+    LOG_F(INFO,"here");
     rapidjson::Document easy_bf3Doc = ISchedulingAlgorithm::ingestDoc(checkpoint_dir + "/easy_bf3.chkpt");
+    LOG_F(INFO,"here");
     ingestM(_waiting_jobs,easy_bf3Doc,easy_bf3Doc);
+    LOG_F(INFO,"here");
     ingestM(_scheduled_jobs,easy_bf3Doc,easy_bf3Doc);
+    LOG_F(INFO,"here");
     ingestM(_tmp_job,easy_bf3Doc,easy_bf3Doc);
+    LOG_F(INFO,"here");
     ingestM(_p_job,easy_bf3Doc,easy_bf3Doc);
+    LOG_F(INFO,"here");
     ingestM(_can_run,easy_bf3Doc,easy_bf3Doc);
-
+    ISchedulingAlgorithm::execute_jobs_in_running_state(date);  
 
 }
 
 void EasyBackfilling3::on_first_jobs_submitted(double date){}
-
+std::string EasyBackfilling3::queue_to_string()
+{
+    return batsched_tools::vector_to_json_string(_waiting_jobs,false);
+    
+}
 /*********************************************************
  *             MODIFIED DECISION FUNCTIONS               *
 **********************************************************/
@@ -195,26 +239,30 @@ void EasyBackfilling3::make_decisions(double date,
                                      SortableJobOrder::UpdateInformation *update_info,
                                      SortableJobOrder::CompareInformation *compare_info)
 {
+    LOG_F(INFO,"queue: %s",queue_to_string().c_str());
+    if (!_jobs_killed_recently.empty())
+        LOG_F(INFO,"_jobs_killed_recently: %s",_jobs_killed_recently.begin()->second->id.c_str());
     (void) compare_info;
+    CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
+    send_batsim_checkpoint_if_ready(date);
     if (_exit_make_decisions)
     {   
         _exit_make_decisions = false;     
         return;
     }
-    CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
-    send_batsim_checkpoint_if_ready(date);
+
     CLOG_F(CCU_DEBUG_ALL,"here");
     if (_need_to_checkpoint){
         checkpoint_batsched(date);
     }
-        
+    LOG_F(INFO,"here");   
     Job * priority_job_before = get_first_waiting_job();
-
+    LOG_F(INFO,"here");
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently){
         handle_finished_job(ended_job_id, date);
     }
-
+    LOG_F(INFO,"here");
     //  Handle any killed jobs
     if(!_my_kill_jobs.empty()){
         std::vector<batsched_tools::Job_Message *> kills;
@@ -226,10 +274,10 @@ void EasyBackfilling3::make_decisions(double date,
         _decision->add_kill_job(kills,date);
         _my_kill_jobs.clear();
     }
-
+    LOG_F(INFO,"here");
     // Handle resubmitting killed jobs to queue back up
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
-
+    LOG_F(INFO,"here");
     // Let's handle recently released jobs
     std::vector<std::string> recently_queued_jobs;
     for (const string & new_job_id : _jobs_released_recently)
@@ -256,7 +304,11 @@ void EasyBackfilling3::make_decisions(double date,
         }
     }
     if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
-        return;    
+    {
+        if (!_jobs_killed_recently.empty())
+            LOG_F(INFO,"_jobs_killed_recently: %s",_jobs_killed_recently.begin()->second->id.c_str());
+        return;
+    }
 
     // Queue sorting
     Job * priority_job_after = nullptr;
@@ -336,7 +388,7 @@ void EasyBackfilling3::make_decisions(double date,
         _decision->add_scheduler_finished_submitting_jobs(date);
         _need_to_send_finished_submitting_jobs = false;
     }
-
+    LOG_F(INFO,"queue: %s",queue_to_string().c_str());
     // @note LH: adds queuing info to the out_jobs_extra.csv file
     _decision->add_generic_notification("queue_size",to_string(_waiting_jobs.size()),date);
     _decision->add_generic_notification("schedule_size",to_string(_scheduled_jobs.size()),date);
@@ -497,6 +549,7 @@ void EasyBackfilling3::handle_finished_job(string job_id, double date){
 
         // @note deallocate finished job struct
         delete _tmp_job;
+        _tmp_job=nullptr;
         // @note LH: delete the job pointer in the schedule
         _scheduled_jobs.erase(fj_it);
     }
@@ -555,6 +608,7 @@ inline bool EasyBackfilling3::CompareQueue::operator()(Job* jobA, Job* jobB) con
         size_t pos2 = str_id.find_first_not_of("0123456789", pos1);
         return std::stoi(str_id.substr(pos1, pos2 - pos1));
     };
+    //original submit has to do with real checkpointing.  submission_times[0] has to do with simulated checkpointing
     // @note LH: compare_orginal is true if _queue_policy is "ORIGINAL_FCFS"
     if (compare_original) {
         // @note LH: if submission times are the same, sort by id 
@@ -564,10 +618,10 @@ inline bool EasyBackfilling3::CompareQueue::operator()(Job* jobA, Job* jobB) con
          // @note LH: otherwise sort by subbmission time
         return jobA->submission_times[0] > jobB->submission_times[0];
     } else {
-        if (jobA->submission_time == jobB->submission_time) {
+        if (jobA->original_submit == jobB->original_submit) {
             return extractNumericId(jobA->id) > extractNumericId(jobB->id);
         }
-        return jobA->submission_time > jobB->submission_time;
+        return jobA->original_submit > jobB->original_submit;
     }
 }
 

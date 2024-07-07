@@ -22,8 +22,8 @@ FCFSFast2::FCFSFast2(Workload *workload,
     ISchedulingAlgorithm(workload, decision, queue, selector, rjms_delay,
         variant_options)
 {
-  
-    _share_packing_algorithm = true;
+  _share_packing_algorithm = true;
+    
     
 }
 
@@ -177,9 +177,13 @@ void FCFSFast2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml
         case batsched_tools::call_me_later_types::FIXED_FAILURE:
             if (!_running_jobs.empty() || !_pending_jobs.empty() || !_no_more_static_job_to_submit_received)
                 ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+                ISchedulingAlgorithm::handle_failures(date);
             break;
         case batsched_tools::call_me_later_types::REPAIR_DONE:
             ISchedulingAlgorithm::requested_failure_call(date,cml_in);
+            break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_SYNC:
+            _checkpoint_sync++;
             break;
         case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
             _need_to_checkpoint = true;
@@ -189,7 +193,7 @@ void FCFSFast2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS cml
 }
 void FCFSFast2::on_ingest_variables(const rapidjson::Document & doc,double date)
 {
-
+    ISchedulingAlgorithm::execute_jobs_in_running_state(date);
 }
 void FCFSFast2::on_checkpoint_batsched(double date)
 {
@@ -228,6 +232,11 @@ void FCFSFast2::make_decisions(double date,
     }
     CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
     send_batsim_checkpoint_if_ready(date);
+    if (_exit_make_decisions)
+    {   
+        _exit_make_decisions = false;     
+        return;
+    }
     CLOG_F(CCU_DEBUG_ALL,"here");
     if (_need_to_checkpoint){
         checkpoint_batsched(date);
@@ -255,12 +264,11 @@ void FCFSFast2::make_decisions(double date,
     for (const std::string & ended_job_id : _jobs_ended_recently)
     {
         job_ended = true;
-        if (!_start_from_checkpoint.received_submitted_jobs)
-            _start_from_checkpoint.first_submitted_time = date;
-        _start_from_checkpoint.received_submitted_jobs = true;
+
         Job * finished_job = (*_workload)[ended_job_id];
         if (_share_packing && finished_job->nb_requested_resources == 1)
         {
+                LOG_F(INFO,"ended job, _share_packing == True");
                 //first get the machine it was running on
                 int machine_number = (_current_allocations[ended_job_id].machines)[0];
                 Machine* current_machine = (*_machines)(prefix,machine_number);
@@ -290,8 +298,7 @@ void FCFSFast2::make_decisions(double date,
                 _my_kill_jobs.erase((*_workload)[ended_job_id]);
         }
     }
-    if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
-        return;
+
 
     
     //LOG_F(INFO,"Line 379  fcfs_fast2.cpp");
@@ -342,6 +349,7 @@ void FCFSFast2::make_decisions(double date,
                             //update data structures
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id].machines = machines;
+                            _current_allocations[pending_job_id].has_horizon = false;
                             _running_jobs.insert(pending_job_id);
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
@@ -367,6 +375,7 @@ void FCFSFast2::make_decisions(double date,
                     _available_machines -= machines;
                     _nb_available_machines -= 1;
                     _current_allocations[pending_job_id].machines = machines;
+                    _current_allocations[pending_job_id].has_horizon = false;
                     _running_jobs.insert(pending_job_id);
                     job_it = _pending_jobs.erase(job_it);
                     erased = true;
@@ -386,6 +395,7 @@ void FCFSFast2::make_decisions(double date,
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id].machines = machines;
+                 _current_allocations[pending_job_id].has_horizon = false;
                 job_it = _pending_jobs.erase(job_it);
                 erased = true;
                 _running_jobs.insert(pending_job->id);
@@ -439,6 +449,7 @@ void FCFSFast2::make_decisions(double date,
                             //update data structures
                             current_machine->cores_available -=1;
                             _current_allocations[pending_job_id].machines = machines;
+                            _current_allocations[pending_job_id].has_horizon = false;
                             _running_jobs.insert(pending_job_id);
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
@@ -466,6 +477,7 @@ void FCFSFast2::make_decisions(double date,
                     _nb_available_machines -= 1;
                     //LOG_F(INFO,"Line 531  fcfs_fast2.cpp");
                     _current_allocations[pending_job_id].machines = machines;
+                    _current_allocations[pending_job_id].has_horizon = false;
                     //LOG_F(INFO,"Line 533  fcfs_fast2.cpp");
                     _running_jobs.insert(pending_job_id);
                     //LOG_F(INFO,"Line 535  fcfs_fast2.cpp");
@@ -490,6 +502,7 @@ void FCFSFast2::make_decisions(double date,
                 _available_machines -= machines;
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id].machines = machines;
+                 _current_allocations[pending_job_id].has_horizon = false;
                 job_it = _pending_jobs.erase(job_it);
                 erased = true;
                 _running_jobs.insert(pending_job->id);
@@ -510,6 +523,14 @@ void FCFSFast2::make_decisions(double date,
     }
     //LOG_F(INFO,"Line 567  fcfs_fast2.cpp");
     // Handle newly released jobs
+    if (_recover_from_checkpoint && _start_from_checkpoint.started_from_checkpoint && !_jobs_released_recently.empty())
+    {
+        if (!_start_from_checkpoint.received_submitted_jobs)
+            _start_from_checkpoint.first_submitted_time = date;
+        _start_from_checkpoint.received_submitted_jobs = true;
+        ISchedulingAlgorithm::ingest_variables_if_ready(date);
+        return;
+    }
     for (const std::string & new_job_id : _jobs_released_recently)
     {
         Job * new_job = (*_workload)[new_job_id];
@@ -557,6 +578,7 @@ void FCFSFast2::make_decisions(double date,
                             //update data structures
                             current_machine->cores_available -=1;
                             _current_allocations[new_job_id].machines = machines;
+                            _current_allocations[new_job_id].has_horizon = false;
                             _running_jobs.insert(new_job_id);
                             found = true;
                     }
@@ -580,6 +602,7 @@ void FCFSFast2::make_decisions(double date,
                     _available_machines -= machines;
                     _nb_available_machines -= 1;
                     _current_allocations[new_job_id].machines = machines;
+                    _current_allocations[new_job_id].has_horizon = false;
                     _running_jobs.insert(new_job_id);
 
                 } 
@@ -601,6 +624,7 @@ void FCFSFast2::make_decisions(double date,
                 _available_machines -= machines;
                 _nb_available_machines -= new_job->nb_requested_resources;
                  _current_allocations[new_job_id].machines = machines;
+                 _current_allocations[new_job_id].has_horizon = false;
                 _running_jobs.insert(new_job->id);
             }
             
@@ -620,6 +644,15 @@ void FCFSFast2::make_decisions(double date,
         _need_to_send_finished_submitting_jobs = false;
     }
     */
+   LOG_F(INFO,"jkr_e:%d pj_e:%d rj_e:%d ntsfsj:%d nmsjtsr:%d",_jobs_killed_recently.empty(), _pending_jobs.empty(), _running_jobs.empty(),
+             _need_to_send_finished_submitting_jobs, _no_more_static_job_to_submit_received );
+    if (!_pending_jobs.empty())
+    {
+        std::string pj = batsched_tools::list_to_json_string(_pending_jobs);
+        LOG_F(INFO,"_pending_jobs: %s",pj.c_str());
+        LOG_F(INFO,"_available_machines: %s",_available_machines.to_string_hyphen().c_str());
+    }
+
     if (_jobs_killed_recently.empty() && _pending_jobs.empty() && _running_jobs.empty() &&
              _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
     {

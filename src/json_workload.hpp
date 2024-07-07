@@ -25,7 +25,9 @@ struct Job
     Rational original_walltime = -1;
     bool has_walltime = true;
     double submission_time = 0;
+    double original_submit = -1;
     std::vector<double> submission_times ;  //can possibly use for handling resubmitted jobs
+    
     double completion_time = -1;
     mutable std::map<Rational, JobAlloc*> allocations;
     int cores=1;
@@ -74,6 +76,7 @@ public:
     Job * job_from_json_description_string(const std::string & json_string);
     Job * job_from_json_object(const rapidjson::Value & object);
     Job * job_from_json_object(const rapidjson::Value & job_object, const rapidjson::Value & profile_object);
+    std::map<std::string, Job*> & get_jobs();
 
 private:
     void put_file_into_buffer(const std::string & filename);

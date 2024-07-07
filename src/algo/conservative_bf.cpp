@@ -16,9 +16,7 @@ void ConservativeBackfilling::on_checkpoint_batsched(double date)
 }
 void ConservativeBackfilling::on_ingest_variables(const rapidjson::Document & doc,double date)
 {
-    //this code should not be run because the doc, at this point (5-13-2024) does not have a "derived" member
-    using namespace rapidjson;
-    const Value & derived = doc["derived"];
+  
 
 
 }
@@ -122,6 +120,9 @@ void ConservativeBackfilling::on_requested_call(double date,batsched_tools::CALL
             break;    
         case batsched_tools::call_me_later_types::RESERVATION_START:
             _start_a_reservation = true;
+            break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_SYNC:
+            _checkpoint_sync++;
             break;
         case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
             _need_to_checkpoint = true;

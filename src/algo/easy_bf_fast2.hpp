@@ -47,6 +47,7 @@ public:
     virtual void on_job_end(double date, std::vector<std::string> job_ids);
     virtual void on_machine_state_changed(double date, IntervalSet machines, int new_state);
     virtual void on_no_more_static_job_to_submit_received(double date);
+    virtual void on_checkpoint_batsched(double date){}
 
 private:
     //Normal maintenance functions

@@ -14,6 +14,8 @@ namespace fs = std::filesystem;
 namespace fs = std::experimental::filesystem;
 #endif
 //#include "schedule.cpp"
+#include <sstream>
+#include <iomanip>
 
 b_log::b_log(){
 
@@ -22,7 +24,7 @@ b_log::~b_log(){
  for (auto key_value:_files)
     fclose(key_value.second);
 }
-void b_log::add_log_file(std::string file,std::string type, std::string open_method){
+void b_log::add_log_file(std::string file,std::string type, std::string open_method,bool csv){
     LOG_F(INFO,"here");
     FILE* myFile;
     if (open_method == blog_open_method::OVERWRITE)
@@ -35,6 +37,7 @@ void b_log::add_log_file(std::string file,std::string type, std::string open_met
     std::fprintf(myFile,"");
     LOG_F(INFO,"here");
     _files[type]=myFile;
+    _csv_status[type]=csv;
 }
 void b_log::copy_file(std::string file, std::string type, std::string copy_location)
 {
@@ -56,10 +59,7 @@ void b_log::add_header(std::string type,std::string header){
 }
 void b_log::blog(std::string type, double date,std::string fmt, ...){
     
-    bool csv = false;
-    LOG_F(INFO,"here");
-    if (type == blog_types::FAILURES)
-        csv = true;
+    
     if (_files.size() > 0 && _files.find(type) != _files.end()){
         va_list args;
         LOG_F(INFO,"here");
@@ -67,7 +67,7 @@ void b_log::blog(std::string type, double date,std::string fmt, ...){
         LOG_F(INFO,"here");
         FILE* file = _files[type];
         LOG_F(INFO,"here");
-        if(!csv)
+        if(!_csv_status[type])
         {
             LOG_F(INFO,"here");
             std::fprintf(file,"%-60f ||",date);
@@ -92,6 +92,7 @@ void b_log::blog(std::string type, double date,std::string fmt, ...){
 //a helper function to seperate_id
 batsched_tools::job_parts batsched_tools::get_job_parts(std::string job_id)
 {
+        
         batsched_tools::job_parts parts;
 
         auto startDollar = job_id.find("$");
@@ -301,7 +302,6 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     
     std::string batsched_tools::to_json_string(double value)
     {
-        LOG_F(INFO,"here");
         return batsched_tools::string_format("%.15f",value);
     }
     std::string batsched_tools::to_json_string(Rational value)
@@ -313,7 +313,13 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     
     std::string batsched_tools::to_json_string(const std::string value)
     {
-        return "\""+value+"\"";
+        std::stringstream ss;
+        std::string str;
+        const char delim='"';
+        const char escape='\\';
+        ss<<std::quoted(value,delim,escape);
+        ss>>str;
+        return str;
     }
     
     std::string batsched_tools::to_json_string(Job* job)
@@ -350,11 +356,14 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         using namespace std;
         std::string ret;
         ret = "{";
+        LOG_F(INFO,"here");
         ret += batsched_tools::pair_to_simple_json_string(std::pair<string,string>("machines",alloc->machines.to_string_hyphen())) + ",";
+        LOG_F(INFO,"here");
         if (alloc->has_horizon)
             ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",alloc->horizon_it->index)) + ",";
         else
             ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",-1)) + ",";
+        LOG_F(INFO,"here");
         ret += batsched_tools::pair_to_simple_json_string(std::pair<string,bool>("has_horizon",alloc->has_horizon)) + "}";
         return ret;
     }
@@ -363,11 +372,14 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
         using namespace std;
         std::string ret;
         ret = "{";
+        LOG_F(INFO,"here");
         ret += batsched_tools::pair_to_simple_json_string(std::pair<string,string>("machines",alloc.machines.to_string_hyphen())) + ",";
+        LOG_F(INFO,"here");
         if (alloc.has_horizon)
             ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",alloc.horizon_it->index)) + ",";
         else
             ret += batsched_tools::pair_to_simple_json_string(std::pair<string,int>("horizon_it",-1)) + ",";
+        LOG_F(INFO,"here");
         ret += batsched_tools::pair_to_simple_json_string(std::pair<string,bool>("has_horizon",alloc.has_horizon)) + "}";
         return ret;
     }
@@ -434,12 +446,18 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
     std::string batsched_tools::to_json_string(const batsched_tools::Scheduled_Job* sj){
         std::string s;
             s = "{";
+            LOG_F(INFO,"id");
             s += "\"id\":"                      +   batsched_tools::to_json_string(sj->id)                              + ",";
+            LOG_F(INFO,"requested_resources");
             s += "\"requested_resources\":"     +   batsched_tools::to_json_string(sj->requested_resources)             + ",";
+            LOG_F(INFO,"wall_time");
             s += "\"wall_time\":"               +   batsched_tools::to_json_string(sj->wall_time)                       + ",";
+            LOG_F(INFO,"start_time");
             s += "\"start_time\":"              +   batsched_tools::to_json_string(sj->start_time)                      + ",";
+            LOG_F(INFO,"est_finish_time");
             s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(sj->est_finish_time)                 + ",";
-            s += "\"allocated_machines\":"      +   batsched_tools::to_json_string(sj->allocated_machines)              + ",";
+            LOG_F(INFO,"allocated_machines");
+            s += "\"allocated_machines\":"      +   batsched_tools::to_json_string(sj->allocated_machines);
             s += "}";
         return s;
     }
@@ -451,7 +469,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
             s += "\"wall_time\":"               +   batsched_tools::to_json_string(sj.wall_time)                       + ",";
             s += "\"start_time\":"              +   batsched_tools::to_json_string(sj.start_time)                      + ",";
             s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(sj.est_finish_time)                 + ",";
-            s += "\"allocated_machines\":"      +   batsched_tools::to_json_string(sj.allocated_machines)              + ",";
+            s += "\"allocated_machines\":"      +   batsched_tools::to_json_string(sj.allocated_machines);
             s += "}";
         return s;
     }
@@ -462,7 +480,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
             s += "\"requested_resources\":"     +   batsched_tools::to_json_string(pj->requested_resources)             + ",";
             s += "\"extra_resources\":"         +   batsched_tools::to_json_string(pj->extra_resources)                 + ",";
             s += "\"shadow_time\":"             +   batsched_tools::to_json_string(pj->shadow_time)                     + ",";
-            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(pj->est_finish_time)                 + ",";
+            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(pj->est_finish_time);
             s += "}";
         return s;
 
@@ -474,7 +492,7 @@ batsched_tools::pid_mem batsched_tools::get_pid_memory_usage(pid_t pid=0)
             s += "\"requested_resources\":"     +   batsched_tools::to_json_string(pj.requested_resources)             + ",";
             s += "\"extra_resources\":"         +   batsched_tools::to_json_string(pj.extra_resources)                 + ",";
             s += "\"shadow_time\":"             +   batsched_tools::to_json_string(pj.shadow_time)                     + ",";
-            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(pj.est_finish_time)                 + ",";
+            s += "\"est_finish_time\":"         +   batsched_tools::to_json_string(pj.est_finish_time);
             s += "}";
         return s;
     }

@@ -12,6 +12,7 @@
 #include "schedule.hpp"
 #include <set>
 #include "pempek_assert.hpp"
+#include "loguru.hpp"
 struct JobAlloc;
 struct Job;
 
@@ -38,11 +39,12 @@ public:
 b_log();
 ~b_log();
 void blog(std::string type,double date,std::string fmt,...);
-void add_log_file(std::string file, std::string type,std::string open_method);
+void add_log_file(std::string file, std::string type,std::string open_method,bool csv = false);
 void add_header(std::string type,std::string header);
 void copy_file(std::string file, std::string type,std::string copy_location);
 
 std::unordered_map<std::string,FILE*> _files;
+std::unordered_map<std::string,bool> _csv_status;
 };
 namespace blog_types
     {
@@ -77,6 +79,7 @@ namespace batsched_tools{
         ,MTBF
         ,REPAIR_DONE
         ,RESERVATION_START
+        ,CHECKPOINT_SYNC
         ,CHECKPOINT_BATSCHED
         ,RECOVER_FROM_CHECKPOINT
     };
@@ -178,10 +181,10 @@ namespace batsched_tools{
 
     };
     struct checkpoint_job_data{
-      int state = -1;
+      batsched_tools::JobState state = batsched_tools::JobState::JOB_STATE_NOT_SUBMITTED;
       double progress = -1;
       double runtime = 0;
-      std::string allocation = "null";
+      IntervalSet allocation = IntervalSet::empty_interval_set();
       long double consumed_energy = -1.0;
       std::string jitter = "null";
 
@@ -551,310 +554,401 @@ namespace batsched_tools{
     }
 
     template<typename T>
-    std::string vector_to_json_string(std::vector<T> &v)
+    std::string vector_to_json_string(std::vector<T> &v,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
     for (T value:v)
     {
-        if (!first)
-            ourString += ", \n"; first = false;
+        if (!first && newline)
+            ourString += ", \n";
+        else if (!first)
+            ourString += ",";
+        first = false;
         ourString = ourString + batsched_tools::to_json_string(value);
     }
     ourString = ourString + "]";
     return ourString;
     }
     template<typename T>
-    std::string vector_to_json_string(std::vector<T> *v)
+    std::string vector_to_json_string(std::vector<T> *v,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (T value:(*v))
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string vector_to_json_string(const std::vector<T> &v)
+    std::string vector_to_json_string(const std::vector<T> &v,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
     for (T value:v)
     {
-        if (!first)
-            ourString += ", \n"; first = false;
+        if (!first && newline)
+            ourString += ", \n";
+        else if (!first)
+            ourString += ",";
+        first = false;
         ourString = ourString + batsched_tools::to_json_string(value);
     }
     ourString = ourString + "]";
     return ourString;
     }
     template<typename T>
-    std::string vector_to_json_string(const std::vector<T> *v)
+    std::string vector_to_json_string(const std::vector<T> *v,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (T value:(*v))
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
         return ourString;
     }
+    
     template<typename K, typename V>
-    std::string vector_pair_to_json_string(const std::vector<std::pair<K,V>> &v)
+    std::string vector_pair_to_json_string(const std::vector<std::pair<K,V>> &v,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
     for (std::pair<K,V> kv_pair:v)
     {
-        if (!first)
-            ourString += ", \n"; first = false;
+        if (!first && newline)
+            ourString += ", \n";
+        else if (!first)
+            ourString += ",";
+        first = false;
         ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
     }
     ourString = ourString + "]";
     return ourString;
     }
     template<typename K, typename V>
-    std::string vector_pair_to_json_string(const std::vector<std::pair<K,V>> *v)
+    std::string vector_pair_to_json_string(const std::vector<std::pair<K,V>> *v,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:(*v))
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string map_to_json_string(std::map<K,V> &m)
+    std::string map_to_json_string(std::map<K,V> &m,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:m)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+                
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string map_to_json_string(std::map<K,V> *m)
+    std::string map_to_json_string(std::map<K,V> *m,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*m)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string map_to_json_string(const std::map<K,V> &m)
+    std::string map_to_json_string(const std::map<K,V> &m,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:m)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string map_to_json_string(const std::map<K,V> *m)
+    std::string map_to_json_string(const std::map<K,V> *m,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*m)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string unordered_map_to_json_string(std::unordered_map<K,V> &um)
+    std::string unordered_map_to_json_string(std::unordered_map<K,V> &um,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:um)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string unordered_map_to_json_string(std::unordered_map<K,V> *um)
+    std::string unordered_map_to_json_string(std::unordered_map<K,V> *um,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*um)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string unordered_map_to_json_string(const std::unordered_map<K,V> &um)
+    std::string unordered_map_to_json_string(const std::unordered_map<K,V> &um,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:um)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }
     template<typename K,typename V>
-    std::string unordered_map_to_json_string(const std::unordered_map<K,V> *um)
+    std::string unordered_map_to_json_string(const std::unordered_map<K,V> *um,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (std::pair<K,V> kv_pair:*um)
         {
-            if (!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::pair_to_json_string(kv_pair);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string list_to_json_string(std::list<T> &list)
+    std::string list_to_json_string(std::list<T> &list,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (T value:list)
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string list_to_json_string(std::list<T> *list)
+    std::string list_to_json_string(std::list<T> *list,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (T value:(*list))
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string list_to_json_string(const std::list<T> &list)
+    std::string list_to_json_string(const std::list<T> &list,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (T value:list)
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string list_to_json_string(const std::list<T> *list)
+    std::string list_to_json_string(const std::list<T> *list,bool newline=true)
     {
         std::string ourString="[";
         bool first = true;
         for (T value:(*list))
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
             ourString = ourString + batsched_tools::to_json_string(value);
         }
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string unordered_set_to_json_string(std::unordered_set<T> &set)
+    std::string unordered_set_to_json_string(std::unordered_set<T> &set,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (T value:set)
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::to_json_string(value);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string unordered_set_to_json_string(std::unordered_set<T> *set)
+    std::string unordered_set_to_json_string(std::unordered_set<T> *set,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (T value:(*set))
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::to_json_string(value);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string unordered_set_to_json_string(const std::unordered_set<T> &set)
+    std::string unordered_set_to_json_string(const std::unordered_set<T> &set,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (T value:set)
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::to_json_string(value);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }
     template<typename T>
-    std::string unordered_set_to_json_string(const std::unordered_set<T> *set)
+    std::string unordered_set_to_json_string(const std::unordered_set<T> *set,bool newline=true)
     {
+        LOG_F(INFO,"here");
         std::string ourString="[";
         bool first = true;
         for (T value:(*set))
         {
-            if(!first)
-                ourString += ", \n"; first = false;
+            if (!first && newline)
+                ourString += ", \n";
+            else if (!first)
+                ourString += ",";
+            first = false;
+            LOG_F(INFO,"here");
             ourString = ourString + batsched_tools::to_json_string(value);
         }
+        LOG_F(INFO,"here");
         ourString = ourString + "]";
         return ourString;
     }

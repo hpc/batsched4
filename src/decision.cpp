@@ -70,11 +70,22 @@ void SchedulingDecision::add_submit_job(const string & workload_name,
                                          profile_json_description,
                                          send_profile);
 }
+void SchedulingDecision::push_back_job_still_needed_to_be_killed(batsched_tools::Job_Message * jm)
+{
+    _jobs_still_needed_to_be_killed.push_back(jm);
+}
 void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,batsched_tools::Job_Message *> jobs_killed_recently,
                                             Workload *w0,
                                             double date)
 {
     
+    //first check that we don't need to kill some jobs
+    if (!_jobs_still_needed_to_be_killed.empty())
+    {
+        add_kill_job(_jobs_still_needed_to_be_killed,date);
+        _jobs_still_needed_to_be_killed.clear();
+    }
+  
     for(const auto & killed_map:jobs_killed_recently)
     {
         /*not implementing this but it is a potential problem. see batsim/src/server.cpp server_on_kill_jobs()
@@ -82,9 +93,9 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,bats
             continue;
         */
         std::string killed_job=killed_map.first;
-        
     
         Job * job_to_queue = (*w0)[killed_job];
+        
 
         //auto parts = batsched_tools::get_job_parts(killed_job);
         auto sep = batsched_tools::tools::separate_id(killed_job);

@@ -158,7 +158,7 @@ public:
     virtual void set_machines(Machines *m);
     virtual void set_generators(double date);
     void set_real_time(std::chrono::_V2::system_clock::time_point time);
-    void set_checkpoint_time(long seconds,std::string checkpoint_type);
+    void set_checkpoint_time(long seconds,std::string checkpoint_type,bool once);
     bool send_batsim_checkpoint_if_ready(double date);
     bool check_checkpoint_time(double date);
     void checkpoint_batsched(double date);
@@ -186,6 +186,9 @@ public:
     void schedule_downUp(IntervalSet machine,batsched_tools::KILL_TYPES forWhat,double date);
     bool schedule_kill_jobs(IntervalSet machine,batsched_tools::KILL_TYPES forWhat, double date);
     void set_index_of_horizons();
+    void execute_jobs_in_running_state(double date);
+    bool get_clear_recent_data_structures();
+    void set_clear_recent_data_structures(bool value);
 
     //ingest functions
     rapidjson::Document ingestDoc(std::string filename);
@@ -241,8 +244,8 @@ protected:
 
     //base_variables
     //***************************************************
-    Machines * _machines; //C
-    Queue * _queue; //C
+    Machines * _machines=nullptr; //C
+    Queue * _queue = nullptr; //C
     Workload * _workload; //X
     SchedulingDecision * _decision; //X
     std::string _queue_policy; //X
@@ -351,11 +354,15 @@ protected:
     batsched_tools::start_from_chkpt _start_from_checkpoint; //X
     long _batsim_checkpoint_interval_seconds = 0; //X
     std::string _batsim_checkpoint_interval_type = "real"; //X
+    bool _batsim_checkpoint_interval_once = false; //X
     bool _need_to_checkpoint = false; //X
     bool _need_to_send_checkpoint = false; //X
     bool _recover_from_checkpoint = false; //X
     bool _block_checkpoint = false; //X
     double _start_from_checkpoint_time=0; //X
+    bool _clear_recent_data_structures=true; //X
+    int _checkpoint_sync = 0; //X
+    bool _debug_real_checkpoint = false; //X
     //***************************************************
 
 
@@ -364,7 +371,7 @@ protected:
     bool _share_packing_algorithm = false; //X
     bool _share_packing = false; //X
     double _core_percent = 1.0; //X
-    IntervalSet _available_core_machines; //C
+    IntervalSet _available_core_machines = IntervalSet::empty_interval_set(); //C
     std::list<Job *> _pending_jobs; //C
     std::list<Job *> _pending_jobs_heldback; //C
     std::unordered_set<std::string> _running_jobs; //C

@@ -39,7 +39,7 @@ void easy_bf_fast2::on_start_from_checkpoint(double date,const rapidjson::Value 
 }
 void easy_bf_fast2::on_ingest_variables(const rapidjson::Document & doc,double date)
 {
-    
+    ISchedulingAlgorithm::execute_jobs_in_running_state(date);
 }
 void easy_bf_fast2::on_simulation_start(double date,
     const rapidjson::Value &batsim_event)
@@ -160,6 +160,9 @@ void easy_bf_fast2::on_requested_call(double date,batsched_tools::CALL_ME_LATERS
         case batsched_tools::call_me_later_types::REPAIR_DONE:
             ISchedulingAlgorithm::requested_failure_call(date,cml_in);
             break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_SYNC:
+            _checkpoint_sync++;
+            break;
         case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
             _need_to_checkpoint = true;
             break;
@@ -235,7 +238,7 @@ void easy_bf_fast2::make_decisions(double date,
     //*****************************************************************
     LOG_F(INFO,"line 360");
     //do we need to switch out priority_job?
-    if (_priority_job != nullptr && _priority_job->nb_requested_resources < (_nb_machines - _repair_machines.size()))
+    if (_priority_job != nullptr && _priority_job->nb_requested_resources > (_nb_machines - _repair_machines.size()))
     {
         //ok we need to switch out _priority_job
         _pending_jobs.push_front(_priority_job);
@@ -256,9 +259,16 @@ void easy_bf_fast2::make_decisions(double date,
     LOG_F(INFO,"line 372");
     handle_ended_job_execution(job_ended,date);
     LOG_F(INFO,"line 374");
-    handle_newly_released_jobs(date);
-    if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
+    if (_recover_from_checkpoint && _start_from_checkpoint.started_from_checkpoint && !_jobs_released_recently.empty())
+    {
+        if (!_start_from_checkpoint.received_submitted_jobs)
+            _start_from_checkpoint.first_submitted_time = date;
+        _start_from_checkpoint.received_submitted_jobs = true;
+        ISchedulingAlgorithm::ingest_variables_if_ready(date);
         return;
+    }
+    handle_newly_released_jobs(date);
+
     LOG_F(INFO,"line 376");
     
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
@@ -330,7 +340,8 @@ bool easy_bf_fast2::handle_newly_finished_jobs()
                     _nb_available_machines += 1; // we increase available machines by 1
                 }
                 _current_allocations.erase(ended_job_id);
-                _horizons.erase(alloc.horizon_it);
+                if (alloc.has_horizon == true)
+                    _horizons.erase(alloc.horizon_it);
                 _running_jobs.erase(ended_job_id);
         }
             // was not a 1 resource job, do things normally
@@ -782,9 +793,7 @@ void easy_bf_fast2::handle_newly_released_jobs(double date)
     for (const std::string & new_job_id : _jobs_released_recently)
     {
         Job * new_job = (*_workload)[new_job_id];
-        if (!_start_from_checkpoint.received_submitted_jobs)
-            _start_from_checkpoint.first_submitted_time = date;
-        _start_from_checkpoint.received_submitted_jobs = true;
+
         // Is this job valid?
         if (new_job->nb_requested_resources > _nb_machines)
         {

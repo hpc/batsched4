@@ -68,6 +68,7 @@
 #include "algo/easy_bf_fast2.hpp"
 #include "algo/easy_bf_fast2_holdback.hpp"
 #include "algo/fcfs_fast2.hpp"
+//#include "algo/conservative_bf_metrics.hpp"
 
 
 
@@ -107,7 +108,7 @@ int _checkpoint_signal = 35;
 int main(int argc, char ** argv)
 {
     
-    const set<string> variants_set = {"conservative_bf", "crasher", "easy_bf","easy_bf2","easy_bf3", "easy_bf_fast",
+    const set<string> variants_set = {"conservative_bf","crasher", "easy_bf","easy_bf2","easy_bf3", "easy_bf_fast",
                                        "easy_bf_fast2","easy_bf_fast2_holdback",
                                       "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
@@ -353,6 +354,8 @@ int main(int argc, char ** argv)
             algo = new easy_bf_fast2_holdback(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "conservative_bf")
             algo = new ConservativeBackfilling(&w, &decision,queue,selector,rjms_delay,&json_doc_variant_options);
+        //else if (scheduling_variant == "conservative_bf_metrics")
+        //    algo = new ConservativeBackfilling_metrics(&w, &decision,queue,selector,rjms_delay,&json_doc_variant_options);
             //algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, svg_prefix, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "killer")
@@ -529,11 +532,12 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 {
                         int total_seconds = event_data["config"]["checkpoint-batsim-interval"]["total_seconds"].GetInt();
                         std::string checkpoint_type = event_data["config"]["checkpoint-batsim-interval"]["type"].GetString();
-                        algo->set_checkpoint_time(total_seconds,checkpoint_type);
+                        bool once = event_data["config"]["checkpoint-batsim-interval"]["once"].GetBool();
+                        algo->set_checkpoint_time(total_seconds,checkpoint_type,once);
                              
                 }
                 else
-                    algo->set_checkpoint_time(0,"False");
+                    algo->set_checkpoint_time(0,"False",false);
                 int nb_resources;
                 // DO this for retrocompatibility with batsim 2 API
                 if (event_data.HasMember("nb_compute_resources"))
@@ -574,7 +578,6 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
                 LOG_F(INFO,"line 489");
                 for(const rapidjson::Value & resource : event_data["compute_resources"].GetArray())
                 {
-                    LOG_F(INFO,"here");
                     machines->add_machine_from_json_object(resource);
                 }
                 LOG_F(INFO,"here");
@@ -819,8 +822,11 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
         {
             SortableJobOrder::UpdateInformation update_info(current_date);
             LOG_F(INFO, "before make decisions");
+            algo->set_clear_recent_data_structures(true);
             algo->make_decisions(message_date, &update_info, nullptr);
-            algo->clear_recent_data_structures();
+            LOG_F(INFO,"_clear_recent_data_structures: %d",algo->get_clear_recent_data_structures());
+            if (algo->get_clear_recent_data_structures())
+                 algo->clear_recent_data_structures();
         }
         //LOG_F(INFO,"line 629 main.cpp");
         message_date = max(message_date, d.last_date());

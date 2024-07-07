@@ -40,7 +40,7 @@ void ISchedulingAlgorithm::normal_start(double date, const rapidjson::Value & ba
     CLOG_F(CCU_DEBUG_FIN, "queue-policy = %s", _queue_policy.c_str());
     _myBLOG = new b_log();
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS,blog_open_method::OVERWRITE);
-    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES,blog_open_method::OVERWRITE);
+    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES,blog_open_method::OVERWRITE,true);
     _myBLOG->add_header(blog_types::FAILURES,"simulated_time,event,data");
     (void) batsim_config;
 }
@@ -95,6 +95,9 @@ void ISchedulingAlgorithm::on_start_from_checkpoint_normal(double date, const ra
     _decision->add_generic_notification("PID",std::to_string(pid),date);
    
     CLOG_F(INFO,"***** on_start_from_checkpoint_normal ******");
+    _queue_policy=batsim_config["queue-policy"].GetString();
+    PPK_ASSERT_ERROR(_queue_policy == "FCFS" || _queue_policy == "ORIGINAL-FCFS");
+    CLOG_F(CCU_DEBUG_FIN, "queue-policy = %s", _queue_policy.c_str());
     //we need to set our generators even though they will be overwritten, so that distributions aren't null
     ISchedulingAlgorithm::set_generators(date);
     LOG_F(INFO,"here");
@@ -104,7 +107,7 @@ void ISchedulingAlgorithm::on_start_from_checkpoint_normal(double date, const ra
     LOG_F(INFO,"here, folder: %s",_output_folder.c_str());
     _myBLOG->add_log_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS,blog_open_method::APPEND);
     LOG_F(INFO,"here");
-    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES,blog_open_method::APPEND);
+    _myBLOG->add_log_file(_output_folder+"/failures.csv",blog_types::FAILURES,blog_open_method::APPEND,true);
     LOG_F(INFO,"here");
     _recover_from_checkpoint = true;
 }
@@ -141,6 +144,14 @@ void ISchedulingAlgorithm::on_start_from_checkpoint(double date, const rapidjson
     on_start_from_checkpoint(date,batsim_config);
     
     
+}
+bool ISchedulingAlgorithm::get_clear_recent_data_structures()
+{
+    return _clear_recent_data_structures;
+}
+void ISchedulingAlgorithm::set_clear_recent_data_structures(bool value)
+{
+    _clear_recent_data_structures = value;
 }
 
 void ISchedulingAlgorithm::requested_failure_call(double date, batsched_tools::CALL_ME_LATERS cml_in)
@@ -608,7 +619,7 @@ void ISchedulingAlgorithm::on_machine_available_notify_event(double date, Interv
 }
 */
 void ISchedulingAlgorithm::set_machines(Machines *m){
-    (void) m;
+    _machines=m;
 }
 
 void ISchedulingAlgorithm::on_first_jobs_submitted(double date)
@@ -719,10 +730,11 @@ void ISchedulingAlgorithm::set_real_time(std::chrono::_V2::system_clock::time_po
 {
     _real_time = time;
 }
-void ISchedulingAlgorithm::set_checkpoint_time(long seconds,std::string checkpoint_type)
+void ISchedulingAlgorithm::set_checkpoint_time(long seconds,std::string checkpoint_type, bool once)
 {
     _batsim_checkpoint_interval_type = checkpoint_type;
     _batsim_checkpoint_interval_seconds = seconds;
+    _batsim_checkpoint_interval_once = once;
     _start_real_time = _real_time;
 }
 bool ISchedulingAlgorithm::check_checkpoint_time(double date)
@@ -747,11 +759,33 @@ bool ISchedulingAlgorithm::check_checkpoint_time(double date)
     }
 }
 bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
-    LOG_F(INFO,"here");
-    if (((_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))||_need_to_send_checkpoint) && !_block_checkpoint)
+    
+    if (_checkpoint_sync == 4)
+    {
+        _decision->add_generic_notification("checkpoint","4",date);
+        //_exit_make_decisions = true;
+        _checkpoint_sync = 0;
+        return true;
+    }
+    if (_checkpoint_sync == 3)
+    {
+        _decision->add_generic_notification("checkpoint","3",date);
+        //_exit_make_decisions = true;
+        return true;
+    }
+    if (_checkpoint_sync == 2)
+    {
+        _decision->add_generic_notification("checkpoint","2",date);
+        //_exit_make_decisions = true;
+        return true;
+    }
+    if (_batsim_checkpoint_interval_once && _nb_batsim_checkpoints == 1)
+        return false;
+    if (((_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))||_need_to_send_checkpoint) && !_block_checkpoint && _checkpoint_sync == 0)
     {
        LOG_F(INFO,"here");
-        _decision->add_generic_notification("checkpoint","",date);
+        _decision->add_generic_notification("checkpoint","1",date);
+        _checkpoint_sync = 1;
         LOG_F(INFO,"here");
         if (!_need_to_send_checkpoint)//check that this is a scheduled checkpoint
             _nb_batsim_checkpoints +=1;
@@ -762,15 +796,44 @@ bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
     else
         return false;
 }
+void ISchedulingAlgorithm::execute_jobs_in_running_state(double date)
+{
+    LOG_F(INFO,"executing jobs in running state");
+    for ( auto pair : _workload->get_jobs())
+        {
+            LOG_F(INFO,"job being checked job:%s",pair.second->id.c_str());
+            batsched_tools::checkpoint_job_data* cjd = pair.second->checkpoint_job_data;
+            if (cjd->state == batsched_tools::JobState::JOB_STATE_RUNNING)
+            {
+                LOG_F(INFO,"job is running job:%s",pair.second->id.c_str());
+                _decision->add_execute_job(pair.first,cjd->allocation,date);
+                //sometimes a job was killed but still made it into the workload because at the exact point that the
+                //workload was made, the killed job was still in a state of running.
+                //we want them executed, then killed to make sure they get into the out_jobs.csv
+                //this shouldn't actually happen now because of the 4-step SYNC but I kept it anyway
+                if (!_jobs_killed_recently.empty() && _jobs_killed_recently.count(pair.first)!=0)
+                {
+                    _decision->push_back_job_still_needed_to_be_killed(_jobs_killed_recently[pair.first]);
+                    _jobs_killed_recently.erase(pair.first);
+                }
+            }    
+        }
+}
 void ISchedulingAlgorithm::ingest_variables(double date)
 {
     
     std::string filename = _output_folder + "/start_from_checkpoint/batsched_variables.chkpt";
     const rapidjson::Document variablesDoc = ingestDoc(filename);
+    //keep recent data structures from being cleared for a single make_decisions iteration
+    _clear_recent_data_structures = false;
     ISchedulingAlgorithm::on_ingest_variables(variablesDoc,date);
     LOG_F(INFO,"here");
     on_ingest_variables(variablesDoc,date);
     _decision->remove_blocked_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED);
+    if (_debug_real_checkpoint)
+    {
+        ISchedulingAlgorithm::checkpoint_batsched(date);
+    }
 
 }
 void ISchedulingAlgorithm::on_ingest_variables(const rapidjson::Document & doc,double date)
@@ -878,6 +941,7 @@ LOG_F(INFO,"here");
     ingestTTM(_recently_under_repair_machines,recently,recently,String);
     ingestTTM(_nopped_recently,recently,recently,Bool);
     ingestTTM(_consumed_joules_updated_recently,recently,recently,Bool);
+    
 
     //ingest failure_variables
     //*********************************
@@ -921,8 +985,11 @@ LOG_F(INFO,"here");
     //********************************
     if (_horizon_algorithm)
     {
-        const rapidjson::Value & backfill = doc["backfill_variables"];
-        ingestM(_priority_job,backfill,backfill);
+        if (doc.HasMember("backfill_variables"))
+        {
+            const rapidjson::Value & backfill = doc["backfill_variables"];
+            ingestM(_priority_job,backfill,backfill);
+        }
     }
 LOG_F(INFO,"here");
     //ingest reservation_variables
@@ -947,13 +1014,25 @@ LOG_F(INFO,"here");
     if (_share_packing_algorithm)
     {
         const rapidjson::Value & share_packing = doc["share_packing_variables"];
+        LOG_F(INFO,"here");
         ingestTTM(_available_core_machines,share_packing,share_packing,String);
+        LOG_F(INFO,"here");
         ingestM(_pending_jobs,share_packing,share_packing);
+        LOG_F(INFO,"here");
         ingestM(_pending_jobs_heldback,share_packing,share_packing);
+        LOG_F(INFO,"here");
         ingestM(_running_jobs,share_packing,share_packing);
-        ingestM(_horizons,share_packing,share_packing);
+        LOG_F(INFO,"here");
+        if (_horizon_algorithm)
+        {
+            LOG_F(INFO,"here");
+            ingestM(_horizons,share_packing,share_packing);
+        }
+        LOG_F(INFO,"here");
         ingestM(_current_allocations,share_packing,share_packing);
+        LOG_F(INFO,"here");
         ingestTTM(_heldback_machines,share_packing,share_packing,String);
+        LOG_F(INFO,"here");
 
     }
     LOG_F(INFO,"here");
@@ -995,7 +1074,11 @@ void ISchedulingAlgorithm::checkpoint_batsched(double date)
 {
     ISchedulingAlgorithm::on_checkpoint_batsched(date);
     on_checkpoint_batsched(date);
-    std::string checkpoint_dir = _output_folder + "/checkpoint_latest";
+    std::string checkpoint_dir;
+    if (!_debug_real_checkpoint)
+        checkpoint_dir = _output_folder + "/checkpoint_latest";
+    else
+        checkpoint_dir = _output_folder + "/debug_checkpoint";
     std::ofstream f(checkpoint_dir+"/batsched_variables.chkpt",std::ios_base::app);
     if (f.is_open())
     {
@@ -1014,14 +1097,18 @@ void ISchedulingAlgorithm::set_index_of_horizons()
     }
 }
 void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
-    std::string checkpoint_dir = _output_folder + "/checkpoint_latest";
+    std::string checkpoint_dir;
+    if (!_debug_real_checkpoint)
+        checkpoint_dir = _output_folder + "/checkpoint_latest";
+    else
+        checkpoint_dir = _output_folder + "/debug_checkpoint";
     std::ofstream f;
     LOG_F(INFO,"here");
 
     //batsched_logs
     _myBLOG->copy_file(_output_folder+"/log/Soft_Errors.log",blog_types::SOFT_ERRORS,checkpoint_dir+"/Soft_Errors.log");
     _myBLOG->copy_file(_output_folder+"/failures.csv",blog_types::FAILURES,checkpoint_dir+"/failures.csv");
-    LOG_F(INFO,"here");
+    LOG_F(INFO,"Checkpointing Machines");
     //batsched_machines
     f.open(checkpoint_dir+"/batsched_machines.chkpt",std::ios_base::out);
     if (f.is_open())
@@ -1029,7 +1116,7 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         f<<_machines->to_json_string()<<std::endl;
         f.close();
     }
-
+    LOG_F(INFO,"Checkpointing Queues");
     //batsched_queues
     f.open(checkpoint_dir+"/batsched_queues.chkpt",std::ios_base::out);
     if (f.is_open())
@@ -1049,12 +1136,17 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
             f<<"}";
             f.close();
         }
+        else
+        {
+            LOG_F(INFO,"No Queue");
+        }
     }
 
     //batsched_variables
     f.open(checkpoint_dir+"/batsched_variables.chkpt",std::ios_base::out);
     if (f.is_open())
     {
+        LOG_F(INFO,"Checkpointing base_variables");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"{\n"
         
@@ -1066,8 +1158,10 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         <<"\t\t\"_reject_possible\":"                                     <<  _reject_possible                                                <<","<<std::endl
         <<"\t\t\"_nb_call_me_laters\":"                                   <<  batsched_tools::to_json_string(_nb_call_me_laters)              <<","<<std::endl
         <<"\t\t\"_need_to_backfill\":"                                    <<  _need_to_backfill                                               <<std::endl
-        <<"\t},"<<std::endl //closes base brace, leaves a brace open
+        <<"\t},"<<std::endl; //closes base brace, leaves a brace open
         
+        LOG_F(INFO,"Checkpointing recently_variables");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         //recently_variables
         <<"\t\"recently_variables\":{\n"
         <<"\t\t\"_machines_that_became_available_recently\":"             <<  batsched_tools::to_json_string(_machines_that_became_available_recently)     <<","<<std::endl
@@ -1080,8 +1174,10 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         <<"\t\t\"_recently_under_repair_machines\":"                      <<  batsched_tools::to_json_string(_recently_under_repair_machines) <<","<<std::endl
         <<"\t\t\"_nopped_recently\":"                                     <<  _nopped_recently                                                <<","<<std::endl
         <<"\t\t\"_consumed_joules_updated_recently\":"                    <<  _consumed_joules_updated_recently                               <<std::endl
-        <<"\t},"<<std::endl //closes recently_variables, leaves a brace open
+        <<"\t},"<<std::endl; //closes recently_variables, leaves a brace open
 
+        LOG_F(INFO,"Checkpointing failure_variables");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         //failure_variables
         <<"\t\"failure_variables\":{\n"
         <<"\t\t\"_need_to_send_finished_submitting_jobs\":"       << _need_to_send_finished_submitting_jobs                               <<","<<std::endl
@@ -1105,6 +1201,7 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         //schedule_variables
       if (_scheduleP != nullptr)
       {
+        LOG_F(INFO,"Checkpointing schedule_variables");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t\"schedule_variables\":{\n"
         <<"\t\t\"_output_svg\":"                                  << batsched_tools::to_json_string(_output_svg)                          <<","<<std::endl
@@ -1127,6 +1224,7 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         //backfill_variables
       if (_priority_job != nullptr)
       {
+        LOG_F(INFO,"Checkpointing backfill_variables");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t\"backfill_variables\":{\n"
         <<"\t\t\"_priority_job\":"                                << batsched_tools::to_json_string(_priority_job)                        <<std::endl
@@ -1138,16 +1236,18 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
        //reservation_variables
       if (_reservation_algorithm)
       {
+        LOG_F(INFO,"Checkpointing reservation_variables");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t\"reservation_variables\":{\n"
         <<"\t\t\"_start_a_reservation\":"                            << _start_a_reservation                                               <<","<<std::endl
         <<"\t\t\"_need_to_compress\":"                               << _need_to_compress                                                  <<","<<std::endl
         <<"\t\t\"_saved_reservations\":"                             << _schedule.vector_to_json_string(&_saved_reservations)              <<","<<std::endl
         <<"\t\t\"_saved_recently_queued_jobs\":"                     << batsched_tools::vector_to_json_string(&_saved_recently_queued_jobs)<<","<<std::endl
-        <<"\t\t\"_saved_recently_ended_jobs\":"                      << batsched_tools::vector_to_json_string(&_saved_recently_ended_jobs) <<","<<std::endl
+        <<"\t\t\"_saved_recently_ended_jobs\":"                      << batsched_tools::vector_to_json_string(&_saved_recently_ended_jobs) <<std::endl
         <<"\t},"<<std::endl; //closes reservation_variables, leaves a brace open
       }
 
+      LOG_F(INFO,"Checkpointing real_checkpoint_variables");  
       f<<std::fixed<<std::setprecision(15)<<std::boolalpha
       <<"\t\"real_checkpoint_variables\":{\n"
       <<"\t\t\"_nb_batsim_checkpoints\":"                           << batsched_tools::to_json_string(_nb_batsim_checkpoints)            <<std::endl;
@@ -1157,16 +1257,35 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
       {
         if (_horizon_algorithm)
             set_index_of_horizons();
+        LOG_F(INFO,"Checkpointing share_packing_variables");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t},"<<std::endl //closes real_checkpoint_variables, leaves a brace open
 
-        <<"\t\"share_packing_variables\":{\n"
-        <<"\t\t\"_available_core_machines\":"                          << batsched_tools::to_json_string(_available_core_machines)      <<","<<std::endl
-        <<"\t\t\"_pending_jobs\":"                                     << batsched_tools::list_to_json_string(_pending_jobs)            <<","<<std::endl
-        <<"\t\t\"_pending_jobs_heldback\":"                            << batsched_tools::list_to_json_string(_pending_jobs_heldback)   <<","<<std::endl
-        <<"\t\t\"_running_jobs\":"                                     << batsched_tools::unordered_set_to_json_string(_running_jobs)   <<","<<std::endl
-        <<"\t\t\"_horizons\":"             << (_horizons.empty()? "\"\"" : batsched_tools::list_to_json_string(_horizons))              <<","<<std::endl
-        <<"\t\t\"_current_allocations\":"                              << batsched_tools::unordered_map_to_json_string(_current_allocations) <<","<<std::endl
+        <<"\t\"share_packing_variables\":{\n";
+        LOG_F(INFO,"here");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\t\"_available_core_machines\":"                          << batsched_tools::to_json_string(_available_core_machines)      <<","<<std::endl;
+        LOG_F(INFO,"here");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\t\"_pending_jobs\":"                                     << batsched_tools::list_to_json_string(_pending_jobs,false)            <<","<<std::endl;
+
+        LOG_F(INFO,"here");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\t\"_pending_jobs_heldback\":"                            << batsched_tools::list_to_json_string(_pending_jobs_heldback,false)   <<","<<std::endl;
+
+        LOG_F(INFO,"here");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\t\"_running_jobs\":"                                     << batsched_tools::unordered_set_to_json_string(_running_jobs)   <<","<<std::endl;
+        if (_horizon_algorithm)
+        {
+            f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+            <<"\t\t\"_horizons\":"             << (_horizons.empty()? "\"\"" : batsched_tools::list_to_json_string(_horizons,false))              <<","<<std::endl;
+        }
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
+        <<"\t\t\"_current_allocations\":"                              << batsched_tools::unordered_map_to_json_string(_current_allocations) <<","<<std::endl;
+
+        LOG_F(INFO,"here");
+        f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t\t\"_heldback_machines\":"                                << batsched_tools::to_json_string(_heldback_machines)            <<std::endl
         <<"\t}"; // closes share_packing_variables
       }
@@ -1177,6 +1296,7 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         f.close();
     }
 
+    LOG_F(INFO,"Checkpointing gnerators");
     //randomness_files
     f.open(checkpoint_dir+"/generator_failure.dat");
     f<<generator_failure;
@@ -1187,6 +1307,7 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
     f.open(checkpoint_dir + "/generator_repair_time.dat");
     f<<generator_repair_time;
     f.close();
+    LOG_F(INFO,"Checkpointing distributions");
     if (failure_unif_distribution != nullptr)
     {
         f.open(checkpoint_dir + "/failure_unif_distribution.dat");
@@ -1218,6 +1339,7 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
     //schedule_file
     if (_scheduleP != nullptr)
     {
+        LOG_F(INFO,"Checkpointing schedule");
         f.open(checkpoint_dir+"/batsched_schedule.chkpt",std::ios_base::out);
         if (f.is_open())
         {
@@ -1354,7 +1476,9 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
     Job * ISchedulingAlgorithm::ingest(Job * aJob,const rapidjson::Value &json)
     {
         std::string job_id = json.GetString();
-        return (*_workload)[job_id];
+        batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id);
+        std::string next_checkpoint = parts.next_checkpoint;
+        return (*_workload)[next_checkpoint];
 
     }
     IntervalSet ISchedulingAlgorithm::ingest(IntervalSet intervalSet,const rapidjson::Value &json)
@@ -1388,7 +1512,9 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         {
             for(rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                theVector.push_back(array[i].GetString());
+                std::string job_id = array[i].GetString();
+                batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id);
+                theVector.push_back(parts.next_checkpoint);
             }
         }
         return theVector;
@@ -1401,14 +1527,19 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         {
             for(rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                std::string key = array[i]["key"].GetString();
-                batsched_tools::Job_Message * value;
+                LOG_F(INFO,"here");
+                
+                batsched_tools::Job_Message * value = new batsched_tools::Job_Message();
                 auto parts = batsched_tools::get_job_parts(array[i]["value"]["id"].GetString());
                 value->id = parts.next_checkpoint;
+                LOG_F(INFO,"here");
                 value->forWhat = static_cast<batsched_tools::KILL_TYPES>(array[i]["value"]["forWhat"].GetInt());
+                LOG_F(INFO,"here");
                 value->progress = array[i]["value"]["progress"].GetDouble();
+                LOG_F(INFO,"here");
                 value->progress_str = array[i]["value"]["progress_str"].GetString();
-                umap[key] = value;
+                LOG_F(INFO,"here");
+                umap[value->id] = value;
                 
             }
         }
@@ -1467,9 +1598,10 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         {
             for(rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                Job * job = (*_workload)[array[i]["key"].GetString()];
+                std::string job_id = batsched_tools::get_job_parts(array[i]["key"].GetString()).next_checkpoint;
+                Job * job = (*_workload)[job_id];
                 jm = new batsched_tools::Job_Message();
-                jm->id = array[i]["value"]["id"].GetString();
+                jm->id = job_id;
                 jm->progress_str = array[i]["value"]["progress_str"].GetString();
                 jm->progress = array[i]["value"]["progress"].GetDouble();
                 jm->forWhat = static_cast<batsched_tools::KILL_TYPES>(array[i]["value"]["forWhat"].GetInt());
@@ -1483,14 +1615,14 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         const rapidjson::Value & array = json.GetArray();
         std::map<std::string,batsched_tools::KILL_TYPES> map;
         batsched_tools::KILL_TYPES kt;
-        std::string key;
+        std::string job_id;
         if (!array.Empty())
         {
             for(rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                key = array[i]["key"].GetString();
+                job_id = batsched_tools::get_job_parts(array[i]["key"].GetString()).next_checkpoint;
                 kt = static_cast<batsched_tools::KILL_TYPES>(array[i]["value"].GetInt());
-                map[key]=kt;
+                map[job_id]=kt;
             }
         }
         return map;
@@ -1503,7 +1635,8 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         {
             for(rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                const Job * job= (*_workload)[array[i]["key"].GetString()];
+                std::string job_id = batsched_tools::get_job_parts(array[i]["key"].GetString()).next_checkpoint;
+                const Job * job= (*_workload)[job_id];
                 std::pair<const Job*,batsched_tools::KILL_TYPES> pair{job,static_cast<batsched_tools::KILL_TYPES>(array[i]["value"].GetInt())};
                 theVector.push_back(pair);
             }
@@ -1531,7 +1664,10 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         {
             for (rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                theList.push_back((*_workload)[array[i].GetString()]);
+                std::string job_id = array[i].GetString();
+                batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id); 
+                std::string next_checkpoint = parts.next_checkpoint;
+                theList.push_back((*_workload)[next_checkpoint]);
             }
         }
         return theList;
@@ -1544,7 +1680,10 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         {
             for (rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                uset.insert(array[i].GetString());
+                std::string job_id = array[i].GetString();
+                batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id);
+                std::string next_checkpoint = parts.next_checkpoint;
+                uset.insert(next_checkpoint);
             }
         }
         return uset;
@@ -1558,7 +1697,7 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
             for (rapidjson::SizeType i = 0;i<array.Size();i++)
             {
                 batsched_tools::FinishedHorizonPoint fhp;
-                fhp.date = array[i]["value"]["date"].GetDouble();
+                fhp.date = array[i]["date"].GetDouble();
                 fhp.nb_released_machines = array[i]["nb_released_machines"].GetInt();
                 fhp.machines = IntervalSet::from_string_hyphen(array[i]["machines"].GetString());
                 theList.push_back(fhp);
@@ -1574,18 +1713,19 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         {
             for(rapidjson::SizeType i = 0;i<array.Size();i++)
             {
-                std::string key = array[i]["key"].GetString();
+                std::string job_id = batsched_tools::get_job_parts(array[i]["key"].GetString()).next_checkpoint;
                 batsched_tools::Allocation value;
                 value.machines = IntervalSet::from_string_hyphen(array[i]["value"]["machines"].GetString());
-                value.has_horizon = array[i]["value"]["has_horizon"].GetBool();
+                value.has_horizon = array[i]["value"]["has_horizon"].GetInt() == 1 ? true:false;
                 int horizon_index = array[i]["value"]["horizon_it"].GetInt();
                 if (horizon_index != -1)
                 {
                     std::list<batsched_tools::FinishedHorizonPoint>::iterator it = _horizons.begin();
-                    std::advance(it,horizon_index);
+                    if (horizon_index != 0)
+                        std::advance(it,horizon_index);
                     value.horizon_it = it;
                 }
-                umap[key] = value;
+                umap[job_id] = value;
             }
         }
         return umap;
@@ -1593,15 +1733,22 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
 
     std::vector<Job *> ISchedulingAlgorithm::ingest(std::vector<Job *> jobs, const rapidjson::Value &json)
     {
+        LOG_F(INFO,"here");
         const rapidjson::Value & array = json.GetArray();
+        LOG_F(INFO,"here");
         std::vector<Job *> vector;
+        LOG_F(INFO,"here");
         if (!array.Empty())
         {
             for(rapidjson::SizeType i = 0;i<array.Size();i++)
             {
+                LOG_F(INFO,"here");
                 std::string job_id = array[i].GetString();
+                LOG_F(INFO,"here");
                 batsched_tools::job_parts parts = batsched_tools::get_job_parts(job_id); 
+                LOG_F(INFO,"here");
                 std::string next_checkpoint = parts.next_checkpoint;
+                LOG_F(INFO,"here");
                 vector.push_back((*_workload)[next_checkpoint]);
             }
         }
@@ -1625,7 +1772,16 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
         return vector;
     }
     batsched_tools::Scheduled_Job * ISchedulingAlgorithm::ingest(batsched_tools::Scheduled_Job * sj,const rapidjson::Value &json)
-    {
+    {    
+        sj = new batsched_tools::Scheduled_Job();
+        if (json.IsString())
+        {
+            std::string theString = json.GetString();
+            if (theString == "nullptr")
+                return nullptr;
+            else
+                PPK_ASSERT(false,"Scheduled_Job* is a string but not nullptr");
+        }
         std::string id = json["id"].GetString();
         batsched_tools::job_parts parts = batsched_tools::get_job_parts(id);
         id = parts.next_checkpoint;
@@ -1640,16 +1796,22 @@ void ISchedulingAlgorithm::on_query_estimate_waiting_time(double date, const str
     }
     batsched_tools::Priority_Job * ISchedulingAlgorithm::ingest(batsched_tools::Priority_Job* pj, const rapidjson::Value &json)
     {
+        pj = new batsched_tools::Priority_Job();
         const rapidjson::Value & Vpj = json.GetObject();
         std::string id = Vpj["id"].GetString();
         batsched_tools::job_parts parts = batsched_tools::get_job_parts(id);
         id = parts.next_checkpoint;
         pj->id = id;
-
+        LOG_F(INFO,"here");
         pj->requested_resources = Vpj["requested_resources"].GetInt();
+        LOG_F(INFO,"here");
         pj->extra_resources = Vpj["extra_resources"].GetInt();
+        LOG_F(INFO,"here");
         pj->shadow_time = Vpj["shadow_time"].GetDouble();
+        LOG_F(INFO,"here");
         pj->est_finish_time = Vpj["est_finish_time"].GetDouble();
+        LOG_F(INFO,"here");
+        return pj;
         
     }
     

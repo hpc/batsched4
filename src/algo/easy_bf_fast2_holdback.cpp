@@ -36,7 +36,7 @@ void easy_bf_fast2_holdback::on_start_from_checkpoint(double date,const rapidjso
 }
 void easy_bf_fast2_holdback::on_ingest_variables(const rapidjson::Document & doc,double date)
 {
-    
+    ISchedulingAlgorithm::execute_jobs_in_running_state(date);
 }
 void easy_bf_fast2_holdback::on_simulation_start(double date,
     const rapidjson::Value &batsim_event)
@@ -192,6 +192,9 @@ void easy_bf_fast2_holdback::on_requested_call(double date,batsched_tools::CALL_
         case batsched_tools::call_me_later_types::REPAIR_DONE:
             ISchedulingAlgorithm::requested_failure_call(date,cml_in);
             break;
+        case batsched_tools::call_me_later_types::CHECKPOINT_SYNC:
+            _checkpoint_sync++;
+            break;
         case batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED:
             _need_to_checkpoint = true;
             break;
@@ -277,9 +280,18 @@ void easy_bf_fast2_holdback::make_decisions(double date,
     LOG_F(INFO,"line 364");
     handle_ended_job_execution(job_ended,date);
     LOG_F(INFO,"line 366");
-    handle_newly_released_jobs(date);
-    if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
+    //_debug_real_checkpoint=true;
+    if (_recover_from_checkpoint && _start_from_checkpoint.started_from_checkpoint && !_jobs_released_recently.empty())
+    {
+        if (!_start_from_checkpoint.received_submitted_jobs)
+            _start_from_checkpoint.first_submitted_time = date;
+        _start_from_checkpoint.received_submitted_jobs = true;
+        ISchedulingAlgorithm::ingest_variables_if_ready(date);
         return;
+    }
+    handle_newly_released_jobs(date);
+    
+    
     LOG_F(INFO,"line 368");
     
     /*if (_jobs_killed_recently.empty() && _wrap_it_up && _need_to_send_finished_submitting_jobs && !_myWorkloads->_checkpointing_on)
@@ -323,6 +335,7 @@ std::string easy_bf_fast2_holdback::to_json_desc(rapidjson::Document * doc)
 
 bool easy_bf_fast2_holdback::handle_newly_finished_jobs()
 {
+   LOG_F(INFO,"here");
    //LOG_F(INFO,"line 410");
    std::vector<int> mapping = {0};
    std::string prefix="a";
@@ -330,8 +343,11 @@ bool easy_bf_fast2_holdback::handle_newly_finished_jobs()
     for (const std::string & ended_job_id : _jobs_ended_recently)
     {
         job_ended = true;
+        LOG_F(INFO,"here");
         Job * finished_job = (*_workload)[ended_job_id];
+        LOG_F(INFO,"here");
         const batsched_tools::Allocation & alloc = _current_allocations[ended_job_id];
+        LOG_F(INFO,"here");
         if (_share_packing && finished_job->nb_requested_resources == 1)
         {
                 //first get the machine it was running on
@@ -358,11 +374,17 @@ bool easy_bf_fast2_holdback::handle_newly_finished_jobs()
         }
             // was not a 1 resource job, do things normally
         else{
+                LOG_F(INFO,"here");
                 _available_machines.insert(alloc.machines);
+                LOG_F(INFO,"here");
                 _nb_available_machines += finished_job->nb_requested_resources;
+                LOG_F(INFO,"here");
                 _current_allocations.erase(ended_job_id);
+                LOG_F(INFO,"here");
                 _running_jobs.erase(ended_job_id);
+                LOG_F(INFO,"here");
                 _my_kill_jobs.erase((*_workload)[ended_job_id]);
+                LOG_F(INFO,"here %s",ended_job_id.c_str());
                 _horizons.erase(alloc.horizon_it);
         }
     }
@@ -915,9 +937,7 @@ void easy_bf_fast2_holdback::handle_newly_released_jobs(double date)
     for (const std::string & new_job_id : _jobs_released_recently)
     {
         Job * new_job = (*_workload)[new_job_id];
-        if (!_start_from_checkpoint.received_submitted_jobs)
-            _start_from_checkpoint.first_submitted_time = date;
-        _start_from_checkpoint.received_submitted_jobs = true;
+
         // Is this job valid?
         if (new_job->nb_requested_resources > (_nb_machines-_share_packing_holdback))
         {

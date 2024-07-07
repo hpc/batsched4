@@ -28,6 +28,7 @@ public:
         const rapidjson::Value & batsim_event);
     virtual void on_start_from_checkpoint(double date,const rapidjson::Value & batsim_config);
     virtual void on_ingest_variables(const rapidjson::Document & doc,double date);
+    virtual void on_first_jobs_submitted(double date){};
 
     virtual void on_simulation_end(double date);
     //virtual void on_machine_unavailable_notify_event(double date, IntervalSet machines);
@@ -46,6 +47,7 @@ public:
     virtual void on_job_end(double date, std::vector<std::string> job_ids);
     virtual void on_machine_state_changed(double date, IntervalSet machines, int new_state);
     virtual void on_no_more_static_job_to_submit_received(double date);
+    virtual void on_checkpoint_batsched(double date){}
 
 private:
     //Normal maintenance functions
