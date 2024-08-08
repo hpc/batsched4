@@ -135,18 +135,18 @@ void EasyBackfilling2::make_decisions(double date,
 {
 
     // @note Leslie added 
-    if (_exit_make_decisions)
-    {   
-        _exit_make_decisions = false;     
-        return;
-    }
+    
     CLOG_F(CCU_DEBUG_ALL,"batsim_checkpoint_seconds: %d",_batsim_checkpoint_interval_seconds);
     send_batsim_checkpoint_if_ready(date);
     CLOG_F(CCU_DEBUG_ALL,"here");
     if (_need_to_checkpoint){
         checkpoint_batsched(date);
     }
-        
+    if (_exit_make_decisions)
+    {   
+        _exit_make_decisions = false;     
+        return;
+    }    
     CLOG_F(CCU_DEBUG_ALL,"here");
     if (_output_svg != "none")
         _schedule.set_now((Rational)date);

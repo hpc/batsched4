@@ -53,6 +53,8 @@ void ISchedulingAlgorithm::schedule_start(double date, const rapidjson::Value & 
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
     _svg_output_end = batsim_config["svg-output-end"].GetInt64();
+    _svg_time_start = batsim_config["svg-time-start"].GetDouble();
+    _svg_time_end = batsim_config["svg-time-end"].GetDouble();
     Schedule::convert_policy(batsim_config["reschedule-policy"].GetString(),_reschedule_policy);
     Schedule::convert_policy(batsim_config["impact-policy"].GetString(),_impact_policy);
     CLOG_F(CCU_DEBUG_FIN,"output svg: %s, method: %s",_output_svg.c_str(),_output_svg_method.c_str());
@@ -62,7 +64,7 @@ void ISchedulingAlgorithm::schedule_start(double date, const rapidjson::Value & 
     //added
     _schedule.set_output_svg(_output_svg);
     _schedule.set_output_svg_method(_output_svg_method);
-    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
+    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end,_svg_time_start,_svg_time_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
 }
@@ -121,6 +123,8 @@ void ISchedulingAlgorithm::on_start_from_checkpoint_schedule(double date, const 
     _svg_frame_end = batsim_config["svg-frame-end"].GetInt64();
     _svg_output_start = batsim_config["svg-output-start"].GetInt64();
     _svg_output_end = batsim_config["svg-output-end"].GetInt64();
+    _svg_time_start = batsim_config["svg-time-start"].GetDouble();
+    _svg_time_end = batsim_config["svg-time-end"].GetDouble();
     CLOG_F(CCU_DEBUG_FIN,"output svg: %s  output svg method: %s",_output_svg.c_str(),output_svg_method.c_str());
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
@@ -132,7 +136,7 @@ void ISchedulingAlgorithm::on_start_from_checkpoint_schedule(double date, const 
     _scheduleP = &_schedule;
     _schedule.set_output_svg(_output_svg);
     _schedule.set_output_svg_method(output_svg_method);
-    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end);
+    _schedule.set_svg_frame_and_output_start_and_end(_svg_frame_start,_svg_frame_end,_svg_output_start,_svg_output_end,_svg_time_start,_svg_time_end);
     _schedule.set_svg_prefix(_output_folder + "/svg/");
     _schedule.set_policies(_reschedule_policy,_impact_policy);
     //we will need to look-up jobs in the schedule so set the workload over there

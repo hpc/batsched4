@@ -126,7 +126,7 @@ public:
     void set_output_svg(std::string output_svg);
     void set_output_svg_method(std::string output_svg_method);
     void set_svg_prefix(std::string svg_prefix);
-    void set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end);
+    void set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end,double time_start, double time_end);
     void set_policies(RESCHEDULE_POLICY r_policy, IMPACT_POLICY i_policy);
     void add_svg_highlight_machines(IntervalSet machines);
     bool remove_svg_highlight_machines(IntervalSet machines);
@@ -244,6 +244,8 @@ private:
     long _svg_frame_end = -1;
     long _svg_output_start = 1;
     long _svg_output_end = -1;
+    double _svg_time_start = 0.0;
+    double _svg_time_end = -1.0;
     Workload * _workload = nullptr;
     batsched_tools::start_from_chkpt * _start_from_checkpoint=nullptr;
 };

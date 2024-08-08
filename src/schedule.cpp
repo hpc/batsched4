@@ -375,11 +375,13 @@ void Schedule::set_output_svg_method(std::string output_svg_method)
     _output_svg_method = output_svg_method;
 
 }
-void Schedule::set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end){
+void Schedule::set_svg_frame_and_output_start_and_end(long frame_start, long frame_end,long output_start,long output_end,double time_start, double time_end){
     _svg_frame_start = frame_start;
     _svg_frame_end = frame_end;
     _svg_output_start = output_start;
     _svg_output_end = output_end;
+    _svg_time_start = time_start;
+    _svg_time_end = time_end;
 }
 void Schedule::set_policies(RESCHEDULE_POLICY r_policy,IMPACT_POLICY i_policy){
     _reschedule_policy = r_policy;
@@ -1707,7 +1709,7 @@ std::multimap<std::string, JobAlloc> Schedule::jobs_allocations() const
         }
 
         set<const Job *> finished_jobs;
-        set_difference(current_jobs.begin(), current_jobs.end(), allocated_jobs.begin(), allocated_jobs.end(),
+        std::set_difference(current_jobs.begin(), current_jobs.end(), allocated_jobs.begin(), allocated_jobs.end(),
             std::inserter(finished_jobs, finished_jobs.end()));
 
         for (const Job *job : finished_jobs)
@@ -1730,7 +1732,7 @@ std::multimap<std::string, JobAlloc> Schedule::jobs_allocations() const
         }
 
         set<const Job *> new_jobs;
-        set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
+        std::set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
             std::inserter(new_jobs, new_jobs.end()));
 
         for (const Job *job : new_jobs)
@@ -2240,7 +2242,7 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
         }
 
         set<const Job *> finished_jobs;
-        set_difference(current_jobs.begin(), current_jobs.end(), allocated_jobs.begin(), allocated_jobs.end(),
+        std::set_difference(current_jobs.begin(), current_jobs.end(), allocated_jobs.begin(), allocated_jobs.end(),
             std::inserter(finished_jobs, finished_jobs.end()));
 
         for (const Job *job : finished_jobs)
@@ -2288,7 +2290,7 @@ string Schedule::to_svg(const std::string& message, const std::list<ReservedTime
 
 
         set<const Job *> new_jobs;
-        set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
+        std::set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
             std::inserter(new_jobs, new_jobs.end()));
 
         for (const Job *job : new_jobs)
@@ -2372,7 +2374,9 @@ void Schedule::write_svg_to_file(const string &filename,
 
 void Schedule::output_to_svg(const std::string &message,bool json)
 {
-    if (_frame_number >= _svg_frame_start && (_frame_number <= _svg_frame_end || _svg_frame_end == -1)){
+    if (_frame_number >= _svg_frame_start && 
+        (_frame_number <= _svg_frame_end || _svg_frame_end == -1) &&
+        (_now >= _svg_time_start && (_now <= _svg_time_end || _svg_time_end == -1.0 ))){
         if (_output_number >= _svg_output_start && (_output_number < _svg_output_end || _svg_output_end == -1)){
             const int bufsize = 4096;
             char *buf = new char[bufsize];
@@ -2454,7 +2458,7 @@ void Schedule::dump_to_batsim_jobs_file(const string &filename) const
             }
 
             set<const Job *> finished_jobs;
-            set_difference(current_jobs.begin(), current_jobs.end(), allocated_jobs.begin(), allocated_jobs.end(),
+            std::set_difference(current_jobs.begin(), current_jobs.end(), allocated_jobs.begin(), allocated_jobs.end(),
                 std::inserter(finished_jobs, finished_jobs.end()));
 
             for (const Job *job : finished_jobs)
@@ -2477,7 +2481,7 @@ void Schedule::dump_to_batsim_jobs_file(const string &filename) const
             }
 
             set<const Job *> new_jobs;
-            set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
+            std::set_difference(allocated_jobs.begin(), allocated_jobs.end(), current_jobs.begin(), current_jobs.end(),
                 std::inserter(new_jobs, new_jobs.end()));
 
             for (const Job *job : new_jobs)
@@ -2561,8 +2565,8 @@ void Schedule::generate_colors(int nb_colors)
     }
 
     
-    random_shuffle(_reservation_colors.begin(),_reservation_colors.end());
-    random_shuffle(_colors.begin(), _colors.end());
+    std::random_shuffle(_reservation_colors.begin(),_reservation_colors.end());
+    std::random_shuffle(_colors.begin(), _colors.end());
 }
 
 void Schedule::remove_job_internal(const Job *job, Schedule::TimeSliceIterator removal_point)

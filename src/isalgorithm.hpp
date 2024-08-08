@@ -317,6 +317,8 @@ protected:
     long _svg_frame_end; //C
     long _svg_output_start; //C
     long _svg_output_end; //C
+    double _svg_time_start; //X
+    double _svg_time_end; //X
     Schedule::RESCHEDULE_POLICY _reschedule_policy; //C
     Schedule::IMPACT_POLICY _impact_policy; //C
     bool _killed_jobs = false; //C
