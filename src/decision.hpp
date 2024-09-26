@@ -63,6 +63,7 @@ public:
                                           double date);
     double remove_call_me_later(batsched_tools::CALL_ME_LATERS cml_in, double date,Workload * w0);
     std::map<int,batsched_tools::CALL_ME_LATERS> get_call_me_laters();
+    int get_nb_call_me_laters();
     void set_call_me_laters(std::map<int,batsched_tools::CALL_ME_LATERS> & cml,double date,bool dispatch=false);
     void set_blocked_call_me_laters(std::set<batsched_tools::call_me_later_types> &blocked_cmls);
     void clear_blocked_call_me_laters();

@@ -104,7 +104,7 @@ void FCFSFast2::on_myKillJob_notify_event(double date){
 
 
 
-void FCFSFast2::on_machine_down_for_repair(double date){
+void FCFSFast2::on_machine_down_for_repair(batsched_tools::KILL_TYPES killType,double date){
     //do we do a normal repair?
     IntervalSet machine = ISchedulingAlgorithm::normal_repair(date);
     
@@ -121,7 +121,7 @@ void FCFSFast2::on_machine_down_for_repair(double date){
                 Job * job_ref = (*_workload)[key_value.first];
                 batsched_tools::Job_Message * msg = new batsched_tools::Job_Message;
                 msg->id = key_value.first;
-                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                msg->forWhat = killType;
                 _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                 CLOG_F(CCU_DEBUG,"Killing Job: %s",job_ref->id.c_str());
                 if (killed_jobs.empty())
@@ -136,10 +136,12 @@ void FCFSFast2::on_machine_down_for_repair(double date){
 }
 
 
-void FCFSFast2::on_machine_instant_down_up(double date){
+void FCFSFast2::on_machine_instant_down_up(batsched_tools::KILL_TYPES killType,double date){
     IntervalSet machine = ISchedulingAlgorithm::normal_downUp(date);
+    CLOG_F(CCU_DEBUG,"set machine to fail: %s",machine.to_string_hyphen().c_str());
     //if there are no running jobs, then there are none to kill
     if (!_running_jobs.empty()){
+        CLOG_F(CCU_DEBUG,"There are running jobs so there is potential for one to be killed");
         std::string killed_jobs;
         for(auto key_value : _current_allocations)   
 	    {
@@ -147,7 +149,7 @@ void FCFSFast2::on_machine_instant_down_up(double date){
                 Job * job_ref = (*_workload)[key_value.first];
                 batsched_tools::Job_Message* msg = new batsched_tools::Job_Message;
                 msg->id = key_value.first;
-                msg->forWhat = batsched_tools::KILL_TYPES::NONE;
+                msg->forWhat = killType;
                 _my_kill_jobs.insert(std::make_pair(job_ref,msg));
                 if (killed_jobs.empty())
                     killed_jobs = job_ref->id;
@@ -351,6 +353,7 @@ void FCFSFast2::make_decisions(double date,
                             _current_allocations[pending_job_id].machines = machines;
                             _current_allocations[pending_job_id].has_horizon = false;
                             _running_jobs.insert(pending_job_id);
+                            CLOG_F(CCU_DEBUG,"erasing pending_job %s",(*job_it)->id.c_str());
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
                             found = true;
@@ -377,6 +380,7 @@ void FCFSFast2::make_decisions(double date,
                     _current_allocations[pending_job_id].machines = machines;
                     _current_allocations[pending_job_id].has_horizon = false;
                     _running_jobs.insert(pending_job_id);
+                    CLOG_F(CCU_DEBUG,"erasing pending_job %s",(*job_it)->id.c_str());
                     job_it = _pending_jobs.erase(job_it);
                     erased = true;
 
@@ -396,6 +400,7 @@ void FCFSFast2::make_decisions(double date,
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id].machines = machines;
                  _current_allocations[pending_job_id].has_horizon = false;
+                CLOG_F(CCU_DEBUG,"erasing pending_job %s",(*job_it)->id.c_str());
                 job_it = _pending_jobs.erase(job_it);
                 erased = true;
                 _running_jobs.insert(pending_job->id);
@@ -451,6 +456,7 @@ void FCFSFast2::make_decisions(double date,
                             _current_allocations[pending_job_id].machines = machines;
                             _current_allocations[pending_job_id].has_horizon = false;
                             _running_jobs.insert(pending_job_id);
+                            CLOG_F(CCU_DEBUG,"erasing pending_job %s",(*job_it)->id.c_str());
                             job_it = _pending_jobs.erase(job_it);
                             erased = true;
                             found = true;
@@ -483,6 +489,7 @@ void FCFSFast2::make_decisions(double date,
                     //LOG_F(INFO,"Line 535  fcfs_fast2.cpp");
                     //LOG_F(INFO,"Line 536  fcfs_fast2.cpp pending_job: %p",static_cast<void *>(*job_it));
                     //LOG_F(INFO,"Line   fcfs_fast2.cpp pending_job_id: %s",pending_job->id.c_str());
+                    CLOG_F(CCU_DEBUG,"erasing pending_job %s",(*job_it)->id.c_str());
                     job_it = _pending_jobs.erase(job_it);
                     erased = true;
                     //LOG_F(INFO,"Line 537  fcfs_fast2.cpp");
@@ -503,6 +510,7 @@ void FCFSFast2::make_decisions(double date,
                 _nb_available_machines -= pending_job->nb_requested_resources;
                  _current_allocations[pending_job_id].machines = machines;
                  _current_allocations[pending_job_id].has_horizon = false;
+                CLOG_F(CCU_DEBUG,"erasing pending_job %s",(*job_it)->id.c_str());
                 job_it = _pending_jobs.erase(job_it);
                 erased = true;
                 _running_jobs.insert(pending_job->id);
@@ -529,6 +537,7 @@ void FCFSFast2::make_decisions(double date,
             _start_from_checkpoint.first_submitted_time = date;
         _start_from_checkpoint.received_submitted_jobs = true;
         ISchedulingAlgorithm::ingest_variables_if_ready(date);
+        _clear_jobs_recently_released = false;
         return;
     }
     for (const std::string & new_job_id : _jobs_released_recently)
@@ -548,7 +557,7 @@ void FCFSFast2::make_decisions(double date,
         if (!_pending_jobs.empty())
         {   
             // submitted job is a resubmitted one, put at front of pending jobs
-           if (new_job_id.find("#")!=std::string::npos)
+           if (new_job_id.find("#")!=std::string::npos && _queue_policy == "ORIGINAL_FCFS")
                _pending_jobs.push_front(new_job);
             else{
                 // Yes. The new job is queued up.
@@ -646,11 +655,13 @@ void FCFSFast2::make_decisions(double date,
     */
    LOG_F(INFO,"jkr_e:%d pj_e:%d rj_e:%d ntsfsj:%d nmsjtsr:%d",_jobs_killed_recently.empty(), _pending_jobs.empty(), _running_jobs.empty(),
              _need_to_send_finished_submitting_jobs, _no_more_static_job_to_submit_received );
-    if (!_pending_jobs.empty())
+    if (!_pending_jobs.empty() && loguru::g_stderr_verbosity >= CCU_DEBUG_ALL)
     {
-        std::string pj = batsched_tools::list_to_json_string(_pending_jobs);
-        LOG_F(INFO,"_pending_jobs: %s",pj.c_str());
-        LOG_F(INFO,"_available_machines: %s",_available_machines.to_string_hyphen().c_str());
+        std::string pj = batsched_tools::list_to_json_string(_pending_jobs,false);
+        CLOG_F(CCU_DEBUG_ALL,"queue is _pending_jobs");
+        CLOG_F(CCU_DEBUG_ALL,"queue: %s",pj.c_str());
+        CLOG_F(CCU_DEBUG_ALL,"_available_machines: %s",_available_machines.to_string_hyphen().c_str());
+        
     }
 
     if (_jobs_killed_recently.empty() && _pending_jobs.empty() && _running_jobs.empty() &&

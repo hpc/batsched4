@@ -67,6 +67,9 @@ void EasyBackfilling2::on_ingest_variables(const rapidjson::Document & doc,doubl
     //this code should not be run because the doc, at this point (5-13-2024) does not have a "derived" member
     //using namespace rapidjson;
     //const Value & derived = doc["derived"];
+
+    //we don't do this because when ingesting the schedule we execute jobs in first slice
+    //ISchedulingAlgorithm::execute_jobs_in_running_state(date);
     
     
 }
@@ -162,6 +165,7 @@ void EasyBackfilling2::make_decisions(double date,
 
 
     const Job * priority_job_before = _queue->first_job_or_nullptr();
+    CLOG_F(CCU_DEBUG,"queue: %s",_queue->to_string().c_str());
     CLOG_F(CCU_DEBUG,"removing finished jobs");
     // Let's remove finished jobs from the schedule
     for (const string & ended_job_id : _jobs_ended_recently)
@@ -170,32 +174,43 @@ void EasyBackfilling2::make_decisions(double date,
     // Let's handle recently released jobs
     CLOG_F(CCU_DEBUG,"handling released recently");
     std::vector<std::string> recently_queued_jobs;
-    for (const string & new_job_id : _jobs_released_recently)
+    if (!_jobs_released_recently.empty())
     {
-        // @note Leslie added 
         if (!_start_from_checkpoint.received_submitted_jobs)
             _start_from_checkpoint.first_submitted_time = date;
         _start_from_checkpoint.received_submitted_jobs = true;
-        
-        const Job * new_job = (*_workload)[new_job_id];
+    }
+    /*
+    if (!_start_from_checkpoint.started_from_checkpoint ||
+         (_start_from_checkpoint.started_from_checkpoint && 
+            _start_from_checkpoint.start_adding_to_queue)
+       )
+    */
+    {
+        for (const string & new_job_id : _jobs_released_recently)
+        {
+            // @note Leslie added 
+                    
+            const Job * new_job = (*_workload)[new_job_id];
 
-        if (new_job->nb_requested_resources > _nb_machines)
-        {
-            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
-        }
-        else if (!new_job->has_walltime)
-        {
-            LOG_SCOPE_FUNCTION(INFO);
-            CLOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
-            _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NO_WALLTIME);
-        }
-        else
-        {
-            _queue->append_job(new_job, update_info);
-            recently_queued_jobs.push_back(new_job_id);
+            if (new_job->nb_requested_resources > _nb_machines)
+            {
+                _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NOT_ENOUGH_RESOURCES);
+            }
+            else if (!new_job->has_walltime)
+            {
+                LOG_SCOPE_FUNCTION(INFO);
+                CLOG_F(INFO, "Date=%g. Rejecting job '%s' as it has no walltime", date, new_job_id.c_str());
+                _decision->add_reject_job(date,new_job_id, batsched_tools::REJECT_TYPES::NO_WALLTIME);
+            }
+            else
+            {
+                _queue->append_job(new_job, update_info);
+                recently_queued_jobs.push_back(new_job_id);
+            }
         }
     }
-    // @note Leslie added 
+    // it should be safe to clear jobs_released_recently as it comes before the ingest
     if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
         return;
 
@@ -212,7 +227,8 @@ void EasyBackfilling2::make_decisions(double date,
     LOG_F(INFO,"here");
     CLOG_F(CCU_DEBUG,"handled instant down ups and down for repairs. handling resubmission");
     //ok we handled them all, clear the container
-    _on_machine_down_for_repairs.clear();
+    //this is done at the ISchedulingAlgorithm::handle_failures now
+    //_on_machine_down_for_repairs.clear();
     for ( auto job_message_pair : _jobs_killed_recently)
     {
         batsched_tools::id_separation separation = batsched_tools::tools::separate_id(job_message_pair.first);
@@ -389,15 +405,19 @@ void EasyBackfilling2::sort_queue_while_handling_priority_job(const Job * priori
     _queue->sort_queue(update_info, compare_info);
 
     // Let the new priority job be computed
+    CLOG_F(CCU_DEBUG,"queue: %s",_queue->to_string().c_str());
     priority_job_after = _queue->first_job_or_nullptr();
     if (_output_svg == "short")
         _schedule.output_to_svg("sort queue while handling priority job");
     // If the priority job has changed
     if (priority_job_after != priority_job_before)
     {
+        CLOG_F(CCU_DEBUG,"priority_job_after does not equal priority_job_before");
         // If there was a priority job before, let it be removed from the schedule
         if (priority_job_before != nullptr)
             _schedule.remove_job_if_exists(priority_job_before);
+        if (priority_job_after !=nullptr)
+            _schedule.remove_job_if_exists(priority_job_after);
 
         // Let us ensure the priority job is in the schedule.
         // To do so, while the priority job can be executed now, we keep on inserting it into the schedule
@@ -406,6 +426,9 @@ void EasyBackfilling2::sort_queue_while_handling_priority_job(const Job * priori
             could_run_priority_job = false;
 
             // Let's add the priority job into the schedule
+            CLOG_F(CCU_DEBUG,"Adding priority_job_after: %s",priority_job_after->id.c_str());
+
+            
             JobAlloc alloc = _schedule.add_job_first_fit(priority_job_after, _selector);
 
             if (alloc.started_in_first_slice)

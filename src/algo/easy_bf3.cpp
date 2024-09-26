@@ -164,15 +164,15 @@ void EasyBackfilling3::on_checkpoint_batsched(double date){
     {
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"{\n";
-        LOG_F(INFO,"Checkpointing _waiting_jobs");
+        CLOG_F(CCU_DEBUG,"Checkpointing _waiting_jobs");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t\"_waiting_jobs\":"                << batsched_tools::vector_to_json_string(_waiting_jobs,false)         <<","<<std::endl;
 
-        LOG_F(INFO,"Checkpointing _scheduled_jobs");
+        CLOG_F(CCU_DEBUG,"Checkpointing _scheduled_jobs");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t\"_scheduled_jobs\":"              << batsched_tools::vector_to_json_string(_scheduled_jobs)       <<","<<std::endl;
 
-        LOG_F(INFO,"Checkpointing _tmp_job");
+        CLOG_F(CCU_DEBUG,"Checkpointing _tmp_job");
         
         if (_tmp_job==nullptr)
         {
@@ -184,7 +184,7 @@ void EasyBackfilling3::on_checkpoint_batsched(double date){
             f<<std::fixed<<std::setprecision(15)<<std::boolalpha
             <<"\t\"_tmp_job\":"                     << batsched_tools::to_json_string(_tmp_job)                     <<","<<std::endl;
         }
-        LOG_F(INFO,"Checkpointing _p_job");
+        CLOG_F(CCU_DEBUG,"Checkpointing _p_job");
         if (_p_job==nullptr)
         {
             f<<std::fixed<<std::setprecision(15)<<std::boolalpha
@@ -197,7 +197,7 @@ void EasyBackfilling3::on_checkpoint_batsched(double date){
         }
 
         
-        LOG_F(INFO,"Checkpointing _can_run");
+        CLOG_F(CCU_DEBUG,"Checkpointing _can_run");
         f<<std::fixed<<std::setprecision(15)<<std::boolalpha
         <<"\t\"_can_run\":"                     << _can_run                     <<std::endl
         <<"}";
@@ -209,17 +209,17 @@ void EasyBackfilling3::on_ingest_variables(const rapidjson::Document & doc,doubl
     
     std::string checkpoint_dir = _output_folder + "/start_from_checkpoint";
     using namespace rapidjson;
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"here");
     rapidjson::Document easy_bf3Doc = ISchedulingAlgorithm::ingestDoc(checkpoint_dir + "/easy_bf3.chkpt");
-    LOG_F(INFO,"here");
-    ingestM(_waiting_jobs,easy_bf3Doc,easy_bf3Doc);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"here");
+    //ingestM(_waiting_jobs,easy_bf3Doc,easy_bf3Doc);
+    CLOG_F(CCU_DEBUG,"here");
     ingestM(_scheduled_jobs,easy_bf3Doc,easy_bf3Doc);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"here");
     ingestM(_tmp_job,easy_bf3Doc,easy_bf3Doc);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"here");
     ingestM(_p_job,easy_bf3Doc,easy_bf3Doc);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"here");
     ingestM(_can_run,easy_bf3Doc,easy_bf3Doc);
     ISchedulingAlgorithm::execute_jobs_in_running_state(date);  
 
@@ -239,7 +239,11 @@ void EasyBackfilling3::make_decisions(double date,
                                      SortableJobOrder::UpdateInformation *update_info,
                                      SortableJobOrder::CompareInformation *compare_info)
 {
-    LOG_F(INFO,"queue: %s",queue_to_string().c_str());
+    
+    CLOG_F(CCU_DEBUG,"now: %.20f",date);
+    CLOG_F(CCU_DEBUG,"queue: %s",queue_to_string().c_str());
+    CLOG_F(CCU_DEBUG,"_call_me_laters: %s",batsched_tools::map_to_json_string(_decision->get_call_me_laters()).c_str());
+
     if (!_jobs_killed_recently.empty())
         LOG_F(INFO,"_jobs_killed_recently: %s",_jobs_killed_recently.begin()->second->id.c_str());
     (void) compare_info;
@@ -274,10 +278,10 @@ void EasyBackfilling3::make_decisions(double date,
         _decision->add_kill_job(kills,date);
         _my_kill_jobs.clear();
     }
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"here");
     // Handle resubmitting killed jobs to queue back up
     _decision->handle_resubmission(_jobs_killed_recently,_workload,date);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG,"here");
     // Let's handle recently released jobs
     std::vector<std::string> recently_queued_jobs;
     for (const string & new_job_id : _jobs_released_recently)
@@ -303,10 +307,11 @@ void EasyBackfilling3::make_decisions(double date,
             recently_queued_jobs.push_back(new_job_id);
         }
     }
+    //should be ok to clear jobs_released_recently as it is handled for the ingest
     if (ISchedulingAlgorithm::ingest_variables_if_ready(date))
     {
         if (!_jobs_killed_recently.empty())
-            LOG_F(INFO,"_jobs_killed_recently: %s",_jobs_killed_recently.begin()->second->id.c_str());
+            CLOG_F(CCU_DEBUG,"_jobs_killed_recently: %s",_jobs_killed_recently.begin()->second->id.c_str());
         return;
     }
 
@@ -364,7 +369,7 @@ void EasyBackfilling3::make_decisions(double date,
         }
     }
     _need_to_backfill = false;
-
+        
     //we need to start rejecting jobs if the _waiting_jobs don't fit
     if ((_workload->_reject_jobs_after_nb_repairs!= -1) && _jobs_killed_recently.empty() && (priority_job_after == nullptr)  && _scheduled_jobs.empty() &&
             _need_to_send_finished_submitting_jobs && _no_more_static_job_to_submit_received && !date<1.0 )
@@ -388,7 +393,7 @@ void EasyBackfilling3::make_decisions(double date,
         _decision->add_scheduler_finished_submitting_jobs(date);
         _need_to_send_finished_submitting_jobs = false;
     }
-    LOG_F(INFO,"queue: %s",queue_to_string().c_str());
+    CLOG_F(CCU_DEBUG,"queue: %s",queue_to_string().c_str());
     // @note LH: adds queuing info to the out_jobs_extra.csv file
     _decision->add_generic_notification("queue_size",to_string(_waiting_jobs.size()),date);
     _decision->add_generic_notification("schedule_size",to_string(_scheduled_jobs.size()),date);

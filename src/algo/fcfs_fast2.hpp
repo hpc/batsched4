@@ -40,8 +40,8 @@ public:
         SortableJobOrder::CompareInformation * compare_info);
     std::string to_json_desc(rapidjson::Document *doc);
     //void handle_resubmission(double date);  handled by _decision now
-    void on_machine_instant_down_up(double date);
-    void on_machine_down_for_repair(double date);
+    virtual void on_machine_instant_down_up(batsched_tools::KILL_TYPES killType,double date);
+    virtual void on_machine_down_for_repair(batsched_tools::KILL_TYPES killType,double date);
     virtual void on_no_more_external_event_to_occur(double date);
     virtual void on_job_end(double date, std::vector<std::string> job_ids);
     virtual void on_machine_state_changed(double date, IntervalSet machines, int new_state);

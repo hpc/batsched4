@@ -298,6 +298,33 @@ void Queue::sort_queue(SortableJobOrder::UpdateInformation *update_info,
                     return _order->compare(j1, j2, compare_info);
     });
 }
+void Queue::sort_queue_by_original_submit(SortableJobOrder::UpdateInformation *update_info,
+                       std::string &queue_policy,
+                       SortableJobOrder::CompareInformation *compare_info)
+{
+    // Update of all jobs
+    for (SortableJob * sjob : _jobs)
+        _order->updateJob(sjob, update_info);
+    // Sort
+    if (queue_policy=="ORIGINAL_FCFS")
+        _jobs.sort([this, compare_info](const SortableJob * j1, const SortableJob * j2)
+                {
+                        if (j1->job->submission_times[0] == j2->job->submission_times[0])
+                            return j1->job->id < j2->job->id;
+                        else
+                            return j1->job->submission_times[0] < j2->job->submission_times[0];
+                    
+        });
+    else
+        _jobs.sort([this, compare_info](const SortableJob * j1, const SortableJob * j2)
+            {
+                    if (j1->job->original_submit == j2->job->original_submit)
+                        return j1->job->id < j2->job->id;
+                    else
+                        return j1->job->original_submit < j2->job->original_submit;
+                
+        });
+}
 
 const Job* Queue::first_job() const
 {

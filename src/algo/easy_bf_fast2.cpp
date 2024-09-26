@@ -265,6 +265,7 @@ void easy_bf_fast2::make_decisions(double date,
             _start_from_checkpoint.first_submitted_time = date;
         _start_from_checkpoint.received_submitted_jobs = true;
         ISchedulingAlgorithm::ingest_variables_if_ready(date);
+        _clear_jobs_recently_released = false; //not safe to clear since it is handled below
         return;
     }
     handle_newly_released_jobs(date);

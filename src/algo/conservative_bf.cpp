@@ -441,7 +441,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
                 
                 const Job * new_job = (*_workload)[new_job_id];
                 //LOG_F(INFO,"DEBUG line 321");
-                    
+                _schedule.remove_job_if_exists(new_job);
                 JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector,false);
 
                 // If the job should start now, let's say it to the resource manager
@@ -472,7 +472,7 @@ auto sort_original_submit = [](const Job * j1,const Job * j2)->bool{
                     break;
                 const Job * new_job = (*_workload)[new_job_id];
                 //LOG_F(INFO,"DEBUG line 337");
-                    
+                _schedule.remove_job_if_exists(new_job);
                 JobAlloc alloc = _schedule.add_job_first_fit(new_job, _selector,false);
                 
                 LOG_F(INFO,"ALLOC: %s  begin:%f  end:%f used:%s",new_job->id.c_str(),alloc.begin.convert_to<double>(),alloc.end.convert_to<double>(),alloc.used_machines.to_string_hyphen().c_str());
@@ -641,6 +641,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                     if (_workload->_queue_depth != -1 && scheduled >=_workload->_queue_depth)
                         break;
                     
+                    _schedule.remove_job_if_exists(job_forWhat_pair.first);
                     JobAlloc alloc = _schedule.add_job_first_fit(job_forWhat_pair.first,_selector,false);
                     if (!alloc.used_machines.is_empty())
                     {
@@ -659,7 +660,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                 {
                     if (_workload->_queue_depth != -1 && scheduled >=_workload->_queue_depth)
                         break;
-                   
+                    _schedule.remove_job_if_exists(job);
                     JobAlloc alloc = _schedule.add_job_first_fit(job,_selector,false);
                     if (!alloc.used_machines.is_empty())
                     {
@@ -680,7 +681,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                     {
                         batsched_tools::CALL_ME_LATERS cml;
                         cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
-                        cml.id = _nb_call_me_laters;
+                        cml.id = _decision->get_nb_call_me_laters();
                         cml.extra_data = batsched_tools::string_format("{\"job_id\":'%s'}",reservation.job->id);
                         _decision->add_call_me_later(date,reservation.job->start,cml);
                     }
@@ -762,6 +763,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                         break;
                     
                     const Job * job = (*job_it)->job;
+                    _schedule.remove_job_if_exists(job);
                     JobAlloc alloc = _schedule.add_job_first_fit(job, _selector,false);   
                     if (!alloc.used_machines.is_empty())
                     {
@@ -789,7 +791,7 @@ void ConservativeBackfilling::handle_killed_jobs(std::vector<std::string> & rece
                     {
                         batsched_tools::CALL_ME_LATERS cml;
                         cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
-                        cml.id = _nb_call_me_laters;
+                        cml.id = _decision->get_nb_call_me_laters();
                         cml.extra_data = batsched_tools::string_format("{\"job_id\":\"%s\"}",reservation.job->id);
                         _decision->add_call_me_later(date,reservation.job->start,cml);
                     }
@@ -902,6 +904,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                     LOG_F(INFO,"jobs to reschedule: %s",ss.str().c_str());
                     for(auto job : reservation.jobs_to_reschedule)
                     {
+                        _schedule.remove_job_if_exists(job);
                         alloc = _schedule.add_job_first_fit(job,_selector,false);
                         //if this job starts in first slice execute it
                         if (!alloc.used_machines.is_empty())
@@ -924,7 +927,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                     {
                         batsched_tools::CALL_ME_LATERS cml;
                         cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
-                        cml.id = _nb_call_me_laters;
+                        cml.id = _decision->get_nb_call_me_laters();
                         cml.extra_data = batsched_tools::string_format("{'job_id':'%s'}",reservation.job->id);
                         _decision->add_call_me_later(date,reservation.job->start,cml);
                     }
@@ -1028,6 +1031,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                     for (auto job_it = _queue->begin(); job_it != _queue->end(); )
                     {
                         const Job * job = (*job_it)->job;
+                        _schedule.remove_job_if_exists(job);
                         JobAlloc alloc = _schedule.add_job_first_fit(job, _selector,false);   
                         if (!alloc.used_machines.is_empty())
                         {
@@ -1058,7 +1062,7 @@ void ConservativeBackfilling::handle_reservations(std::vector<std::string> & rec
                     {
                         batsched_tools::CALL_ME_LATERS cml;
                         cml.forWhat = batsched_tools::call_me_later_types::RESERVATION_START;
-                        cml.id = _nb_call_me_laters;
+                        cml.id = _decision->get_nb_call_me_laters();
                         cml.extra_data = batsched_tools::string_format("{'job_id':'%s'}",reservation.job->id);
                         _decision->add_call_me_later(date,reservation.job->start,cml);
                     }

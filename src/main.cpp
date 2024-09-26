@@ -222,9 +222,9 @@ int main(int argc, char ** argv)
 
         if (verbosity_level == "CCU_INFO")
             loguru::g_stderr_verbosity = loguru::Verbosity_1;
-        else if (verbosity_level == "CCU_DEBUG")
-            loguru::g_stderr_verbosity = loguru::Verbosity_2;
         else if (verbosity_level == "CCU_DEBUG_FIN")
+            loguru::g_stderr_verbosity = loguru::Verbosity_2;
+        else if (verbosity_level == "CCU_DEBUG")
             loguru::g_stderr_verbosity = loguru::Verbosity_3;
         else if (verbosity_level == "CCU_DEBUG_ALL")
             loguru::g_stderr_verbosity = loguru::Verbosity_4;
@@ -477,7 +477,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
     while (!simulation_finished)
     {
         
-        LOG_F(INFO,"line 381 main.cpp");
+        LOG_F(INFO,"line 480 main.cpp");
         string received_message;
         
    
@@ -491,6 +491,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
         }
         if (batsim_checkpoint)
         {
+            LOG_F(INFO,"batsim checkpoint from signal == true");
             algo->on_signal_checkpoint();
             batsim_checkpoint = false;
         }
@@ -825,8 +826,7 @@ void run(Network & n, ISchedulingAlgorithm * algo, SchedulingDecision & d,
             algo->set_clear_recent_data_structures(true);
             algo->make_decisions(message_date, &update_info, nullptr);
             LOG_F(INFO,"_clear_recent_data_structures: %d",algo->get_clear_recent_data_structures());
-            if (algo->get_clear_recent_data_structures())
-                 algo->clear_recent_data_structures();
+            algo->clear_recent_data_structures();
         }
         //LOG_F(INFO,"line 629 main.cpp");
         message_date = max(message_date, d.last_date());

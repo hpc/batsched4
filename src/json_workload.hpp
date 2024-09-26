@@ -18,17 +18,17 @@ namespace batsched_tools{struct checkpoint_job_data; struct start_from_chkpt;};
 
 struct Job
 {
-    std::string id;
-    int unique_number;
-    int nb_requested_resources;
-    Rational walltime;
-    Rational original_walltime = -1;
-    bool has_walltime = true;
-    double submission_time = 0;
-    double original_submit = -1;
-    std::vector<double> submission_times ;  //can possibly use for handling resubmitted jobs
+    std::string id;  //the job id of the job w<workload#>!<job#>[#<resubmit#>][$<start_from_checkpoint#>]
+    int unique_number; //a running count of jobs is kept as _job_number.  This makes it unique to each job and is set as its unique_number
+    int nb_requested_resources; //number of requested nodes
+    Rational walltime; //walltime
+    Rational original_walltime = -1; //the original walltime as put into the workload that was originally submitted
+    bool has_walltime = true;  //whether or not this job has a walltime
+    double submission_time = 0;  //time that the job is to be submitted in this simulation
+    double original_submit = -1;  //time that the job was originally submitted as put into the workload that was originally submitted
+    std::vector<double> submission_times ;  //can possibly use for handling resubmitted jobs // all of the submission times this job has gone through
     
-    double completion_time = -1;
+    double completion_time = -1; //the time the job completed
     mutable std::map<Rational, JobAlloc*> allocations;
     int cores=1;
     std::string purpose = "job";
@@ -40,6 +40,7 @@ struct Job
     double dump_time;
     double read_time;
     batsched_tools::checkpoint_job_data * checkpoint_job_data;
+    bool from_workload=false;
     
 };
 

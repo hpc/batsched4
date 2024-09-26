@@ -126,6 +126,7 @@ public:
     std::list<SortableJob *>::iterator remove_job(const Job * job);
     std::list<SortableJob *>::iterator remove_job(std::list<SortableJob *>::iterator job_it);
     void sort_queue(SortableJobOrder::UpdateInformation * update_info, SortableJobOrder::CompareInformation * compare_info = nullptr);
+    void sort_queue_by_original_submit(SortableJobOrder::UpdateInformation * update_info, std::string &queue_policy,SortableJobOrder::CompareInformation * compare_info = nullptr);
     void set_release_date_on_job(std::list<SortableJob *>::iterator job_it ,Rational release_date);
     const Job * first_job() const;
     const Job * first_job_or_nullptr() const;

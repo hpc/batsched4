@@ -67,9 +67,9 @@ void Workload::add_job_from_redis(RedisStorage & storage, const string &job_id, 
 
 void Workload::add_job_from_json_object(const Value &object, const string & job_id, double submission_time)
 {
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     Job * job = job_from_json_object(object["job"],object["profile"]);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     job->id = job_id;
     //this submission time is now gathered from job_from_json_object(), and potentially changed to original_submit
     //job->submission_time = submission_time;
@@ -147,50 +147,53 @@ Job *Workload::job_from_json_object(const Value &object)
     PPK_ASSERT_ERROR(object["id"].IsString(), "Invalid json object: 'id' member is not a string");
     PPK_ASSERT_ERROR(object.HasMember("res"), "Invalid json object: no 'res' member");
     PPK_ASSERT_ERROR(object["res"].IsInt(), "Invalid json object: 'res' member is not an integer");
-LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     Job * j = new Job;
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     j->id = object["id"].GetString();
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
+    //start out with walltime = -1 and has_walltime = true, will change as needed
     j->walltime = -1;
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     j->has_walltime = true;
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     j->nb_requested_resources = object["res"].GetInt();
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     j->unique_number = _job_number++;
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     j->checkpoint_interval = -1.0;
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
+    PPK_ASSERT_ERROR(object.HasMember("from_workload"),"%s: job '%s' has no 'from_workload' field",j->id.c_str());
+    j->from_workload = object["from_workload"].GetBool();
     PPK_ASSERT_ERROR(object.HasMember("subtime"), "%s: job '%s' has no 'subtime' field",j->id.c_str());
     j->submission_time = object["subtime"].GetDouble();
     if (start_from_checkpoint->started_from_checkpoint)
     {
-        LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         j->checkpoint_job_data = new batsched_tools::checkpoint_job_data();
         PPK_ASSERT_ERROR(object.HasMember("allocation"), "%s: job '%s' has no 'allocation' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         std::string interval = object["allocation"].GetString();
         if (interval != "null")
             j->checkpoint_job_data->allocation = IntervalSet::from_string_hyphen(interval);
-        LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         PPK_ASSERT_ERROR(object.HasMember("progress"), "%s: job '%s' has no 'progress' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         j->checkpoint_job_data->progress = object["progress"].GetDouble();
-LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         PPK_ASSERT_ERROR(object.HasMember("state"), "%s: job '%s' has no 'state' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         int state = object["state"].GetInt();
         j->checkpoint_job_data->state = static_cast<batsched_tools::JobState>(state);
-LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         PPK_ASSERT_ERROR(object.HasMember("jitter"), "%s: job '%s' has no 'jitter' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         j->checkpoint_job_data->jitter = object["jitter"].GetString();
-LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         PPK_ASSERT_ERROR(object.HasMember("runtime"), "%s: job '%s' has no 'runtime' field"
         ", but we are starting-from-checkpoint",j->id.c_str());
         j->checkpoint_job_data->runtime = object["runtime"].GetDouble();
-LOG_F(INFO,"here");
+        CLOG_F(CCU_DEBUG_ALL,"here");
         //this is so sorting by submit time will work whether you use the FCFS or ORIGINAL-FCFS queuing policy
         //basically the scheduler doesn't need to know the submit time in the start-from-checkpoint simulation, it needs to know the original
         
@@ -198,13 +201,13 @@ LOG_F(INFO,"here");
     }
     PPK_ASSERT_ERROR(object.HasMember("original_submit"), "%s: job '%s' has no 'original_submit' field",j->id.c_str());
     j->original_submit = object["original_submit"].GetDouble();
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     if (object.HasMember("walltime"))
     {
         PPK_ASSERT_ERROR(object["walltime"].IsNumber(), "Invalid json object: 'walltime' member is not a number");
         
         j->walltime = object["walltime"].GetDouble();
-        LOG_F(INFO,"walltime %g",(double)j->walltime);
+        CLOG_F(CCU_DEBUG_ALL,"walltime %g",(double)j->walltime);
     }
 
     PPK_ASSERT_ERROR(j->walltime == -1 || j->walltime > 0,
@@ -275,7 +278,7 @@ LOG_F(INFO,"here");
 Job *Workload::job_from_json_object(const Value &job_object,const Value &profile_object)
 {
     Job * j = job_from_json_object(job_object);
-    LOG_F(INFO,"here");
+    CLOG_F(CCU_DEBUG_ALL,"here");
     j->profile = myBatsched::Profile::from_json(j->id,profile_object);
     return j;
 }

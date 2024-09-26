@@ -1,5 +1,5 @@
 #include "isalgorithm.hpp"
-
+#include <algorithm>
 #include "pempek_assert.hpp"
 #include "batsched_tools.hpp"
 #include <chrono>
@@ -31,8 +31,11 @@ void ISchedulingAlgorithm::normal_start(double date, const rapidjson::Value & ba
     // @note LH: set output folder for logging
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
+    _output_extra_info = batsim_config["output-extra-info"].GetBool();
     CLOG_F(CCU_DEBUG_FIN,"output folder %s",_output_folder.c_str());
+    _set_generators_from_file = batsim_config["set-generators-from-file"].GetBool();
     ISchedulingAlgorithm::set_generators(date);
+
 
     // @note LH: Get the queue policy, only "FCFS" and "ORIGINAL-FCFS" are valid
     _queue_policy=batsim_config["queue-policy"].GetString();
@@ -74,6 +77,7 @@ void ISchedulingAlgorithm::on_start_from_checkpoint_normal(double date, const ra
     const rapidjson::Value & batsim_config = batsim_event["config"];
     _output_folder=batsim_config["output-folder"].GetString();
     _output_folder.replace(_output_folder.rfind("/out"), std::string("/out").size(), "");
+    _output_extra_info = batsim_config["output-extra-info"].GetBool();
     //lets do all the normal stuff first
     _start_real_time = _real_time;
     _start_from_checkpoint.nb_folder= batsim_config["start-from-checkpoint"]["nb_folder"].GetInt();
@@ -101,6 +105,7 @@ void ISchedulingAlgorithm::on_start_from_checkpoint_normal(double date, const ra
     PPK_ASSERT_ERROR(_queue_policy == "FCFS" || _queue_policy == "ORIGINAL-FCFS");
     CLOG_F(CCU_DEBUG_FIN, "queue-policy = %s", _queue_policy.c_str());
     //we need to set our generators even though they will be overwritten, so that distributions aren't null
+    _set_generators_from_file = batsim_config["set-generators-from-file"].GetBool();
     ISchedulingAlgorithm::set_generators(date);
     LOG_F(INFO,"here");
     _recently_under_repair_machines = IntervalSet::empty_interval_set();
@@ -156,26 +161,26 @@ bool ISchedulingAlgorithm::get_clear_recent_data_structures()
 void ISchedulingAlgorithm::set_clear_recent_data_structures(bool value)
 {
     _clear_recent_data_structures = value;
+    _clear_jobs_recently_released = value;
 }
 
 void ISchedulingAlgorithm::requested_failure_call(double date, batsched_tools::CALL_ME_LATERS cml_in)
 {
-    double number = failure_exponential_distribution->operator()(generator_failure);
     batsched_tools::KILL_TYPES killType;
-    LOG_F(INFO,"DEBUG");
+    CLOG_F(CCU_DEBUG,"DEBUG");
     _decision->remove_call_me_later(cml_in,date,_workload);
-    LOG_F(INFO,"DEBUG");
+    CLOG_F(CCU_DEBUG,"DEBUG");
     switch(cml_in.forWhat){
     
         case batsched_tools::call_me_later_types::SMTBF:
-        LOG_F(INFO,"DEBUG");
+            CLOG_F(CCU_DEBUG,"DEBUG");
             //Log the failure
             BLOG_F(blog_types::FAILURES,"%s,%s",blog_failure_event::FAILURE.c_str(),"SMTBF");
-            LOG_F(INFO,"DEBUG");
+            CLOG_F(CCU_DEBUG,"DEBUG");
             CLOG_F(CCU_DEBUG,"SMTBF Failure");
-            LOG_F(INFO,"DEBUG");
+            CLOG_F(CCU_DEBUG,"DEBUG");
             killType=batsched_tools::KILL_TYPES::SMTBF;
-            LOG_F(INFO,"DEBUG");
+            CLOG_F(CCU_DEBUG,"DEBUG");
         break;
         case batsched_tools::call_me_later_types::MTBF:
         LOG_F(INFO,"DEBUG");
@@ -227,17 +232,25 @@ void ISchedulingAlgorithm::requested_failure_call(double date, batsched_tools::C
         break;
     }
     LOG_F(INFO,"DEBUG");
-    if (_workload->_repair_time == -1.0  && _workload->_MTTR == -1.0)
-        _on_machine_instant_down_ups.push_back(killType);
-    else
-        _on_machine_down_for_repairs.push_back(killType);
-    LOG_F(INFO,"DEBUG");
+
+        if (_workload->_repair_time == -1.0  && _workload->_MTTR == -1.0)
+        {
+            CLOG_F(CCU_DEBUG,"adding to _on_machine_instant_down_ups: %d",killType);
+            _on_machine_instant_down_ups.push_back(killType);
+        }
+        else
+        {
+            _on_machine_down_for_repairs.push_back(killType);
+        }
+   
+    CLOG_F(CCU_DEBUG,"DEBUG");
     batsched_tools::CALL_ME_LATERS cml;
     cml.forWhat = cml_in.forWhat;
-    cml.id = _nb_call_me_laters;
-    LOG_F(INFO,"DEBUG");
+    cml.id = _decision->get_nb_call_me_laters();
+    CLOG_F(CCU_DEBUG,"DEBUG");
+    double number = failure_exponential_distribution->operator()(generator_failure);
     _decision->add_call_me_later(date,number+date,cml);
-    LOG_F(INFO,"DEBUG");
+    CLOG_F(CCU_DEBUG,"DEBUG");
     
 }
 
@@ -245,6 +258,7 @@ void ISchedulingAlgorithm::handle_failures(double date){
     //handle any instant down ups (no repair time on machine going down)
     for(batsched_tools::KILL_TYPES forWhat : _on_machine_instant_down_ups)
     {
+        CLOG_F(CCU_DEBUG,"handling instant down up failure, forWhat: %d",forWhat);
         on_machine_instant_down_up(forWhat,date);
     }
     LOG_F(INFO,"here");
@@ -256,6 +270,7 @@ void ISchedulingAlgorithm::handle_failures(double date){
         on_machine_down_for_repair(forWhat,date);
     }
     LOG_F(INFO,"here");
+    _on_machine_down_for_repairs.clear();
 }
 IntervalSet ISchedulingAlgorithm::normal_repair(double date)
 {
@@ -313,7 +328,7 @@ IntervalSet ISchedulingAlgorithm::normal_repair(double date)
         std::string extra_data = batsched_tools::string_format("{\"machine\":%d}",number);
         batsched_tools::CALL_ME_LATERS cml;
         cml.forWhat = batsched_tools::call_me_later_types::REPAIR_DONE;
-        cml.id = _nb_call_me_laters;
+        cml.id = _decision->get_nb_call_me_laters();
         cml.extra_data = extra_data;
         _decision->add_call_me_later(date,date+repair_time,cml);
         return machine;
@@ -496,7 +511,7 @@ void ISchedulingAlgorithm::set_failure_map(std::map<double,batsched_tools::failu
  for (auto myPair: failure_map)
  {
     batsched_tools::CALL_ME_LATERS cml;
-    cml.id = _nb_call_me_laters;
+    cml.id = _decision->get_nb_call_me_laters();
     cml.forWhat = myPair.second.type;
     _decision->add_call_me_later(0,myPair.first,cml);
  }   
@@ -519,8 +534,10 @@ void ISchedulingAlgorithm::set_redis(RedisStorage *redis)
 
 void ISchedulingAlgorithm::clear_recent_data_structures()
 {
-    _jobs_released_recently.clear();
-    _jobs_ended_recently.clear();
+    if (_clear_jobs_recently_released)
+        _jobs_released_recently.clear();
+    if (_clear_recent_data_structures)
+    {_jobs_ended_recently.clear();
     _jobs_killed_recently.clear();
     _jobs_whose_waiting_time_estimation_has_been_requested_recently.clear();
     _machines_whose_pstate_changed_recently.clear();
@@ -529,6 +546,7 @@ void ISchedulingAlgorithm::clear_recent_data_structures()
     _nopped_recently = false;
     _consumed_joules_updated_recently = false;
     _consumed_joules = -1;
+    }
 }
 
 ISchedulingAlgorithm::ISchedulingAlgorithm(Workload *workload,
@@ -635,8 +653,11 @@ void ISchedulingAlgorithm::on_first_jobs_submitted(double date)
     _decision->add_blocked_call_me_later(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED);
     _block_checkpoint = false;
     ISchedulingAlgorithm::ingest_variables(date);
-    _decision->add_generic_notification("recover_from_checkpoint","",date);
+    std::string batsim_filename = _output_folder + "/start_from_checkpoint/batsim_variables.chkpt";
+    _decision->add_generic_notification("recover_from_checkpoint",batsim_filename,date);
     _start_from_checkpoint_time = date;
+    _start_from_checkpoint.start_adding_to_queue = true;
+    
 }
 bool ISchedulingAlgorithm::all_submitted_jobs_check_passed()
 {
@@ -672,62 +693,168 @@ void ISchedulingAlgorithm::on_signal_checkpoint()
     _need_to_send_checkpoint = true;
 }
 void ISchedulingAlgorithm::set_generators(double date){
-    unsigned time_seed = std::chrono::system_clock::now().time_since_epoch().count();
-    generator_failure_seed = _workload->_seed_failures;
-    generator_machine_seed = _workload->_seed_failure_machine;
-    generator_repair_time_seed = _workload->_seed_repair_time;
-    if (_workload->_seed_failures == -1)
-        generator_failure_seed = time_seed;
-    if (_workload->_seed_failure_machine == -1)
-        generator_machine_seed = time_seed;
-    if (_workload->_seed_repair_time == -1)
-        generator_repair_time_seed = time_seed;
-        
-    generator_failure.seed(generator_failure_seed);
-    generator_machine.seed(generator_machine_seed);
-    generator_repair_time.seed(generator_repair_time_seed);
-    if (_workload->_fixed_failures != -1.0)
-     {
-        if (machine_unif_distribution == nullptr)
-            machine_unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
-        double number = _workload->_fixed_failures;
-        batsched_tools::CALL_ME_LATERS cml;
-        cml.forWhat = batsched_tools::call_me_later_types::FIXED_FAILURE;
-        cml.id = _nb_call_me_laters;
-        _decision->add_call_me_later(date,number+date,cml); 
-     }
-    if (_workload->_MTTR != -1.0)
+    if (_set_generators_from_file)
     {
-        if (repair_time_exponential_distribution == nullptr)
-            repair_time_exponential_distribution = new std::exponential_distribution<double>(1.0/_workload->_MTTR);
+        std::ifstream file;
+        std::string filename;
+        filename= _output_folder+"/generator_failure.dat";
+        LOG_F(INFO,"here");
+        if (fs::exists(filename))
+        {
+            file.open(filename);
+            file>>generator_failure;
+            file.close();
+        }
+        filename = _output_folder+"/generator_machine.dat";
+        LOG_F(INFO,"here");
+        if (fs::exists(filename))
+        {
+            file.open(filename);
+            file>>generator_machine;
+            file.close();
+        }
+        filename = _output_folder+"/generator_repair_time.dat";
+        LOG_F(INFO,"here");
+        if (fs::exists(filename))
+        {
+            file.open(filename);
+            file>>generator_repair_time;
+            file.close();
+        }
+        filename = _output_folder + "/failure_unif_distribution.dat";
+        LOG_F(INFO,"here");
+        if (fs::exists(filename))
+        {
+            failure_unif_distribution = new std::uniform_int_distribution<int>();
+            file.open(filename);
+            file>>*failure_unif_distribution;
+            file.close();
+        }
+        filename = _output_folder + "/failure_exponential_distribution.dat";
+        LOG_F(INFO,"here");
+        if (fs::exists(filename))
+        {
+            failure_exponential_distribution = new std::exponential_distribution<double>();
+            file.open(filename);
+            file>>*failure_exponential_distribution;
+            file.close();
+        }
+        filename = _output_folder + "/machine_unif_distribution.dat";
+        LOG_F(INFO,"here");
+        if (fs::exists(filename))
+        {
+            machine_unif_distribution = new std::uniform_int_distribution<int>();
+            file.open(filename);
+            file>>(*machine_unif_distribution);
+            file.close();
+        }
+        filename = _output_folder + "/repair_time_exponential_distribution.dat";
+        LOG_F(INFO,"here");
+        if (fs::exists(filename))
+        {
+            repair_time_exponential_distribution=new std::exponential_distribution<double>();
+            file.open(filename);
+            file>>*repair_time_exponential_distribution;
+            file.close();
+        }
     }
-    if (_workload->_SMTBF != -1.0)
+    else
     {
-        failure_exponential_distribution = new std::exponential_distribution<double>(1.0/_workload->_SMTBF);
-        if (machine_unif_distribution == nullptr)
-            machine_unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
-        std::exponential_distribution<double>::param_type new_lambda(1.0/_workload->_SMTBF);
-        failure_exponential_distribution->param(new_lambda);
-        double number;         
-        number = failure_exponential_distribution->operator()(generator_failure);
-       
-        batsched_tools::CALL_ME_LATERS cml;
-        cml.forWhat = batsched_tools::call_me_later_types::SMTBF;
-        cml.id = _nb_call_me_laters;
-        _decision->add_call_me_later(date,number+date,cml);
-    }
-    else if (_workload->_MTBF!=-1.0)
-    {
-        failure_exponential_distribution = new std::exponential_distribution<double>(1.0/_workload->_MTBF);
-        std::exponential_distribution<double>::param_type new_lambda(1.0/_workload->_MTBF);
-        failure_exponential_distribution->param(new_lambda);
-        double number;         
-        number = failure_exponential_distribution->operator()(generator_failure);
+        unsigned time_seed = std::chrono::system_clock::now().time_since_epoch().count();
+        generator_failure_seed = _workload->_seed_failures;
+        generator_machine_seed = _workload->_seed_failure_machine;
+        generator_repair_time_seed = _workload->_seed_repair_time;
+        if (_workload->_seed_failures == -1)
+            generator_failure_seed = time_seed;
+        if (_workload->_seed_failure_machine == -1)
+            generator_machine_seed = time_seed;
+        if (_workload->_seed_repair_time == -1)
+            generator_repair_time_seed = time_seed;
+            
+        generator_failure.seed(generator_failure_seed);
+        generator_machine.seed(generator_machine_seed);
+        generator_repair_time.seed(generator_repair_time_seed);
+        if (_workload->_fixed_failures != -1.0)
+        {
+            if (machine_unif_distribution == nullptr)
+                machine_unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
+            double number = _workload->_fixed_failures;
+            batsched_tools::CALL_ME_LATERS cml;
+            cml.forWhat = batsched_tools::call_me_later_types::FIXED_FAILURE;
+            cml.id = _decision->get_nb_call_me_laters();
+            _decision->add_call_me_later(date,number+date,cml); 
+        }
+        if (_workload->_MTTR != -1.0)
+        {
+            if (repair_time_exponential_distribution == nullptr)
+                repair_time_exponential_distribution = new std::exponential_distribution<double>(1.0/_workload->_MTTR);
+        }
+        if (_workload->_SMTBF != -1.0)
+        {
+            failure_exponential_distribution = new std::exponential_distribution<double>(1.0/_workload->_SMTBF);
+            if (machine_unif_distribution == nullptr)
+                machine_unif_distribution = new std::uniform_int_distribution<int>(0,_nb_machines-1);
+            std::exponential_distribution<double>::param_type new_lambda(1.0/_workload->_SMTBF);
+            failure_exponential_distribution->param(new_lambda);
+            double number;         
+            number = failure_exponential_distribution->operator()(generator_failure);
         
-        batsched_tools::CALL_ME_LATERS cml;
-        cml.forWhat = batsched_tools::call_me_later_types::MTBF;
-        cml.id = _nb_call_me_laters;
-        _decision->add_call_me_later(date,number+date,cml);
+            batsched_tools::CALL_ME_LATERS cml;
+            cml.forWhat = batsched_tools::call_me_later_types::SMTBF;
+            cml.id = _decision->get_nb_call_me_laters();
+            _decision->add_call_me_later(date,number+date,cml);
+        }
+        else if (_workload->_MTBF!=-1.0)
+        {
+            failure_exponential_distribution = new std::exponential_distribution<double>(1.0/_workload->_MTBF);
+            std::exponential_distribution<double>::param_type new_lambda(1.0/_workload->_MTBF);
+            failure_exponential_distribution->param(new_lambda);
+            double number;         
+            number = failure_exponential_distribution->operator()(generator_failure);
+            
+            batsched_tools::CALL_ME_LATERS cml;
+            cml.forWhat = batsched_tools::call_me_later_types::MTBF;
+            cml.id = _decision->get_nb_call_me_laters();
+            _decision->add_call_me_later(date,number+date,cml);
+        }
+    }
+    std::ofstream f;
+    f.open(_output_folder+"/generator_failure.dat");
+    f<<generator_failure;
+    f.close();
+    f.open(_output_folder+"/generator_machine.dat");
+    f<<generator_machine;
+    f.close();
+    f.open(_output_folder + "/generator_repair_time.dat");
+    f<<generator_repair_time;
+    f.close();
+    LOG_F(INFO,"Checkpointing distributions");
+    if (failure_unif_distribution != nullptr)
+    {
+        f.open(_output_folder + "/failure_unif_distribution.dat");
+        f<<*failure_unif_distribution;
+        f.close();
+    }
+
+    if (failure_exponential_distribution != nullptr)
+    {
+        f.open(_output_folder + "/failure_exponential_distribution.dat");
+        f<<*failure_exponential_distribution;
+        f.close();
+    }
+
+    if (machine_unif_distribution != nullptr)
+    {
+        f.open(_output_folder + "/machine_unif_distribution.dat");
+        f<<*machine_unif_distribution;
+        f.close();
+    }
+
+    if (repair_time_exponential_distribution != nullptr)
+    {
+        f.open(_output_folder + "/repair_time_exponential_distribution.dat");
+        f<<*repair_time_exponential_distribution;
+        f.close();
     }
 }
 void ISchedulingAlgorithm::set_real_time(std::chrono::_V2::system_clock::time_point time)
@@ -767,6 +894,7 @@ bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
     if (_checkpoint_sync == 4)
     {
         _decision->add_generic_notification("checkpoint","4",date);
+        LOG_F(ERROR,"send_batsim_checkpoint_if_ready: _checkpoint_sync=4");
         //_exit_make_decisions = true;
         _checkpoint_sync = 0;
         return true;
@@ -775,19 +903,22 @@ bool ISchedulingAlgorithm::send_batsim_checkpoint_if_ready(double date){
     {
         _decision->add_generic_notification("checkpoint","3",date);
         //_exit_make_decisions = true;
+        LOG_F(ERROR,"send_batsim_checkpoint_if_ready: _checkpoint_sync=3");
         return true;
     }
     if (_checkpoint_sync == 2)
     {
         _decision->add_generic_notification("checkpoint","2",date);
+        LOG_F(ERROR,"send_batsim_checkpoint_if_ready: _checkpoint_sync=2");
         //_exit_make_decisions = true;
         return true;
     }
     if (_batsim_checkpoint_interval_once && _nb_batsim_checkpoints == 1)
         return false;
+    
     if (((_batsim_checkpoint_interval_type != "False" && check_checkpoint_time(date))||_need_to_send_checkpoint) && !_block_checkpoint && _checkpoint_sync == 0)
     {
-       LOG_F(INFO,"here");
+       LOG_F(ERROR,"send_batsim_checkpoint_if_ready: ready=yes");
         _decision->add_generic_notification("checkpoint","1",date);
         _checkpoint_sync = 1;
         LOG_F(INFO,"here");
@@ -805,12 +936,48 @@ void ISchedulingAlgorithm::execute_jobs_in_running_state(double date)
     LOG_F(INFO,"executing jobs in running state");
     for ( auto pair : _workload->get_jobs())
         {
-            LOG_F(INFO,"job being checked job:%s",pair.second->id.c_str());
+            LOG_F(INFO,"job being checked, job:%s",pair.second->id.c_str());
             batsched_tools::checkpoint_job_data* cjd = pair.second->checkpoint_job_data;
             if (cjd->state == batsched_tools::JobState::JOB_STATE_RUNNING)
             {
                 LOG_F(INFO,"job is running job:%s",pair.second->id.c_str());
                 _decision->add_execute_job(pair.first,cjd->allocation,date);
+                if ((_queue != nullptr) && _queue->contains_job(pair.second) )
+                {
+                    CLOG_F(CCU_DEBUG,"job is being removed from _queue: %s",pair.second->id.c_str());
+                    _queue->remove_job(pair.second);
+                }
+                if ((!_waiting_jobs.empty()))
+                {
+                    auto result = std::find(_waiting_jobs.begin(),_waiting_jobs.end(),pair.second);
+                    if (result != _waiting_jobs.end())
+                    {
+                        CLOG_F(CCU_DEBUG,"job is being removed from _waiting_jobs: %s",pair.second->id.c_str());
+                        _waiting_jobs.erase(result);
+
+                    }
+                }
+                else if ((!_pending_jobs.empty()))
+                {
+                    auto result = std::find(_pending_jobs.begin(),_pending_jobs.end(),pair.second);
+                    if (result != _pending_jobs.end())
+                    {
+                        CLOG_F(CCU_DEBUG,"job is being removed from _pending_jobs: %s",pair.second->id.c_str());
+                        _pending_jobs.erase(result);
+                    }
+                    if ((!_pending_jobs_heldback.empty()))
+                    {
+                        auto result = std::find(_pending_jobs_heldback.begin(),_pending_jobs_heldback.end(),pair.second);
+                        if (result != _pending_jobs_heldback.end())
+                        {
+                            CLOG_F(CCU_DEBUG,"job is being removed from _pending_jobs_helback: %s",pair.second->id.c_str());
+                            _pending_jobs_heldback.erase(result);
+                        }
+                    }
+                }
+                auto found_it = std::find(_jobs_released_recently.begin(),_jobs_released_recently.end(),pair.second->id);
+                if (found_it != _jobs_released_recently.end())
+                    _jobs_released_recently.erase(found_it);
                 //sometimes a job was killed but still made it into the workload because at the exact point that the
                 //workload was made, the killed job was still in a state of running.
                 //we want them executed, then killed to make sure they get into the out_jobs.csv
@@ -922,6 +1089,7 @@ LOG_F(INFO,"here");
     ingestTTM(_consumed_joules,base,base,Double);
     ingestTTM(_reject_possible,base,base,Bool);
     ingestTTM(_nb_call_me_laters,base,base,Int);
+    _decision->set_nb_call_me_laters(_nb_call_me_laters);
     ingestTTM(_need_to_backfill,base,base,Bool);
 LOG_F(INFO,"here");
     //ingest recently_variables
@@ -940,7 +1108,8 @@ LOG_F(INFO,"here");
     LOG_F(INFO,"here");
     ingestM(_jobs_ended_recently,recently,recently);
     LOG_F(INFO,"here");
-    ingestM(_jobs_released_recently,recently,recently);
+    //we aren't going to ingest this as the workload should have handled this
+    //ingestM(_jobs_released_recently,recently,recently);
     LOG_F(INFO,"here");
     ingestTTM(_recently_under_repair_machines,recently,recently,String);
     ingestTTM(_nopped_recently,recently,recently,Bool);
@@ -954,7 +1123,7 @@ LOG_F(INFO,"here");
     ingestTTM(_no_more_static_job_to_submit_received,failure,failure,Bool);
     ingestTTM(_no_more_external_event_to_occur_received,failure,failure,Bool);
     ingestTTM(_checkpointing_on,failure,failure,Bool);
-    ingestVDM(failure);
+    //ingestVDM(failure);
     ingestM(_on_machine_instant_down_ups,failure,failure);
     ingestM(_on_machine_down_for_repairs,failure,failure);
     ingestTTM(_available_machines,failure,failure,String);
@@ -962,10 +1131,12 @@ LOG_F(INFO,"here");
     ingestTTM(_nb_available_machines,failure,failure,Int);
     ingestTTM(_repair_machines,failure,failure,String);
     ingestTTM(_repairs_done,failure,failure,Int);
+    ingestCMLS(failure["_call_me_laters"],date);
     ingestM(_my_kill_jobs,failure,failure);
 LOG_F(INFO,"here");
     //ingest schedule_variables
     //*********************************
+    SortableJobOrder::UpdateInformation update_info(date);
     if (_scheduleP != nullptr)
     {
         const rapidjson::Value & schedule = doc["schedule_variables"];
@@ -1021,9 +1192,11 @@ LOG_F(INFO,"here");
         LOG_F(INFO,"here");
         ingestTTM(_available_core_machines,share_packing,share_packing,String);
         LOG_F(INFO,"here");
-        ingestM(_pending_jobs,share_packing,share_packing);
+        //not doing this as pending jobs is taken care of with submitted jobs
+        //ingestM(_pending_jobs,share_packing,share_packing);
         LOG_F(INFO,"here");
-        ingestM(_pending_jobs_heldback,share_packing,share_packing);
+        //not doing this as pending jobs is taken care of with submitted jobs
+        //ingestM(_pending_jobs_heldback,share_packing,share_packing);
         LOG_F(INFO,"here");
         ingestM(_running_jobs,share_packing,share_packing);
         LOG_F(INFO,"here");
@@ -1044,9 +1217,9 @@ LOG_F(INFO,"here");
     //********************************
     rapidjson::Document queueDoc = ingestDoc(checkpoint_dir + "/batsched_queues.chkpt");
     //const rapidjson::Value & queue = queueDoc["_queue"];
-    if(!_queue->is_empty()) _queue->clear();
+    //if(!_queue->is_empty()) _queue->clear();
     LOG_F(INFO,"here");
-    ingestDM(_queue,queueDoc,queueDoc);
+    //ingestDM(_queue,queueDoc,queueDoc);
     LOG_F(INFO,"here");
     if (_reservation_algorithm)
     {
@@ -1055,18 +1228,28 @@ LOG_F(INFO,"here");
         ingestDM(_reservation_queue,queueDoc,queueDoc);
     }
 LOG_F(INFO,"here");
+
+    _queue->sort_queue_by_original_submit(&update_info,_queue_policy);
+        
     //ingest the schedule
     //*******************************
     if (_scheduleP != nullptr)
     {
         rapidjson::Document scheduleDoc = ingestDoc(checkpoint_dir + "/batsched_schedule.chkpt");
         _schedule.ingest_schedule(scheduleDoc);
+        //for some reason the queue is empty sometimes when checkpointing
+        //if this is the case, lets go ahead and put all released jobs into queue
+        
         //now get the first time slice jobs to execute on the same machines they executed on before
         for (auto kv_pair:_schedule.begin()->allocated_jobs)
         {
         
             _decision->add_execute_job(kv_pair.first->id,kv_pair.second,date);
+            //ok we are executing the job, make sure it isn't in queue
+            if (_queue->contains_job(kv_pair.first))
+                _queue->remove_job(kv_pair.first);
             //we don't need to delete the jobs from the queue because they shouldn't be in the queue if they are in the first slice
+            //but if the queue was empty, then we added the recently released jobs
         }
     }
     
@@ -1102,6 +1285,7 @@ void ISchedulingAlgorithm::set_index_of_horizons()
 }
 void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
     std::string checkpoint_dir;
+    LOG_F(ERROR,"on_checkpoint_batsched called");
     if (!_debug_real_checkpoint)
         checkpoint_dir = _output_folder + "/checkpoint_latest";
     else
@@ -1160,7 +1344,7 @@ void ISchedulingAlgorithm::on_checkpoint_batsched(double date){
         <<"\t\t\"REAL_CHECKPOINT_TIME\":"                                 <<  batsched_tools::to_json_string(_real_time)                      <<","<<std::endl
         <<"\t\t\"_consumed_joules\":"                                     <<  batsched_tools::to_json_string(_consumed_joules)                <<","<<std::endl
         <<"\t\t\"_reject_possible\":"                                     <<  _reject_possible                                                <<","<<std::endl
-        <<"\t\t\"_nb_call_me_laters\":"                                   <<  batsched_tools::to_json_string(_nb_call_me_laters)              <<","<<std::endl
+        <<"\t\t\"_nb_call_me_laters\":"                                   <<  batsched_tools::to_json_string(_decision->get_nb_call_me_laters())              <<","<<std::endl
         <<"\t\t\"_need_to_backfill\":"                                    <<  _need_to_backfill                                               <<std::endl
         <<"\t},"<<std::endl; //closes base brace, leaves a brace open
         

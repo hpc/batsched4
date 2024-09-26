@@ -8,6 +8,7 @@
 #include "json_workload.hpp"
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
+#include <rapidjson/pointer.h>
 #include <utility>
 #include <loguru.hpp>
 
@@ -131,6 +132,8 @@ void SchedulingDecision::handle_resubmission(std::unordered_map<std::string,bats
         LOG_F(INFO,"here");
         job_doc["original_submit"]=date;
         LOG_F(INFO,"here");
+        job_doc["from_workload"]=false;
+        LOG_F(INFO,"here");
         job_doc["original_start"]=-1.0;
         LOG_F(INFO,"here");
         rapidjson::Document::AllocatorType & myAlloc(job_doc.GetAllocator());
@@ -219,12 +222,16 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
         if (progress > 0)
         {
             
-            
             progress_time =(progress * profile_doc["cpu"].GetDouble())/one_second;
             if (w0->start_from_checkpoint->started_from_checkpoint)
+            {
+                CLOG_F(CCU_DEBUG,"started_from_checkpoint true, adding runtime: %f",job_to_queue->checkpoint_job_data->runtime);
+                //how to erase a key   bool success = rapidjson::Pointer("/a").Erase(profile_doc);
                 progress_time += job_to_queue->checkpoint_job_data->runtime;
+                job_doc["checkpoint_job_data"]["runtime"]=0;
+            }
 
-            LOG_F(INFO,"job %s progress is > 0  progress: %f  progress_time: %f",job_to_queue->id.c_str(),progress,progress_time);
+            CLOG_F(CCU_DEBUG,"job %s progress is > 0  cpu: %f one_second: %f, progress: %f  progress_time: %f",profile_doc["cpu"].GetDouble(),one_second,job_to_queue->id.c_str(),progress,progress_time);
             //LOG_F(INFO,"profile_doc[cpu]: %f    , one_second: %f",profile_doc["cpu"].GetDouble(),one_second);
             
             bool has_checkpointed = false;
@@ -236,20 +243,24 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
             if (job_doc.HasMember("metadata"))
             {
                 
+                CLOG_F(CCU_DEBUG,"job has metadata");
                 meta_str = job_doc["metadata"].GetString();
-                std::replace(meta_str.begin(),meta_str.end(),'\'','\"');
-                meta_doc.Parse(meta_str.c_str());
-                if (meta_doc.HasMember("checkpointed"))
+                if (meta_str != "")
                 {
-                    has_checkpointed = meta_doc["checkpointed"].GetBool();
+                    std::replace(meta_str.begin(),meta_str.end(),'\'','\"');
+                    meta_doc.Parse(meta_str.c_str());
+                    if (meta_doc.HasMember("checkpointed"))
+                    {
+                        has_checkpointed = meta_doc["checkpointed"].GetBool();
                   
                     
+                    }
                 }
             }
             //if has checkpointed we need to alter how we check num_checkpoints_completed and progress time
             if (has_checkpointed)
             {
-                
+                CLOG_F(CCU_DEBUG,"has checkpointed");
                 //progress_time must be subtracted by read_time to see how many checkpoints we have gone through
                 num_checkpoints_completed = floor((progress_time-job_to_queue->read_time)/(job_to_queue->checkpoint_interval + job_to_queue->dump_time));
                 if (meta_doc.HasMember("work_progress"))
@@ -281,12 +292,16 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
                 job_doc["metadata"].SetString(meta_str.c_str(),job_doc.GetAllocator());
                 // the progress_time needs to add back in the read_time
                 progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time) + job_to_queue->read_time;
+                if (w0->start_from_checkpoint->started_from_checkpoint)
+                    progress_time = progress_time - job_to_queue->checkpoint_job_data->runtime;
             
             }
             else // there hasn't been any checkpoints in the past, do normal check on num_checkpoints_completed
             {
                 num_checkpoints_completed = floor(progress_time/(job_to_queue->checkpoint_interval + job_to_queue->dump_time ));
-                progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time);
+                progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time) ;
+                if (w0->start_from_checkpoint->started_from_checkpoint)
+                    progress_time = progress_time - job_to_queue->checkpoint_job_data->runtime;
                 LOG_F(INFO,"line 258 num_checkpoints_completed %d",num_checkpoints_completed);
                 LOG_F(INFO,"progress time %f  checkpoint interval: %f dump time %f  num check: %f",
                 progress_time,job_to_queue->checkpoint_interval,job_to_queue->dump_time,
@@ -316,10 +331,16 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
 
             }
             myBatsched::ParallelHomogeneousProfileData * data = static_cast<myBatsched::ParallelHomogeneousProfileData *>(job_to_queue->profile->data);
-            if (data->original_cpu != -1.0)
-                profile_doc["cpu"]=data->original_cpu;
-            if (job_to_queue->original_walltime != -1.0)
-                job_doc["walltime"]=job_to_queue->original_walltime.convert_to<double>();
+            
+            //this shouldn't be needed as we are adding in the runtime to compute progress
+            //and subtracting the runtime and then subtracting that from cpu.
+            //if (data->original_cpu != -1.0)
+            //    profile_doc["cpu"]=data->original_cpu;
+            
+            //I don't think this is needed
+            //if (job_to_queue->original_walltime != -1.0)
+            //    job_doc["walltime"]=job_to_queue->original_walltime.convert_to<double>();
+            
             //only if a new checkpoint has been reached does the delay time change
             //LOG_F(INFO,"REPAIR num_checkpoints_completed: %d",num_checkpoints_completed);
             if (num_checkpoints_completed > 0)
@@ -329,8 +350,10 @@ std::string SchedulingDecision::to_json_desc(rapidjson::Document * doc){
                 if (job_to_queue->walltime > 0 && job_doc.HasMember("walltime") && w0->_subtract_progress_from_walltime) 
                 {
                     LOG_F(INFO,"decision line 288");
-                    job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
-                                         (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time) - job_to_queue->read_time));
+                    
+                    //job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
+                    //                     (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time) - job_to_queue->read_time));
+                    job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - progress_time);
                 }
                 double cpu = profile_doc["cpu"].GetDouble();
                 double cpu_time = cpu / one_second;
@@ -371,7 +394,10 @@ void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched
             
             progress_time =progress * profile_doc["delay"].GetDouble();
             if (w0->start_from_checkpoint->started_from_checkpoint)
+            {
                 progress_time += job_to_queue->checkpoint_job_data->runtime;
+                job_doc["checkpoint_job_data"]["runtime"]=0;
+            }
             //LOG_F(INFO,"REPAIR progress is > 0  progress: %f  progress_time: %f",progress,progress_time);
             
             bool has_checkpointed = false;
@@ -425,12 +451,16 @@ void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched
                 job_doc["metadata"].SetString(meta_str.c_str(),job_doc.GetAllocator());
                 // the progress_time needs to add back in the read_time
                 progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time) + job_to_queue->read_time;
+                if (w0->start_from_checkpoint->started_from_checkpoint)
+                    progress_time = progress_time - job_to_queue->checkpoint_job_data->runtime;
             
             }
             else // there hasn't been any checkpoints in the past, do normal check on num_checkpoints_completed
             {
                 num_checkpoints_completed = floor(progress_time/(job_to_queue->checkpoint_interval + job_to_queue->dump_time ));
                 progress_time = num_checkpoints_completed * (job_to_queue->checkpoint_interval + job_to_queue->dump_time);
+                if (w0->start_from_checkpoint->started_from_checkpoint)
+                    progress_time = progress_time - job_to_queue->checkpoint_job_data->runtime;
                 
                 
                 //if a checkpoint has completed set the metadata to reflect this
@@ -463,8 +493,11 @@ void SchedulingDecision::get_meta_data_from_delay(std::pair<std::string,batsched
                 //if we have checkpointed, the walltime can be reduced.  Reduce by the num of checkpoints. if _subtract_progress_from_walltime is false, skip
                 if (job_to_queue->walltime > 0 && job_doc.HasMember("walltime") && w0->_subtract_progress_from_walltime) 
                 {
-                    job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
-                                         (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time) - job_to_queue->read_time));
+                    
+                    //job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - 
+                    //                     (num_checkpoints_completed * (job_to_queue->checkpoint_interval+job_to_queue->dump_time) - job_to_queue->read_time));
+                    job_doc["walltime"].SetDouble( (double)job_to_queue->walltime - progress_time);
+                        
                 }
                 double delay = profile_doc["delay"].GetDouble() - progress_time + job_to_queue->read_time;
                 //LOG_F(INFO,"REPAIR delay: %f  readtime: %f",delay,job_to_queue->read_time);
@@ -530,14 +563,15 @@ void SchedulingDecision::add_call_me_later(double date,double future_date, batsc
     if (_blocked_cmls.find(cml.forWhat) != _blocked_cmls.end())
         return;
     cml.time = future_date;
-    cml.id = _nb_call_me_laters;
     _proto_writer->append_call_me_later(date,future_date,cml);
-    _call_me_laters[_nb_call_me_laters]=cml;
+    CLOG_F(CCU_DEBUG,"adding call me later, type: %d  id: %d",int( cml.forWhat),cml.id);
+    _call_me_laters[cml.id]=cml;
     _nb_call_me_laters++;
 }
 double SchedulingDecision::remove_call_me_later(batsched_tools::CALL_ME_LATERS cml_in, double date, Workload * w0)
 {
     batsched_tools::CALL_ME_LATERS call_me_later = _call_me_laters[cml_in.id];
+    CLOG_F(CCU_DEBUG,"erasing call me later: type: %d id: %d",int(cml_in.forWhat),cml_in.id);
     _call_me_laters.erase(cml_in.id);
     if (date > call_me_later.time)
     {
@@ -557,11 +591,16 @@ std::map<int,batsched_tools::CALL_ME_LATERS> SchedulingDecision::get_call_me_lat
 {
     return _call_me_laters;
 }
+int SchedulingDecision::get_nb_call_me_laters()
+{
+    return _nb_call_me_laters;
+}
 void SchedulingDecision::set_call_me_laters(std::map<int,batsched_tools::CALL_ME_LATERS> & cml,double date,bool dispatch)
 {
 
     if (dispatch)
     {
+        CLOG_F(CCU_DEBUG,"set_call_me_laters, cml: %s",batsched_tools::map_to_json_string(cml).c_str());
         for (auto c : cml)
             add_call_me_later(date,c.second.time,c.second);
     }

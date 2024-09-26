@@ -181,12 +181,12 @@ namespace batsched_tools{
 
     };
     struct checkpoint_job_data{
-      batsched_tools::JobState state = batsched_tools::JobState::JOB_STATE_NOT_SUBMITTED;
-      double progress = -1;
-      double runtime = 0;
-      IntervalSet allocation = IntervalSet::empty_interval_set();
-      long double consumed_energy = -1.0;
-      std::string jitter = "null";
+      batsched_tools::JobState state = batsched_tools::JobState::JOB_STATE_NOT_SUBMITTED;    //state when the job was checkpointed
+      double progress = -1;  //if state was JOB_STATE_RUNNING (2) the progress that had been made from 0 to 1.0
+      double runtime = 0;    //if state was JOB_STATE_RUNNING (2) the amount of total runtime the job had made
+      IntervalSet allocation = IntervalSet::empty_interval_set();  //if state was JOB_STATE_RUNNING, which nodes were allocated to it
+      long double consumed_energy = -1.0; //the consumed energy at the time of checkpoint
+      std::string jitter = "null"; //the jitter
 
     };
     struct start_from_chkpt{
@@ -198,6 +198,7 @@ namespace batsched_tools{
       bool started_from_checkpoint=false; //whether or not we started from a checkpoint
       std::string checkpoint_folder="null"; //the actual folder to read in from
       bool received_submitted_jobs = false;
+      bool start_adding_to_queue = false;
       std::set<std::string> jobs_that_should_have_been_submitted_already = {};
       double first_submitted_time=0;
     };

@@ -69,7 +69,7 @@ protected:
     };
     void max_heapify_queue(int root, int size, const CompareQueue& comp);
     void heap_sort_queue(int size, const CompareQueue& comp);
-    std::vector<Job *> _waiting_jobs;
+    
     std::vector<Job *>::iterator find_waiting_job(std::string job_id);
     std::vector<Job *>::iterator delete_waiting_job(std::vector<Job *>::iterator wj_iter);
     std::vector<Job *>::iterator delete_waiting_job(std::string waiting_job_id);

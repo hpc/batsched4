@@ -169,8 +169,8 @@ public:
     void on_start_from_checkpoint_normal(double date, const rapidjson::Value & batsim_event);
     void on_start_from_checkpoint_schedule(double date, const rapidjson::Value & batsim_event);
     virtual void on_first_jobs_submitted(double date);
-    virtual void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date) {}
-    virtual void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date) {}
+    virtual void on_machine_down_for_repair(batsched_tools::KILL_TYPES forWhat,double date){}
+    virtual void on_machine_instant_down_up(batsched_tools::KILL_TYPES forWhat,double date){}
     void on_signal_checkpoint();
     void set_failure_map(std::map<double,batsched_tools::failure_tuple> failure_map);
     void normal_start(double date, const rapidjson::Value & batsim_event);
@@ -247,6 +247,7 @@ protected:
     Machines * _machines=nullptr; //C
     Queue * _queue = nullptr; //C
     Workload * _workload; //X
+    std::vector<Job *> _waiting_jobs;
     SchedulingDecision * _decision; //X
     std::string _queue_policy; //X
     ResourceSelector * _selector; //X
@@ -263,6 +264,7 @@ protected:
     bool _reject_possible = false; //C
     int _nb_call_me_laters=0; //C
     bool _need_to_backfill = false; //C
+    bool _output_extra_info = true; //X
     
     //recently_variables
     //***************************************************
@@ -284,7 +286,7 @@ protected:
     bool _no_more_static_job_to_submit_received = false; //C
     bool _no_more_external_event_to_occur_received = false; //C
     bool _checkpointing_on=false; //C
-    std::vector<double> _call_me_laters; //C
+    std::map<int,batsched_tools::CALL_ME_LATERS> _call_me_laters; //C
     
     std::vector<batsched_tools::KILL_TYPES> _on_machine_instant_down_ups; //C
     std::vector<batsched_tools::KILL_TYPES> _on_machine_down_for_repairs; //C
@@ -307,6 +309,7 @@ protected:
     std::mt19937 generator_repair_time; //C
     unsigned int generator_repair_time_seed; //X
     std::exponential_distribution<double> * repair_time_exponential_distribution; //C
+    bool _set_generators_from_file = false; //X
     //***************************************************
 
     //schedule_variables
@@ -363,6 +366,7 @@ protected:
     bool _block_checkpoint = false; //X
     double _start_from_checkpoint_time=0; //X
     bool _clear_recent_data_structures=true; //X
+    bool _clear_jobs_recently_released=true; //X
     int _checkpoint_sync = 0; //X
     bool _debug_real_checkpoint = false; //X
     //***************************************************
