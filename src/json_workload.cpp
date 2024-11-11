@@ -141,6 +141,7 @@ Job* Workload::job_from_json_description_string(const string &json_string)
 
 Job *Workload::job_from_json_object(const Value &object)
 {
+    CLOG_F(CCU_DEBUG_ALL,"here");
     PPK_ASSERT_ERROR(object.IsObject(), "Invalid json object: not an object");
 
     PPK_ASSERT_ERROR(object.HasMember("id"), "Invalid json object: no 'id' member");
