@@ -68,7 +68,8 @@
 #include "algo/easy_bf_fast2.hpp"
 #include "algo/easy_bf_fast2_holdback.hpp"
 #include "algo/fcfs_fast2.hpp"
-//#include "algo/conservative_bf_metrics.hpp"
+#include "algo/conservative_bf_metrics.hpp"
+#include "algo/conservative_bf_metrics_roci.hpp"
 
 
 
@@ -108,7 +109,7 @@ int _checkpoint_signal = 35;
 int main(int argc, char ** argv)
 {
     
-    const set<string> variants_set = {"conservative_bf","crasher", "easy_bf","easy_bf2","easy_bf3", "easy_bf_fast",
+    const set<string> variants_set = {"conservative_bf","conservative_bf_metrics","conservative_bf_metrics_roci","crasher", "easy_bf","easy_bf2","easy_bf3", "easy_bf_fast",
                                        "easy_bf_fast2","easy_bf_fast2_holdback",
                                       "easy_bf_plot_liquid_load_horizon",
                                       "energy_bf", "energy_bf_dicho", "energy_bf_idle_sleeper",
@@ -354,8 +355,10 @@ int main(int argc, char ** argv)
             algo = new easy_bf_fast2_holdback(&w, &decision, queue, selector,rjms_delay, &json_doc_variant_options);
         else if (scheduling_variant == "conservative_bf")
             algo = new ConservativeBackfilling(&w, &decision,queue,selector,rjms_delay,&json_doc_variant_options);
-        //else if (scheduling_variant == "conservative_bf_metrics")
-        //    algo = new ConservativeBackfilling_metrics(&w, &decision,queue,selector,rjms_delay,&json_doc_variant_options);
+        else if (scheduling_variant == "conservative_bf_metrics")
+            algo = new ConservativeBackfilling_metrics(&w, &decision,queue,selector,rjms_delay,&json_doc_variant_options);
+        else if (scheduling_variant == "conservative_bf_metrics_roci")
+            algo = new ConservativeBackfilling_metrics_roci(&w, &decision,queue,selector,rjms_delay,&json_doc_variant_options);
             //algo = new ConservativeBackfilling(&w, &decision, queue, selector, rjms_delay, svg_prefix, &json_doc_variant_options);
         /*
         else if (scheduling_variant == "killer")

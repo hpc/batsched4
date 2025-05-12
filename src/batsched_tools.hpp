@@ -39,12 +39,13 @@ public:
 b_log();
 ~b_log();
 void blog(std::string type,double date,std::string fmt,...);
-void add_log_file(std::string file, std::string type,std::string open_method,bool csv = false);
+void add_log_file(std::string file, std::string type,std::string open_method,bool csv = false,std::string separator = ",");
 void add_header(std::string type,std::string header);
 void copy_file(std::string file, std::string type,std::string copy_location);
 
 std::unordered_map<std::string,FILE*> _files;
 std::unordered_map<std::string,bool> _csv_status;
+std::unordered_map<std::string,std::string> _csv_sep;
 };
 namespace blog_types
     {
@@ -82,6 +83,7 @@ namespace batsched_tools{
         ,CHECKPOINT_SYNC
         ,CHECKPOINT_BATSCHED
         ,RECOVER_FROM_CHECKPOINT
+        ,METRICS
     };
     enum class KILL_TYPES 
     {
@@ -171,6 +173,7 @@ namespace batsched_tools{
     struct tools{
         static id_separation separate_id(const std::string job_id);
     };
+    
      struct job_parts{
         int job_number;   //the job number part
         int job_resubmit; //the job resubmit number
@@ -180,6 +183,7 @@ namespace batsched_tools{
         std::string next_resubmit; //the whole job name with the next_resubmit tacked on
 
     };
+    struct batsched_tools::job_parts get_job_parts(std::string job_id);
     struct checkpoint_job_data{
       batsched_tools::JobState state = batsched_tools::JobState::JOB_STATE_NOT_SUBMITTED;    //state when the job was checkpointed
       double progress = -1;  //if state was JOB_STATE_RUNNING (2) the progress that had been made from 0 to 1.0
@@ -203,13 +207,13 @@ namespace batsched_tools{
       double first_submitted_time=0;
     };
     struct CALL_ME_LATERS{
-        double time;
-        int id;
-        batsched_tools::call_me_later_types forWhat;
-        std::string extra_data="{}";
+        double time;  //time to call back
+        int id; //id of call me later.
+        batsched_tools::call_me_later_types forWhat; //what is the callback for? So we know how to deal with it.
+        std::string extra_data="{}"; //any extra json data?  repair done uses this for the machine number that is done.
     };
 
-    struct batsched_tools::job_parts get_job_parts(std::string job_id);
+    
 
     struct memInfo{
         unsigned long long total,free,available,used;

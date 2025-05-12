@@ -96,6 +96,7 @@ void ISchedulingAlgorithm::on_start_from_checkpoint_normal(double date, const ra
     blocked_cmls.insert(batsched_tools::call_me_later_types::SMTBF);
     blocked_cmls.insert(batsched_tools::call_me_later_types::REPAIR_DONE);
     blocked_cmls.insert(batsched_tools::call_me_later_types::CHECKPOINT_BATSCHED);
+    
     _decision->set_blocked_call_me_laters(blocked_cmls);
     pid_t pid = batsched_tools::get_batsched_pid();
     _decision->add_generic_notification("PID",std::to_string(pid),date);

@@ -24,7 +24,7 @@ b_log::~b_log(){
  for (auto key_value:_files)
     fclose(key_value.second);
 }
-void b_log::add_log_file(std::string file,std::string type, std::string open_method,bool csv){
+void b_log::add_log_file(std::string file,std::string type, std::string open_method,bool csv,std::string separator){
     LOG_F(INFO,"here");
     FILE* myFile;
     if (open_method == blog_open_method::OVERWRITE)
@@ -38,6 +38,7 @@ void b_log::add_log_file(std::string file,std::string type, std::string open_met
     LOG_F(INFO,"here");
     _files[type]=myFile;
     _csv_status[type]=csv;
+    _csv_sep[type]=separator;
 }
 void b_log::copy_file(std::string file, std::string type, std::string copy_location)
 {
@@ -77,7 +78,7 @@ void b_log::blog(std::string type, double date,std::string fmt, ...){
         {
             
             LOG_F(INFO,"here");
-            std::fprintf(file,"%f,",date);
+            std::fprintf(file,"%f%s",date,_csv_sep[type].c_str());
             LOG_F(INFO,"here");
         }
         LOG_F(INFO,"here");
